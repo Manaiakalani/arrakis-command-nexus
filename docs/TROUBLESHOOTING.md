@@ -1,8 +1,8 @@
 # Troubleshooting
 
-## Illegal instruction (core dumped)
+## "Illegal instruction (core dumped)"
 
-**Cause:** the host CPU does not support AVX2, or AVX2 is not exposed to the VM.
+**Cause:** The host CPU does not support AVX2, or AVX2 is not exposed to the VM.
 
 **Fix:**
 
@@ -11,7 +11,7 @@
 - Move the server to hardware with AVX2 support
 - Re-run `./dune preflight` before starting again
 
-## Can't connect from LAN
+## Cannot Connect from LAN
 
 **Cause:** NAT hairpin / loopback is missing on the router.
 
@@ -22,9 +22,9 @@
 - Add split DNS or a hosts-file override for the public hostname
 - Enable NAT loopback in the router if available
 
-## Containers are crash-looping
+## Containers Are Crash-Looping
 
-**Cause:** missing images, invalid token, or not enough memory are the most common triggers.
+**Cause:** Missing images, invalid token, or insufficient memory are the most common triggers.
 
 **Fix:**
 
@@ -34,9 +34,9 @@
 - Confirm the host has enough RAM for the selected profile
 - Re-run `./dune preflight`
 
-## Dashboard is not accessible
+## Dashboard Is Not Accessible
 
-**Cause:** bad bind address, port conflict, reverse proxy issue, or CORS mismatch.
+**Cause:** Bad bind address, port conflict, reverse proxy issue, or CORS mismatch.
 
 **Fix:**
 
@@ -46,7 +46,7 @@
 - Test locally with `curl http://127.0.0.1:18080/api/ping`
 - If proxied, confirm the proxy forwards `/api/` and preserves host headers
 
-## Database connection errors
+## Database Connection Errors
 
 **Cause:** PostgreSQL is unhealthy, credentials changed, or the database was never initialized.
 
@@ -57,9 +57,9 @@
 - Confirm port `5432` is not already occupied by another PostgreSQL instance
 - Re-run `docker compose run --rm db-init` if initialization failed
 
-## RabbitMQ issues
+## RabbitMQ Issues
 
-**Cause:** wrong credentials, blocked ports, or a management/public port mismatch.
+**Cause:** Wrong credentials, blocked ports, or a management/public port mismatch.
 
 **Fix:**
 
@@ -68,9 +68,9 @@
 - Ensure `31982/tcp` is reachable from players
 - Keep `5672`, `15672`, and `15673` private to localhost
 
-## Image loading failures
+## Image Loading Failures
 
-**Cause:** the Steam download path is wrong, the extracted files are incomplete, or the tarball layout is unexpected.
+**Cause:** The Steam download path is wrong, the extracted files are incomplete, or the tarball layout is unexpected.
 
 **Fix:**
 
@@ -79,9 +79,9 @@
 - Check whether the update/load script expects tarballs or already-extracted files
 - Re-download the package with `steamcmd +login anonymous +app_update 3104830 validate +quit`
 
-## Gateway patch needed after restart
+## Gateway Patch Needed After Restart
 
-**Cause:** the gateway can come up before the rest of the stack is ready, or the patched config was lost after image updates.
+**Cause:** The gateway can come up before the rest of the stack is ready, or the patched config was lost after image updates.
 
 **Fix:**
 

@@ -2,9 +2,9 @@
 
 This project uses a mix of public player ports, internal localhost-only management ports, and host-networked game services. Plan your firewall and router rules before opening the stack to the internet.
 
-## Required ports
+## Required Ports
 
-### Public/player-facing ports
+### Public / Player-Facing Ports
 
 | Profile | Protocol | Ports | Purpose |
 | --- | --- | --- | --- |
@@ -16,7 +16,7 @@ This project uses a mix of public player ports, internal localhost-only manageme
 | full | UDP | `7777-7810` | Gameplay traffic for the expanded battlegroup |
 | full | UDP | `7888-7921` | IGW/server-to-server traffic for the expanded battlegroup |
 
-### Local-only admin ports
+### Local-Only Admin Ports
 
 | Port | Protocol | Service | Expected exposure |
 | --- | --- | --- | --- |
@@ -26,7 +26,7 @@ This project uses a mix of public player ports, internal localhost-only manageme
 | `15673` | TCP | RabbitMQ game management UI | `127.0.0.1` only |
 | `18080` | TCP | Dashboard | `127.0.0.1` by default |
 
-## Port forwarding on common routers
+## Port Forwarding on Common Routers
 
 1. Reserve a DHCP lease or static IP for the Linux host.
 2. Forward the required TCP/UDP ports to that internal IP.
@@ -41,14 +41,14 @@ Typical router menu labels:
 - Ubiquiti UniFi: **Settings > Firewall & Security > Port Forwarding**
 - OpenWrt: **Network > Firewall > Port Forwards**
 
-## LAN vs WAN access
+## LAN vs WAN Access
 
-- **LAN-only admin access:** keep `DUNE_ADMIN_BIND_ADDRESS=127.0.0.1` and use SSH port forwarding or a reverse proxy.
-- **LAN dashboard exposure:** set `DUNE_ADMIN_BIND_ADDRESS=0.0.0.0`, restrict firewall sources to your subnet, and tighten `DUNE_ADMIN_ALLOWED_HOSTS`.
-- **WAN game exposure:** forward only the gameplay/RMQ ports required by your deployment profile.
+- **LAN-only admin access:** Keep `DUNE_ADMIN_BIND_ADDRESS=127.0.0.1` and use SSH port forwarding or a reverse proxy.
+- **LAN dashboard exposure:** Set `DUNE_ADMIN_BIND_ADDRESS=0.0.0.0`, restrict firewall sources to your subnet, and tighten `DUNE_ADMIN_ALLOWED_HOSTS`.
+- **WAN game exposure:** Forward only the gameplay and RMQ ports required by your deployment profile.
 - **Do not expose** PostgreSQL or RabbitMQ management ports to the internet.
 
-## NAT hairpin / loopback issues
+## NAT Hairpin / Loopback Issues
 
 Some routers do not let devices on the same LAN reach the server by its public IP. Symptoms include:
 
@@ -63,7 +63,7 @@ Solutions:
 3. Use the server's LAN IP when connecting from inside the network.
 4. Replace or reconfigure the router if it supports NAT loopback/hairpin NAT.
 
-## Firewall examples
+## Firewall Examples
 
 ### UFW
 
@@ -85,10 +85,10 @@ sudo iptables -A INPUT -p tcp -s 192.168.0.0/16 --dport 18080 -j ACCEPT
 
 Adjust the UDP ranges to match your active deployment profile instead of blindly opening the full range.
 
-## Docker networking considerations
+## Docker Networking Considerations
 
 - Game services run with `network_mode: host`, so they bind directly on the Linux host.
-- PostgreSQL and RabbitMQ management ports are published explicitly and should stay on `127.0.0.1`.
+- PostgreSQL and RabbitMQ management ports should stay bound to `127.0.0.1`.
 - The dashboard is fronted by Nginx and should normally remain localhost-only.
 - Because host networking is in use, Docker bridge-level isolation does not protect the game ports. Your host firewall is the real perimeter.
-- If you place the dashboard behind a reverse proxy, preserve TLS termination, admin token auth, and the security headers from `dashboard/nginx.conf`.
+- If you proxy the dashboard, preserve TLS termination, admin token auth, and the security headers from `dashboard/nginx.conf`.
