@@ -1,10 +1,10 @@
 # Deployment Profiles
 
-The stack is split into profile overlays so you can run a smaller battlegroup for home use or a larger one for a community server.
+The stack is split into profile overlays so you can run a smaller battlegroup for personal use or scale up for a community server.
 
-## basic
+## Basic
 
-**Maps/services**
+**Maps**
 
 - `overmap`
 - `survival_1`
@@ -15,13 +15,11 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 - UDP `7888-7889`
 - TCP `31982`
 
-**Recommended RAM**
+**Recommended RAM:** ~20 GB
 
-- ~20 GB host memory
+## Standard
 
-## standard
-
-**Maps/services**
+**Maps**
 
 - `overmap`
 - `survival_1`
@@ -39,15 +37,13 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 - UDP `7888-7896`
 - TCP `31982`
 
-**Recommended RAM**
+**Recommended RAM:** ~30-40 GB
 
-- ~30-40 GB host memory
+## Full
 
-## full
+**Maps**
 
-**Maps/services**
-
-- Everything in `standard`
+- Everything in Standard
 - additional `survival_2` through `survival_17`
 - additional `deep_desert_2` through `deep_desert_5`
 - second instances of social/story shards such as `arrakeen_2`, `harko_village_2`, and extra testing maps
@@ -58,11 +54,9 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 - UDP `7888-7921`
 - TCP `31982`
 
-**Recommended RAM**
+**Recommended RAM:** ~40 GB+
 
-- ~40 GB+ host memory
-
-## Switching profiles
+## Switching Profiles
 
 1. Edit `.env`
 2. Change `DEPLOYMENT_PROFILE=basic|standard|full`
@@ -71,7 +65,7 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 
 If you are moving to a larger profile, update port forwarding and firewall rules first.
 
-## Creating a custom profile
+## Creating a Custom Profile
 
 1. Copy the closest overlay, for example `docker-compose.standard.yml`
 2. Rename it to something like `docker-compose.community.yml`

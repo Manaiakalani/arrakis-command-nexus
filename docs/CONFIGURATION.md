@@ -1,12 +1,12 @@
 # Configuration Reference
 
-This document covers the environment variables, config files, deployment profiles, and dashboard-specific settings used by the Dune Awakening self-hosted stack.
+All environment variables, config files, deployment profiles, and dashboard settings for the Dune Awakening self-hosted stack.
 
-## Environment variables
+## Environment Variables
 
 Copy `.env.example` to `.env`, then edit values to match your host.
 
-### Server identity
+### Server Identity
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -16,7 +16,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | `FLS_SECRET` | blank | Funcom Live Services token. Prefer `secrets/funcom-token.txt` instead of inline values. |
 | `DUNE_SERVER_LOGIN_PASSWORD` | blank | Optional join password for the battlegroup. |
 
-### Network configuration
+### Network Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | `GAME_PORT_START` | `7777` | Documentation reference for the first UDP gameplay port. |
 | `S2S_PORT_START` | `7888` | Documentation reference for the first UDP server-to-server port. |
 
-### Deployment and images
+### Deployment and Images
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | `DUNE_ADMIN_HOST_PORT` | `18080` | Host port for the dashboard UI and API. |
 | `DUNE_ADMIN_ALLOWED_HOSTS` | `127.0.0.1:18080,localhost:18080` | Allowed origins for dashboard CORS. |
 
-### Discord notifications
+### Discord Notifications
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -82,7 +82,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | `BACKUP_SCHEDULE_ENABLED` | `false` | Turns scheduled backups on or off. |
 | `BACKUP_SCHEDULE_INTERVAL_HOURS` | `24` | Backup cadence when scheduling is enabled. |
 
-### Memory limits
+### Memory Limits
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -96,9 +96,9 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | `MEM_LIMIT_TEXT_ROUTER` | `256m` | Text router container limit. |
 | `MEM_LIMIT_GATEWAY` | `256m` | Gateway container limit. |
 
-### Advanced runtime overrides
+### Advanced Runtime Overrides
 
-These are not part of the default `.env.example`, but the codebase supports them when you need deeper control.
+These are not part of the default `.env.example` but are supported when you need deeper control.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -110,7 +110,7 @@ These are not part of the default `.env.example`, but the codebase supports them
 | `NEXT_PUBLIC_API_BASE_URL` | `/api` | Frontend override for dashboard API base URL. |
 | `NEXT_PUBLIC_ADMIN_TOKEN` | blank | Optional frontend token injection for trusted local admin environments. |
 
-## Config files
+## Config Files
 
 ### `config/UserGame.ini`
 
@@ -128,7 +128,7 @@ Controls instancing behavior and per-map player caps. This is where you switch m
 
 Controls how the battlegroup registers with Funcom services, including visible region and provider labels.
 
-## Deployment profiles
+## Deployment Profiles
 
 | Profile | Compose overlay | Intended use | Recommended RAM |
 | --- | --- | --- | --- |
@@ -136,7 +136,7 @@ Controls how the battlegroup registers with Funcom services, including visible r
 | `standard` | `docker-compose.standard.yml` | Adds Deep Desert, social hubs, and story maps | ~30-40 GB |
 | `full` | `docker-compose.full.yml` | Large battlegroup with multiple extra Survival/Deep Desert/story instances | ~40 GB+ |
 
-## Memory planning by profile
+## Memory Planning by Profile
 
 | Profile | Suggested host RAM | Notes |
 | --- | --- | --- |
@@ -144,10 +144,11 @@ Controls how the battlegroup registers with Funcom services, including visible r
 | `standard` | 30-40 GB | Better suited for always-on communities and more concurrent players. |
 | `full` | 40 GB+ | Plan for aggressive scaling, backups, and peak usage headroom. |
 
-## Dashboard configuration
+## Dashboard Configuration
 
-- The dashboard is exposed through `dashboard-nginx` on `DUNE_ADMIN_BIND_ADDRESS:DUNE_ADMIN_HOST_PORT`.
-- The backend API uses `DUNE_ADMIN_TOKEN` for authentication via the `X-Admin-Token` header.
-- CORS is controlled with `DUNE_ADMIN_ALLOWED_HOSTS`.
-- Keep the bind address on `127.0.0.1` unless you are intentionally publishing the dashboard behind a reverse proxy or to a trusted LAN.
+The dashboard is exposed through `dashboard-nginx` on `DUNE_ADMIN_BIND_ADDRESS:DUNE_ADMIN_HOST_PORT`.
+
+- The backend API authenticates requests via the `X-Admin-Token` header using `DUNE_ADMIN_TOKEN`.
+- CORS origins are controlled with `DUNE_ADMIN_ALLOWED_HOSTS`.
+- Keep the bind address on `127.0.0.1` unless you are intentionally exposing the dashboard to a trusted LAN or behind a reverse proxy.
 - If you proxy the dashboard, update allowed hosts and preserve the security headers from `dashboard/nginx.conf`.

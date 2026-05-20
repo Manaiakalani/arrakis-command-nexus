@@ -73,8 +73,8 @@ At minimum, forward the public game ports from your router to the Linux host:
 
 Also allow the same ports through the host firewall.
 
-## Next steps
+## Next Steps
 
-- Read [CONFIGURATION.md](./CONFIGURATION.md) to tune settings
-- Read [NETWORKING.md](./NETWORKING.md) before opening the server to the internet
-- Read [PROFILES.md](./PROFILES.md) if you need to resize the battlegroup later
+- See [Configuration](./CONFIGURATION.md) to tune gameplay and engine settings
+- See [Networking](./NETWORKING.md) before opening the server to the internet
+- See [Profiles](./PROFILES.md) if you need to resize the battlegroup later

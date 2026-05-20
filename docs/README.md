@@ -1,24 +1,24 @@
 # Documentation
 
-Dune Awakening Self-Hosted Docker Server packages the Funcom dedicated server stack, helper scripts, and a web dashboard so you can run a private battlegroup on your own Linux host.
+This project packages Funcom's dedicated server stack, helper scripts, and a web dashboard so you can run a private Dune Awakening battlegroup on your own Linux host.
 
-## Quick links
+## Quick Links
 
-- [Quick start](./QUICKSTART.md)
-- [Configuration reference](./CONFIGURATION.md)
-- [Deployment profiles](./PROFILES.md)
-- [Networking guide](./NETWORKING.md)
+- [Quick Start](./QUICKSTART.md)
+- [Configuration Reference](./CONFIGURATION.md)
+- [Deployment Profiles](./PROFILES.md)
+- [Networking Guide](./NETWORKING.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)
 
-## Project overview
+## Project Overview
 
 This project automates the moving parts required to self-host Dune Awakening:
 
 - Docker Compose definitions for core infrastructure and game shards
 - Profile-based deployments for small, medium, and large battlegroups
-- A `dune` CLI for setup, startup, updates, backups, and diagnostics
-- A dashboard for map orchestration, player visibility, logs, backups, and configuration
-- Security-focused defaults such as localhost-only admin bindings and secret file support
+- `dune` CLI for setup, startup, updates, backups, and diagnostics
+- Web dashboard for map orchestration, player visibility, logs, backups, and configuration
+- Security-focused defaults including localhost-only admin bindings and secret file support
 
 ## Architecture
 
@@ -53,12 +53,12 @@ This project automates the moving parts required to self-host Dune Awakening:
 
 ## Features
 
-- One-command initialization and start workflow through `dune init` and `dune start`
+- One-command initialization and startup via `dune init` and `dune start`
 - Profile overlays for basic, standard, and full battlegroup layouts
-- Dashboard views for health, maps, players, config, backups, logs, and Discord alerts
+- Dashboard with health monitoring, map controls, player management, config editing, backups, logs, and Discord alerts
 - Backup and restore tooling for config, saves, and database snapshots
 - Steam image loading and update helpers for Funcom server packages
-- Local-first security defaults for admin services and secrets handling
+- Security-first defaults for admin services and secrets handling
 
 ## Requirements
 
@@ -71,10 +71,10 @@ This project automates the moving parts required to self-host Dune Awakening:
 - Enough storage for server images, saves, backups, and logs
 - SteamCMD access to download dedicated server files
 
-## Where to go next
+## Next Steps
 
-1. Start with [QUICKSTART.md](./QUICKSTART.md)
-2. Tune settings in [CONFIGURATION.md](./CONFIGURATION.md)
-3. Choose the right battlegroup size in [PROFILES.md](./PROFILES.md)
-4. Open ports safely with [NETWORKING.md](./NETWORKING.md)
-5. Use [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) when something breaks
+1. Start with the [Quick Start](./QUICKSTART.md) guide
+2. Tune settings in [Configuration](./CONFIGURATION.md)
+3. Choose the right battlegroup size in [Profiles](./PROFILES.md)
+4. Open ports safely with [Networking](./NETWORKING.md)
+5. Check [Troubleshooting](./TROUBLESHOOTING.md) when something breaks
