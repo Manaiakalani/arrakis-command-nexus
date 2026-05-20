@@ -1,0 +1,86 @@
+x-game-env: &game-env
+  WORLD_NAME: ${WORLD_NAME}
+  WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
+  BATTLEGROUP_ID: ${BATTLEGROUP_ID}
+  FLS_SECRET: ${FLS_SECRET}
+  FLS_SECRET_FILE: /run/secrets/funcom-token.txt
+  DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD}
+  EXTERNAL_ADDRESS: ${EXTERNAL_ADDRESS}
+  GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST}
+  GAME_RMQ_PUBLIC_PORT: ${GAME_RMQ_PUBLIC_PORT}
+  GAME_RMQ_HOST: 127.0.0.1
+  GAME_RMQ_PORT: ${GAME_RMQ_PUBLIC_PORT}
+  ADMIN_RMQ_HOST: 127.0.0.1
+  ADMIN_RMQ_PORT: "5672"
+  POSTGRES_HOST: 127.0.0.1
+  POSTGRES_PORT: ${POSTGRES_PORT}
+  POSTGRES_DB: dune
+  POSTGRES_USER: dune
+  POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+  DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/dune
+  DUNE_CONFIG_DIR: /config
+
+x-game-service-common: &game-service-common
+  image: funcom/self-hosting/seabass-server:${DUNE_IMAGE_TAG}
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
+  network_mode: host
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    admin-rmq:
+      condition: service_healthy
+    game-rmq:
+      condition: service_healthy
+    db-init:
+      condition: service_completed_successfully
+  entrypoint:
+    - /bin/sh
+    - -lc
+  command: >-
+    exec /workspace/scripts/run_server_safe.sh "$${DUNE_MAP}"
+    -ini:engine:[FuncomLiveServices]:ServiceAuthToken=$${FLS_SECRET}
+    -ini:engine:[OnlineSubsystem]:ServerName=$${WORLD_UNIQUE_NAME}
+    -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=$${DUNE_SERVER_LOGIN_PASSWORD}
+    -ExternalAddress=$${EXTERNAL_ADDRESS}
+    --RMQGameHostname=$${GAME_RMQ_HOST}
+    --RMQGamePort=$${GAME_RMQ_PORT}
+    --RMQAdminHostname=$${ADMIN_RMQ_HOST}
+    --RMQAdminPort=$${ADMIN_RMQ_PORT}
+    -Port=$${DUNE_GAME_PORT}
+    -IGWPort=$${DUNE_S2S_PORT}
+    -PartitionIndex=$${DUNE_PARTITION_INDEX}
+
+services:
+  overmap:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_OVERMAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Systems/Overmap/Overmap.Overmap
+      DUNE_GAME_PORT: "7777"
+      DUNE_S2S_PORT: "7888"
+      DUNE_PARTITION_INDEX: "1"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/overmap:/home/dune/server/DuneSandbox/Saved
+
+  survival_1:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/Arrakis/Survival_1/Survival_1.Survival_1
+      DUNE_GAME_PORT: "7778"
+      DUNE_S2S_PORT: "7889"
+      DUNE_PARTITION_INDEX: "2"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/survival_1:/home/dune/server/DuneSandbox/Saved
+

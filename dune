@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+# Dune Awakening Self-Hosted Server - CLI Tool
+# Usage: dune <command> [options]
+
+set -euo pipefail
+
+SELF_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SELF_PATH" ]]; do
+  SELF_DIR="$(cd -P "$(dirname "$SELF_PATH")" && pwd)"
+  SELF_PATH="$(readlink "$SELF_PATH")"
+  [[ "$SELF_PATH" != /* ]] && SELF_PATH="${SELF_DIR}/${SELF_PATH}"
+done
+SELF_DIR="$(cd -P "$(dirname "$SELF_PATH")" && pwd)"
+COMMON_PATH="$SELF_DIR/scripts/lib/common.sh"
+if [[ ! -f "$COMMON_PATH" ]]; then
+  SEARCH_DIR="$PWD"
+  while [[ "$SEARCH_DIR" != "/" ]]; do
+    if [[ -f "$SEARCH_DIR/scripts/lib/common.sh" ]]; then
+      COMMON_PATH="$SEARCH_DIR/scripts/lib/common.sh"
+      break
+    fi
+    SEARCH_DIR="$(dirname "$SEARCH_DIR")"
+  done
+fi
+[[ -f "$COMMON_PATH" ]] || {
+  printf 'Unable to locate scripts/lib/common.sh. Run dune from the project directory or use a symlink into the repository.\n' >&2
+  exit 1
+}
+# shellcheck source=scripts/lib/common.sh
+source "$COMMON_PATH"
+init_dune_env "$SELF_PATH"
+
+usage() {
+  cat <<EOF
+Usage: dune <command> [options]
+
+Commands:
+  init                    Run first-time setup wizard
+  start                   Run preflight checks and start the stack
+  stop                    Stop the stack
+  restart                 Restart the stack
+  status                  Show container status, health, and ports
+  ready                   Show a quick readiness result
+  logs [service] [--raw]  Tail compose logs with optional redaction bypass
+  backup [--scope SCOPE]  Create a backup (full, config, db)
+  restore <file>          Restore a backup file
+  update                  Download and load new Funcom images
+  doctor                  Run detailed health diagnostics
+  dashboard               Open the dashboard in a browser
+  preflight               Run quick pre-start validation
+  config edit             Open config files with \$EDITOR
+  help                    Show this help message
+  version                 Show CLI version
+EOF
+}
+
+redact_stream() {
+  local -a secrets=()
+  local secret
+
+  if [[ -s "$SECRET_DIR/funcom-token.txt" ]]; then
+    secrets+=("$(tr -d '\r\n' < "$SECRET_DIR/funcom-token.txt")")
+  fi
+
+  for secret in \
+    "${FLS_SECRET:-}" \
+    "${POSTGRES_PASSWORD:-}" \
+    "${RABBITMQ_DEFAULT_PASS:-}" \
+    "${DASHBOARD_ADMIN_TOKEN:-}"; do
+    [[ -n "$secret" ]] && secrets+=("$secret")
+  done
+
+  while IFS= read -r line; do
+    for secret in "${secrets[@]}"; do
+      [[ -n "$secret" ]] || continue
+      line="${line//"$secret"/[REDACTED]}"
+    done
+    printf '%s\n' "$line"
+  done
+}
+
+cmd_start() {
+  require_compose_stack
+  "$PROJECT_ROOT/scripts/preflight.sh"
+  log_step "Starting the Dune stack using profile '$DEPLOYMENT_PROFILE'."
+  run_compose up -d
+  log_success 'Stack started.'
+}
+
+cmd_stop() {
+  require_compose_stack
+  log_step 'Stopping the Dune stack.'
+  run_compose down
+  log_success 'Stack stopped.'
+}
+
+cmd_restart() {
+  cmd_stop
+  cmd_start
+}
+
+cmd_status() {
+  require_compose_stack
+  if ! have_command python3; then
+    run_compose ps
+    return 0
+  fi
+
+  run_compose ps --format json | python3 -c 'import json, sys
+items = json.load(sys.stdin)
+if not items:
+    print("No compose services are currently running.")
+    raise SystemExit(0)
+print(f"{'SERVICE':<24} {'STATE':<12} {'HEALTH':<12} PORTS")
+for item in items:
+    ports = []
+    for publisher in item.get("Publishers") or []:
+        host_ip = publisher.get("URL") or "0.0.0.0"
+        pub = publisher.get("PublishedPort")
+        target = publisher.get("TargetPort")
+        proto = publisher.get("Protocol") or "tcp"
+        if pub and target:
+            ports.append(f"{host_ip}:{pub}->{target}/{proto}")
+    print(f"{item.get('Service', ''):<24} {item.get('State', ''):<12} {item.get('Health', '') or '-':<12} {', '.join(ports) or '-'}")
+'
+}
+
+cmd_ready() {
+  require_compose_stack
+  local result
+
+  if ! have_command python3; then
+    log_warn 'python3 not found; falling back to docker compose ps.'
+    run_compose ps
+    return 0
+  fi
+
+  result="$(run_compose ps --format json | python3 -c 'import json, sys
+items = json.load(sys.stdin)
+if not items:
+    print("FAIL:No running services")
+    raise SystemExit(0)
+any_wait = False
+for item in items:
+    state = (item.get("State") or "").lower()
+    health = (item.get("Health") or "").lower()
+    if state not in {"running", "created"}:
+        print(f"FAIL:{item.get('Service')} is {item.get('State')}")
+        raise SystemExit(0)
+    if health in {"unhealthy", "starting"}:
+        any_wait = True
+    elif health and health not in {"healthy", "running"}:
+        any_wait = True
+print("WAIT:Services are still warming up" if any_wait else "OK:All services look healthy")
+')"
+
+  case "$result" in
+    OK:*)
+      printf '%bOK%b %s\n' "$COLOR_GREEN" "$COLOR_RESET" "${result#OK:}"
+      ;;
+    WAIT:*)
+      printf '%bWAIT%b %s\n' "$COLOR_YELLOW" "$COLOR_RESET" "${result#WAIT:}"
+      ;;
+    *)
+      printf '%bFAIL%b %s\n' "$COLOR_RED" "$COLOR_RESET" "${result#FAIL:}"
+      return 1
+      ;;
+  esac
+}
+
+cmd_logs() {
+  require_compose_stack
+  local raw='false'
+  local service=''
+  local arg
+  local -a args=(logs --timestamps --no-color)
+
+  for arg in "$@"; do
+    case "$arg" in
+      --raw)
+        raw='true'
+        ;;
+      *)
+        if [[ -z "$service" ]]; then
+          service="$arg"
+        else
+          die "Unexpected argument for logs: $arg"
+        fi
+        ;;
+    esac
+  done
+
+  [[ -n "$service" ]] && args+=("$service")
+
+  if [[ "$raw" == 'true' ]]; then
+    run_compose "${args[@]}"
+  else
+    run_compose "${args[@]}" | redact_stream
+  fi
+}
+
+cmd_dashboard() {
+  local url
+  url="$(dashboard_url)"
+  log_info "Opening dashboard: $url"
+  try_open_browser "$url" || die 'Failed to open the dashboard browser.'
+}
+
+cmd_config_edit() {
+  local editor="${EDITOR:-vi}"
+  local -a files=()
+
+  [[ -f "$PROJECT_ROOT/.env" ]] && files+=("$PROJECT_ROOT/.env")
+  if [[ -d "$CONFIG_DIR" ]]; then
+    while IFS= read -r file_path; do
+      files+=("$file_path")
+    done < <(find "$CONFIG_DIR" -type f | sort)
+  fi
+
+  ((${#files[@]} > 0)) || die 'No editable config files were found.'
+  exec "$editor" "${files[@]}"
+}
+
+cmd_help() {
+  print_banner
+  usage
+}
+
+cmd_version() {
+  printf '%s\n' "$(version_string)"
+}
+
+main() {
+  local command="${1:-help}"
+  shift || true
+
+  case "$command" in
+    init)
+      exec "$PROJECT_ROOT/scripts/setup.sh" "$@"
+      ;;
+    start)
+      cmd_start "$@"
+      ;;
+    stop)
+      cmd_stop "$@"
+      ;;
+    restart)
+      cmd_restart "$@"
+      ;;
+    status)
+      cmd_status "$@"
+      ;;
+    ready)
+      cmd_ready "$@"
+      ;;
+    logs)
+      cmd_logs "$@"
+      ;;
+    backup)
+      exec "$PROJECT_ROOT/scripts/backup.sh" "$@"
+      ;;
+    restore)
+      exec "$PROJECT_ROOT/scripts/restore.sh" "$@"
+      ;;
+    update)
+      exec "$PROJECT_ROOT/scripts/update.sh" "$@"
+      ;;
+    doctor)
+      exec "$PROJECT_ROOT/scripts/health-check.sh" "$@"
+      ;;
+    dashboard)
+      cmd_dashboard "$@"
+      ;;
+    preflight)
+      exec "$PROJECT_ROOT/scripts/preflight.sh" "$@"
+      ;;
+    config)
+      case "${1:-}" in
+        edit)
+          shift
+          cmd_config_edit "$@"
+          ;;
+        *)
+          die "Unknown config subcommand: ${1:-<empty>}"
+          ;;
+      esac
+      ;;
+    help|-h|--help)
+      cmd_help
+      ;;
+    version|--version)
+      cmd_version
+      ;;
+    *)
+      die "Unknown command: $command"
+      ;;
+  esac
+}
+
+main "$@"

@@ -1,0 +1,12 @@
+name: dune-awakening-dashboard
+
+services:
+  dashboard-api:
+    extends:
+      file: docker-compose.yml
+      service: dashboard-api
+
+  dashboard-nginx:
+    extends:
+      file: docker-compose.yml
+      service: dashboard-nginx

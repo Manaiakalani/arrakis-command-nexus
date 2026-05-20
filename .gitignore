@@ -1,0 +1,48 @@
+# Secrets - NEVER commit these
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+*.pem
+*.crt
+*.p12
+*.dump
+
+# Backups and generated data
+backups/
+data/
+volumes/
+steam/
+
+# Node / Next.js
+dashboard/frontend/node_modules/
+dashboard/frontend/.next/
+dashboard/frontend/out/
+dashboard/frontend/coverage/
+node_modules/
+.next/
+out/
+
+# Python
+__pycache__/
+dashboard/backend/__pycache__/
+*.py[cod]
+dashboard/backend/.venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+dashboard/backend/*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

@@ -1,0 +1,191 @@
+x-game-env: &game-env
+  WORLD_NAME: ${WORLD_NAME}
+  WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
+  BATTLEGROUP_ID: ${BATTLEGROUP_ID}
+  FLS_SECRET: ${FLS_SECRET}
+  FLS_SECRET_FILE: /run/secrets/funcom-token.txt
+  DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD}
+  EXTERNAL_ADDRESS: ${EXTERNAL_ADDRESS}
+  GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST}
+  GAME_RMQ_PUBLIC_PORT: ${GAME_RMQ_PUBLIC_PORT}
+  GAME_RMQ_HOST: 127.0.0.1
+  GAME_RMQ_PORT: ${GAME_RMQ_PUBLIC_PORT}
+  ADMIN_RMQ_HOST: 127.0.0.1
+  ADMIN_RMQ_PORT: "5672"
+  POSTGRES_HOST: 127.0.0.1
+  POSTGRES_PORT: ${POSTGRES_PORT}
+  POSTGRES_DB: dune
+  POSTGRES_USER: dune
+  POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+  DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/dune
+  DUNE_CONFIG_DIR: /config
+
+x-game-service-common: &game-service-common
+  image: funcom/self-hosting/seabass-server:${DUNE_IMAGE_TAG}
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
+  network_mode: host
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    admin-rmq:
+      condition: service_healthy
+    game-rmq:
+      condition: service_healthy
+    db-init:
+      condition: service_completed_successfully
+  entrypoint:
+    - /bin/sh
+    - -lc
+  command: >-
+    exec /workspace/scripts/run_server_safe.sh "$${DUNE_MAP}"
+    -ini:engine:[FuncomLiveServices]:ServiceAuthToken=$${FLS_SECRET}
+    -ini:engine:[OnlineSubsystem]:ServerName=$${WORLD_UNIQUE_NAME}
+    -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=$${DUNE_SERVER_LOGIN_PASSWORD}
+    -ExternalAddress=$${EXTERNAL_ADDRESS}
+    --RMQGameHostname=$${GAME_RMQ_HOST}
+    --RMQGamePort=$${GAME_RMQ_PORT}
+    --RMQAdminHostname=$${ADMIN_RMQ_HOST}
+    --RMQAdminPort=$${ADMIN_RMQ_PORT}
+    -Port=$${DUNE_GAME_PORT}
+    -IGWPort=$${DUNE_S2S_PORT}
+    -PartitionIndex=$${DUNE_PARTITION_INDEX}
+
+services:
+  overmap:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_OVERMAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Systems/Overmap/Overmap.Overmap
+      DUNE_GAME_PORT: "7777"
+      DUNE_S2S_PORT: "7888"
+      DUNE_PARTITION_INDEX: "1"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/overmap:/home/dune/server/DuneSandbox/Saved
+
+  survival_1:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/Arrakis/Survival_1/Survival_1.Survival_1
+      DUNE_GAME_PORT: "7778"
+      DUNE_S2S_PORT: "7889"
+      DUNE_PARTITION_INDEX: "2"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/survival_1:/home/dune/server/DuneSandbox/Saved
+
+  deep_desert_1:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
+      DUNE_GAME_PORT: "7779"
+      DUNE_S2S_PORT: "7890"
+      DUNE_PARTITION_INDEX: "3"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/deep_desert_1:/home/dune/server/DuneSandbox/Saved
+
+  arrakeen:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/SocialHubs/Arrakeen/SH_Arrakeen.SH_Arrakeen
+      DUNE_GAME_PORT: "7780"
+      DUNE_S2S_PORT: "7891"
+      DUNE_PARTITION_INDEX: "4"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/arrakeen:/home/dune/server/DuneSandbox/Saved
+
+  harko_village:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/SocialHubs/HarkoVillage/SH_HarkoVillage.SH_HarkoVillage
+      DUNE_GAME_PORT: "7781"
+      DUNE_S2S_PORT: "7892"
+      DUNE_PARTITION_INDEX: "5"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/harko_village:/home/dune/server/DuneSandbox/Saved
+
+  testing_hephaestus:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/OverlandMaps_Story/WreckOfTheHephaestus/CB_Story_Hephaestus/CB_Story_Hephaestus.CB_Story_Hephaestus
+      DUNE_GAME_PORT: "7782"
+      DUNE_S2S_PORT: "7893"
+      DUNE_PARTITION_INDEX: "6"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/testing_hephaestus:/home/dune/server/DuneSandbox/Saved
+
+  testing_carthag:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/OverlandMaps_Story/BeneathOldCarthag/CB_Story_Ecolab_Carthag/CB_Story_Ecolab_Carthag.CB_Story_Ecolab_Carthag
+      DUNE_GAME_PORT: "7783"
+      DUNE_S2S_PORT: "7894"
+      DUNE_PARTITION_INDEX: "7"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/testing_carthag:/home/dune/server/DuneSandbox/Saved
+
+  testing_waterfat:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/OverlandMaps_Story/WaterFatManor/CB_Story_WaterFatManor.CB_Story_WaterFatManor
+      DUNE_GAME_PORT: "7784"
+      DUNE_S2S_PORT: "7895"
+      DUNE_PARTITION_INDEX: "8"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/testing_waterfat:/home/dune/server/DuneSandbox/Saved
+
+  proces_verbal:
+    <<: *game-service-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    environment:
+      <<: *game-env
+      DUNE_MAP: /Game/Dune/Maps/MainStory_Chapter2/ProcesVerbal/ProcesVerbalMap/Story_ProcesVerbal.Story_ProcesVerbal
+      DUNE_GAME_PORT: "7785"
+      DUNE_S2S_PORT: "7896"
+      DUNE_PARTITION_INDEX: "9"
+    volumes:
+      - ./config:/config:ro
+      - ./secrets:/run/secrets:ro
+      - ./scripts:/workspace/scripts:ro
+      - ./data/server-saved/proces_verbal:/home/dune/server/DuneSandbox/Saved
+

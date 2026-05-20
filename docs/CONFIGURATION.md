@@ -1,0 +1,153 @@
+# Configuration Reference
+
+This document covers the environment variables, config files, deployment profiles, and dashboard-specific settings used by the Dune Awakening self-hosted stack.
+
+## Environment variables
+
+Copy `.env.example` to `.env`, then edit values to match your host.
+
+### Server identity
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WORLD_NAME` | `My Dune Awakening Server` | Friendly server name shown to players. |
+| `WORLD_UNIQUE_NAME` | `sh-my-dune-server` | Unique battlegroup identifier used across services. |
+| `BATTLEGROUP_ID` | blank | Optional explicit battlegroup ID if Funcom requires one. |
+| `FLS_SECRET` | blank | Funcom Live Services token. Prefer `secrets/funcom-token.txt` instead of inline values. |
+| `DUNE_SERVER_LOGIN_PASSWORD` | blank | Optional join password for the battlegroup. |
+
+### Network configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `EXTERNAL_ADDRESS` | `auto` | Public IP or hostname advertised to players. |
+| `GAME_RMQ_PUBLIC_HOST` | `auto` | Public hostname/IP for the game-facing RabbitMQ endpoint. |
+| `GAME_RMQ_PUBLIC_PORT` | `31982` | Public TCP port for game RabbitMQ traffic. |
+| `GAME_PORT_START` | `7777` | Documentation reference for the first UDP gameplay port. |
+| `S2S_PORT_START` | `7888` | Documentation reference for the first UDP server-to-server port. |
+
+### Deployment and images
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DEPLOYMENT_PROFILE` | `basic` | Selects `basic`, `standard`, or `full` compose overlays. |
+| `DUNE_IMAGE_TAG` | `latest` | Funcom server image tag loaded by update tooling. |
+| `STEAM_APP_ID` | `3104830` | Dedicated server Steam App ID. |
+| `DUNE_STEAM_SERVER_DIR` | `./steam` | Local directory containing extracted Steam payloads. |
+
+### Database
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `POSTGRES_SUPER_PASSWORD` | `change-me-postgres-super` | Superuser password for the local PostgreSQL container. |
+| `POSTGRES_DUNE_PASSWORD` | `change-me-dune-db` | Application database password used by Dune services and dashboard API. |
+| `POSTGRES_PORT` | `5432` | Host port for PostgreSQL, intentionally bound to localhost in compose. |
+
+### RabbitMQ
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `RABBITMQ_ADMIN_USER` | `admin` | Internal admin RabbitMQ username. |
+| `RABBITMQ_ADMIN_PASSWORD` | `change-me-rmq-admin` | Internal admin RabbitMQ password. |
+| `RABBITMQ_GAME_USER` | `game` | Public game RabbitMQ username. |
+| `RABBITMQ_GAME_PASSWORD` | `change-me-rmq-game` | Public game RabbitMQ password. |
+
+### Dashboard and API
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DUNE_ADMIN_TOKEN` | `change-me-admin-token` | Required admin token for authenticated dashboard API requests. |
+| `DUNE_ADMIN_MUTATIONS_ENABLED` | `false` | Enables dangerous admin write actions when set to `true`. |
+| `DUNE_ADMIN_BIND_ADDRESS` | `127.0.0.1` | Host bind address for dashboard Nginx. Keep localhost unless you need LAN/WAN access. |
+| `DUNE_ADMIN_HOST_PORT` | `18080` | Host port for the dashboard UI and API. |
+| `DUNE_ADMIN_ALLOWED_HOSTS` | `127.0.0.1:18080,localhost:18080` | Allowed origins for dashboard CORS. |
+
+### Discord notifications
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DISCORD_WEBHOOK_URL` | blank | Discord webhook endpoint for notifications. |
+| `DISCORD_NOTIFY_START` | `true` | Notify on stack or map start events. |
+| `DISCORD_NOTIFY_STOP` | `true` | Notify on stop events. |
+| `DISCORD_NOTIFY_CRASH` | `true` | Notify on crash/failure events. |
+| `DISCORD_NOTIFY_PLAYER_JOIN` | `false` | Notify when players join. |
+| `DISCORD_NOTIFY_PLAYER_LEAVE` | `false` | Notify when players leave. |
+
+### Backups
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BACKUP_DIR` | `./backups` | Backup target directory on the host. |
+| `BACKUP_RETENTION_DAYS` | `7` | Retention policy for backup cleanup. |
+| `BACKUP_SCHEDULE_ENABLED` | `false` | Turns scheduled backups on or off. |
+| `BACKUP_SCHEDULE_INTERVAL_HOURS` | `24` | Backup cadence when scheduling is enabled. |
+
+### Memory limits
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MEM_LIMIT_SURVIVAL` | `12g` | Container memory limit for Survival shards. |
+| `MEM_LIMIT_OVERMAP` | `2g` | Container memory limit for Overmap. |
+| `MEM_LIMIT_DEEP_DESERT` | `10g` | Container memory limit for Deep Desert shards. |
+| `MEM_LIMIT_DEFAULT_MAP` | `8g` | Container memory limit for social hubs and story maps. |
+| `MEM_LIMIT_POSTGRES` | `1g` | PostgreSQL container limit. |
+| `MEM_LIMIT_RMQ` | `512m` | RabbitMQ container limit. |
+| `MEM_LIMIT_DIRECTOR` | `512m` | Director container limit. |
+| `MEM_LIMIT_TEXT_ROUTER` | `256m` | Text router container limit. |
+| `MEM_LIMIT_GATEWAY` | `256m` | Gateway container limit. |
+
+### Advanced runtime overrides
+
+These are not part of the default `.env.example`, but the codebase supports them when you need deeper control.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DUNE_LOG_LEVEL` | `INFO` | Backend API log verbosity. |
+| `DUNE_METRICS_INTERVAL` | `60` | Metrics collection interval in seconds. |
+| `DUNE_ADMIN_FRONTEND_DIR` | frontend dist path | Overrides the backend's static frontend directory. |
+| `DUNE_FUNCOM_POSTGRES_DSN` | blank | Explicit DSN for the Funcom player telemetry database. |
+| `DUNE_POSTGRES_DSN` | blank | Alternate DSN name accepted by the backend player service. |
+| `NEXT_PUBLIC_API_BASE_URL` | `/api` | Frontend override for dashboard API base URL. |
+| `NEXT_PUBLIC_ADMIN_TOKEN` | blank | Optional frontend token injection for trusted local admin environments. |
+
+## Config files
+
+### `config/UserGame.ini`
+
+Global gameplay settings that apply across the battlegroup, including PvP forcing, security zones, storm automation, reconnect grace period, landclaim limits, and base backup timing.
+
+### `config/UserEngine.ini`
+
+Engine and network tuning, such as `NetServerMaxTickRate`, `MaxClientRate`, and `MaxInternetClientRate`.
+
+### `config/director.ini`
+
+Controls instancing behavior and per-map player caps. This is where you switch maps between `SingleServer`, `Dimension`, and `ClassicalInstancing`, and where you tune hard caps for Overmap, Survival, and Deep Desert.
+
+### `config/gateway.ini`
+
+Controls how the battlegroup registers with Funcom services, including visible region and provider labels.
+
+## Deployment profiles
+
+| Profile | Compose overlay | Intended use | Recommended RAM |
+| --- | --- | --- | --- |
+| `basic` | `docker-compose.basic.yml` | Minimal playable battlegroup with Overmap and one Survival shard | ~20 GB |
+| `standard` | `docker-compose.standard.yml` | Adds Deep Desert, social hubs, and story maps | ~30-40 GB |
+| `full` | `docker-compose.full.yml` | Large battlegroup with multiple extra Survival/Deep Desert/story instances | ~40 GB+ |
+
+## Memory planning by profile
+
+| Profile | Suggested host RAM | Notes |
+| --- | --- | --- |
+| `basic` | 20 GB | Leaves room for Docker overhead, OS cache, dashboard, and saves. |
+| `standard` | 30-40 GB | Better suited for always-on communities and more concurrent players. |
+| `full` | 40 GB+ | Plan for aggressive scaling, backups, and peak usage headroom. |
+
+## Dashboard configuration
+
+- The dashboard is exposed through `dashboard-nginx` on `DUNE_ADMIN_BIND_ADDRESS:DUNE_ADMIN_HOST_PORT`.
+- The backend API uses `DUNE_ADMIN_TOKEN` for authentication via the `X-Admin-Token` header.
+- CORS is controlled with `DUNE_ADMIN_ALLOWED_HOSTS`.
+- Keep the bind address on `127.0.0.1` unless you are intentionally publishing the dashboard behind a reverse proxy or to a trusted LAN.
+- If you proxy the dashboard, update allowed hosts and preserve the security headers from `dashboard/nginx.conf`.
