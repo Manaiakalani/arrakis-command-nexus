@@ -1,19 +1,40 @@
 name: dune-awakening
 
-x-funcom-service-base: &funcom-service-base
+# ---------------------------------------------------------------------------
+# YAML anchors for game server command fragments
+# ---------------------------------------------------------------------------
+x-game-server-command:
+  run: &cmd-run /workspace/scripts/run_server_safe.sh
+  farm-region: &cmd-farm-region -FarmRegion=${WORLD_REGION:-US}
+  fls-token: &cmd-fls-token -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+  fls-env: &cmd-fls-env -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+  server-name: &cmd-server-name -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+  server-login-password: &cmd-server-login-password -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+  datacenter: &cmd-datacenter -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-US-West}
+  db-host: &cmd-db-host -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+  db-user: &cmd-db-user -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+  db-password: &cmd-db-password -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+  rmq-tls: &cmd-rmq-tls -RMQGameTlsEnabled=true
+  external-address: &cmd-external-address -ExternalAddress=${EXTERNAL_ADDRESS}
+  rmq-game-host: &cmd-rmq-game-host --RMQGameHostname=game-rmq
+  rmq-game-port: &cmd-rmq-game-port --RMQGamePort=5672
+  rmq-admin-host: &cmd-rmq-admin-host --RMQAdminHostname=admin-rmq
+  rmq-admin-port: &cmd-rmq-admin-port --RMQAdminPort=5672
+  multihome: &cmd-multihome -MultiHome=$POD_IP
+
+# ---------------------------------------------------------------------------
+# Base template for game server containers
+# ---------------------------------------------------------------------------
+x-game-server-base: &game-server-base
   image: funcom/self-hosting/seabass-server:${DUNE_IMAGE_TAG}
-  restart: unless-stopped
   dns:
     - 1.1.1.1
     - 8.8.8.8
-  volumes:
-    - ./config:/config:ro
-    - ./scripts:/workspace/scripts:ro
-    - ./secrets:/run/secrets:ro
-
-x-game-server-base: &game-server-base
-  <<: *funcom-service-base
-  network_mode: host
+  restart: unless-stopped
+  environment:
+    DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD:-}
+    DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
+    WORLD_NAME: ${WORLD_NAME}
   depends_on:
     postgres:
       condition: service_healthy
@@ -23,221 +44,174 @@ x-game-server-base: &game-server-base
       condition: service_healthy
     db-init:
       condition: service_completed_successfully
-  entrypoint:
-    - /bin/sh
-    - -lc
-  command: >-
-    exec /workspace/scripts/run_server_safe.sh "$${DUNE_MAP}"
-    -ini:engine:[FuncomLiveServices]:ServiceAuthToken=$${FLS_SECRET}
-    -ini:engine:[OnlineSubsystem]:ServerName=$${WORLD_UNIQUE_NAME}
-    -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=$${DUNE_SERVER_LOGIN_PASSWORD}
-    -ExternalAddress=$${EXTERNAL_ADDRESS}
-    --RMQGameHostname=$${GAME_RMQ_HOST}
-    --RMQGamePort=$${GAME_RMQ_PORT}
-    --RMQAdminHostname=$${ADMIN_RMQ_HOST}
-    --RMQAdminPort=$${ADMIN_RMQ_PORT}
-    -Port=$${DUNE_GAME_PORT}
-    -IGWPort=$${DUNE_S2S_PORT}
-    -PartitionIndex=$${DUNE_PARTITION_INDEX}
-  environment:
-    WORLD_NAME: ${WORLD_NAME}
-    WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
-    BATTLEGROUP_ID: ${BATTLEGROUP_ID}
-    FLS_SECRET: ${FLS_SECRET}
-    FLS_SECRET_FILE: /run/secrets/funcom-token.txt
-    DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD}
-    EXTERNAL_ADDRESS: ${EXTERNAL_ADDRESS}
-    GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST}
-    GAME_RMQ_PUBLIC_PORT: ${GAME_RMQ_PUBLIC_PORT}
-    GAME_RMQ_HOST: 127.0.0.1
-    GAME_RMQ_PORT: ${GAME_RMQ_PUBLIC_PORT}
-    ADMIN_RMQ_HOST: 127.0.0.1
-    ADMIN_RMQ_PORT: 5672
-    POSTGRES_HOST: 127.0.0.1
-    POSTGRES_PORT: ${POSTGRES_PORT}
-    POSTGRES_DB: dune
-    POSTGRES_USER: dune
-    POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
-    DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/dune
-    CONFIG_DIR: /config
-    DUNE_CONFIG_DIR: /config
-    DUNE_SAVED_DIR: /home/dune/server/DuneSandbox/Saved
-  volumes:
-    - ./config:/config:ro
-    - ./scripts:/workspace/scripts:ro
-    - ./secrets:/run/secrets:ro
-    - ./data/server-saved:/home/dune/server/DuneSandbox/Saved
 
+# ===========================================================================
+# Services
+# ===========================================================================
 services:
+
+  # -------------------------------------------------------------------------
+  # Postgres - world state persistence
+  # -------------------------------------------------------------------------
   postgres:
     image: igw-postgres:17.4-alpine-fc-13
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
-      POSTGRES_DB: postgres
+      POSTGRES_DB: dune
+      POSTGRES_USER: dune
+      POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
       POSTGRES_SUPER_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
     ports:
-      - 127.0.0.1:${POSTGRES_PORT}:5432
+      - "127.0.0.1:${POSTGRES_PORT:-15432}:5432"
     healthcheck:
-      test:
-        - CMD-SHELL
-        - pg_isready -U postgres -d postgres || exit 1
+      test: ["CMD-SHELL", "pg_isready -U dune -d dune || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_POSTGRES}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      default:
+        ipv4_address: 192.168.80.2
 
+  # -------------------------------------------------------------------------
+  # Admin RabbitMQ - internal coordination
+  # -------------------------------------------------------------------------
   admin-rmq:
-    image: rabbitmq:3.13-management-alpine
+    image: funcom/self-hosting/seabass-server-rabbitmq:${DUNE_IMAGE_TAG}
     hostname: admin-rmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_ADMIN_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_ADMIN_PASSWORD}
+      RMQ_AUTH_BACKEND_1: cache
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      FuncomLiveServices__RmqTlsEnabled: "false"
     ports:
-      - 127.0.0.1:5672:5672
-      - 127.0.0.1:15672:15672
+      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5673:5672"
     healthcheck:
-      test:
-        - CMD
-        - rabbitmq-diagnostics
-        - -q
-        - ping
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
     volumes:
-      - ./config/rabbitmq-admin.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - admin-rmq-data:/var/lib/rabbitmq
+      - ./config/rabbitmq-admin.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
+      - ./data/rabbitmq/admin:/var/lib/rabbitmq
+    networks:
+      default:
+        ipv4_address: 192.168.80.3
 
+  # -------------------------------------------------------------------------
+  # Game RabbitMQ - client login and game traffic
+  # -------------------------------------------------------------------------
   game-rmq:
-    image: rabbitmq:3.13-management-alpine
+    image: funcom/self-hosting/seabass-server-rabbitmq:${DUNE_IMAGE_TAG}
     hostname: game-rmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_GAME_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_GAME_PASSWORD}
+      RMQ_AUTH_BACKEND_1: cache
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      FuncomLiveServices__RmqTlsEnabled: "true"
     ports:
-      - ${GAME_RMQ_PUBLIC_PORT}:31982
-      - 127.0.0.1:15673:15673
+      - "127.0.0.1:15673:15672"
+      - "${GAME_RMQ_BIND_ADDRESS:-0.0.0.0}:${GAME_RMQ_PUBLIC_PORT:-31982}:5672"
     healthcheck:
-      test:
-        - CMD
-        - rabbitmq-diagnostics
-        - -q
-        - ping
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
     volumes:
-      - ./config/rabbitmq-game.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - game-rmq-data:/var/lib/rabbitmq
+      - ./config/rabbitmq-game.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
+      - ./data/rabbitmq/game:/var/lib/rabbitmq
+    networks:
+      default:
+        ipv4_address: 192.168.80.4
 
+  # -------------------------------------------------------------------------
+  # RMQ Auth Shim - HTTP auth backend for RabbitMQ
+  # -------------------------------------------------------------------------
   rmq-auth-shim:
-    <<: *funcom-service-base
+    image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    working_dir: /workspace
+    environment:
+      WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
+      TEXT_ROUTER_AUTH_BASE: http://text-router:8080
+      DUNE_RMQ_MANAGEMENT_USER: ${DUNE_RMQ_MANAGEMENT_USER:-}
+      DUNE_RMQ_MANAGEMENT_PASSWORD: ${DUNE_RMQ_MANAGEMENT_PASSWORD:-}
     command:
       - /workspace/scripts/rmq_auth_shim.py
-    environment:
-      WORLD_NAME: ${WORLD_NAME}
-      WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
-      GAME_RMQ_HOST: game-rmq
-      GAME_RMQ_PORT: "31982"
-      GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST}
-      GAME_RMQ_PUBLIC_PORT: ${GAME_RMQ_PUBLIC_PORT}
-      TEXT_ROUTER_BASE_URL: http://text-router:8080
-      RABBITMQ_GAME_USER: ${RABBITMQ_GAME_USER}
-      RABBITMQ_GAME_PASSWORD: ${RABBITMQ_GAME_PASSWORD}
+    volumes:
+      - .:/workspace:ro
     depends_on:
-      game-rmq:
-        condition: service_healthy
       text-router:
         condition: service_started
+    networks:
+      default:
+        ipv4_address: 192.168.80.7
 
-  gateway:
-    <<: *funcom-service-base
-    command:
-      - /bin/sh
-      - -lc
-      - >-
-        sleep 15 &&
-        exec python -m service
-        -c /Tools/Battlegroups/GatewayService/service/configs/service.conf
-        --RMQGameHostname ${GAME_RMQ_PUBLIC_HOST}
-        --RMQGamePort ${GAME_RMQ_PUBLIC_PORT}
+  # -------------------------------------------------------------------------
+  # Database Init - one-shot schema bootstrap
+  # -------------------------------------------------------------------------
+  db-init:
+    image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
+    restart: "no"
+    working_dir: /root/PSQL
     environment:
-      WORLD_NAME: ${WORLD_NAME}
-      WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
-      BATTLEGROUP_ID: ${BATTLEGROUP_ID}
-      FLS_SECRET: ${FLS_SECRET}
-      EXTERNAL_ADDRESS: ${EXTERNAL_ADDRESS}
-      DUNE_CONFIG_DIR: /config
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: "5432"
-      POSTGRES_DB: dune
-      POSTGRES_USER: dune
-      POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
-      DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@postgres:5432/dune
-      ADMIN_RMQ_HOST: admin-rmq
-      ADMIN_RMQ_PORT: "5672"
-      GAME_RMQ_HOST: game-rmq
-      GAME_RMQ_PORT: "31982"
-      GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST}
-      GAME_RMQ_PUBLIC_PORT: ${GAME_RMQ_PUBLIC_PORT}
-    mem_limit: ${MEM_LIMIT_GATEWAY}
+      PYTHONPATH: /root/PSQL
+      POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+    command:
+      - /workspace/scripts/bootstrap_db.py
     volumes:
-      - ./config:/config:ro
-      - ./secrets:/run/secrets:ro
-      - ./config/gateway.ini:/etc/app/conf.d/gateway.ini:ro
+      - .:/workspace:ro
     depends_on:
       postgres:
         condition: service_healthy
-      game-rmq:
-        condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
+    networks:
+      default:
+        ipv4_address: 192.168.80.42
 
+  # -------------------------------------------------------------------------
+  # Director - battlegroup state and travel management
+  # -------------------------------------------------------------------------
   director:
-    <<: *funcom-service-base
+    image: funcom/self-hosting/seabass-server-bg-director:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     command:
       - --RMQGameHostname
       - game-rmq
       - --RMQGamePort
-      - "31982"
+      - "5672"
       - --RMQAdminHostname
       - admin-rmq
       - --RMQAdminPort
       - "5672"
     environment:
+      Database__address: postgres
+      Database__port: "5432"
+      Database__user: dune
+      Database__password: ${POSTGRES_DUNE_PASSWORD}
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
       WORLD_NAME: ${WORLD_NAME}
-      WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
-      BATTLEGROUP_ID: ${BATTLEGROUP_ID}
-      FLS_SECRET: ${FLS_SECRET}
-      EXTERNAL_ADDRESS: ${EXTERNAL_ADDRESS}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: "5432"
-      POSTGRES_DB: dune
-      POSTGRES_USER: dune
-      POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
-      DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@postgres:5432/dune
-      ADMIN_RMQ_HOST: admin-rmq
-      ADMIN_RMQ_PORT: "5672"
-      GAME_RMQ_HOST: game-rmq
-      GAME_RMQ_PORT: "31982"
-      GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST}
-      GAME_RMQ_PUBLIC_PORT: ${GAME_RMQ_PUBLIC_PORT}
-      DUNE_CONFIG_DIR: /config
+      OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
+      OPT_DISPLAY_NAME: ${WORLD_NAME}
+      FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
+      FuncomLiveServices__RmqTlsEnabled: "true"
+      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-US}
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-US-West}
+      HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
+      FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
     mem_limit: ${MEM_LIMIT_DIRECTOR}
     volumes:
-      - ./config:/config:ro
-      - ./secrets:/run/secrets:ro
       - ./config/director.ini:/etc/app/conf.d/director.ini:ro
     depends_on:
       postgres:
@@ -248,37 +222,50 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    networks:
+      default:
+        ipv4_address: 192.168.80.5
 
+  # -------------------------------------------------------------------------
+  # Text Router - chat routing
+  # -------------------------------------------------------------------------
   text-router:
-    <<: *funcom-service-base
+    image: funcom/self-hosting/seabass-server-text-router:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     command:
       - --RMQGameHostname
       - game-rmq
       - --RMQGamePort
-      - "31982"
+      - "5672"
       - --RMQAdminHostname
       - admin-rmq
       - --RMQAdminPort
       - "5672"
     environment:
+      DuneDatabaseInterfacePSQL_DatabaseHost: postgres
+      DuneDatabaseInterfacePSQL_DatabasePort: "5432"
+      DuneDatabaseInterfacePSQL_DatabaseUser: dune
+      DuneDatabaseInterfacePSQL_DatabasePassword: ${POSTGRES_DUNE_PASSWORD}
+      DuneDatabaseInterfacePSQL_DatabaseName: dune_sb_1_4_0_0
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      Database__address: postgres
+      Database__port: "5432"
+      Database__user: dune
+      Database__password: ${POSTGRES_DUNE_PASSWORD}
+      BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
       WORLD_NAME: ${WORLD_NAME}
-      WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
-      BATTLEGROUP_ID: ${BATTLEGROUP_ID}
-      FLS_SECRET: ${FLS_SECRET}
-      EXTERNAL_ADDRESS: ${EXTERNAL_ADDRESS}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: "5432"
-      POSTGRES_DB: dune
-      POSTGRES_USER: dune
-      POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
-      DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@postgres:5432/dune
-      ADMIN_RMQ_HOST: admin-rmq
-      ADMIN_RMQ_PORT: "5672"
-      GAME_RMQ_HOST: game-rmq
-      GAME_RMQ_PORT: "31982"
-      GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST}
-      GAME_RMQ_PUBLIC_PORT: ${GAME_RMQ_PUBLIC_PORT}
-      DUNE_CONFIG_DIR: /config
+      OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
+      OPT_DISPLAY_NAME: ${WORLD_NAME}
+      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-US}
+      FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
+      FuncomLiveServices__RmqTlsEnabled: "true"
+      BATTLEGROUP_LANGUAGE: en-US
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-US-West}
+      HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
+      FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
     mem_limit: ${MEM_LIMIT_TEXT_ROUTER}
     depends_on:
       postgres:
@@ -289,24 +276,62 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    networks:
+      default:
+        ipv4_address: 192.168.80.6
 
-  db-init:
-    image: igw-postgres:17.4-alpine-fc-13
-    restart: "no"
-    environment:
-      PGPASSWORD: ${POSTGRES_SUPER_PASSWORD}
-      POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+  # -------------------------------------------------------------------------
+  # Gateway - FLS farm registration
+  # -------------------------------------------------------------------------
+  gateway:
+    image: funcom/self-hosting/seabass-server-gateway:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     command:
-      - /bin/sh
-      - -ec
-      - |
-        until pg_isready -h postgres -U postgres -d postgres; do sleep 2; done
-        psql -v ON_ERROR_STOP=1 -h postgres -U postgres -d postgres -c "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dune') THEN CREATE ROLE dune LOGIN PASSWORD '$${POSTGRES_DUNE_PASSWORD}'; ELSE ALTER ROLE dune WITH PASSWORD '$${POSTGRES_DUNE_PASSWORD}'; END IF; END $$;"
-        psql -v ON_ERROR_STOP=1 -h postgres -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'dune'" | grep -q 1 || psql -v ON_ERROR_STOP=1 -h postgres -U postgres -d postgres -c "CREATE DATABASE dune OWNER dune;"
+      - sh
+      - -lc
+      - >-
+        sleep 30;
+        exec python -m service
+        -c /Tools/Battlegroups/GatewayService/service/configs/service.conf
+        --RMQGameHostname ${GAME_RMQ_PUBLIC_HOST:-${EXTERNAL_ADDRESS}}
+        --RMQGamePort ${GAME_RMQ_PUBLIC_PORT:-31982}
+    environment:
+      DuneDatabaseInterfacePSQL_DatabaseHost: postgres
+      DuneDatabaseInterfacePSQL_DatabasePort: "5432"
+      DuneDatabaseInterfacePSQL_DatabaseUser: dune
+      DuneDatabaseInterfacePSQL_DatabasePassword: ${POSTGRES_DUNE_PASSWORD}
+      DuneDatabaseInterfacePSQL_DatabaseName: dune_sb_1_4_0_0
+      FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
+      FuncomLiveServices__RmqTlsEnabled: "true"
+      FuncomLiveServices__BattlegroupAuthorizationPreset: BattlegroupInternal
+      FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-beta}
+      BATTLEGROUP_DISPLAY_NAME: ${WORLD_NAME}
+      OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
+      OPT_DISPLAY_NAME: ${WORLD_NAME}
+      gateway_farm_api_key: ${FLS_SECRET}
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-US-West}
+      HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
+    mem_limit: ${MEM_LIMIT_GATEWAY}
+    volumes:
+      - ./config/gateway.ini:/etc/app/conf.d/gateway.ini:ro
     depends_on:
       postgres:
         condition: service_healthy
+      game-rmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      default:
+        ipv4_address: 192.168.80.40
 
+  # -------------------------------------------------------------------------
+  # Dashboard API
+  # -------------------------------------------------------------------------
   dashboard-api:
     build:
       context: ./dashboard/backend
@@ -324,10 +349,10 @@ services:
       BACKUP_DIR: /workspace/backups
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
-      POSTGRES_DB: dune
+      POSTGRES_DB: dune_sb_1_4_0_0
       POSTGRES_USER: dune
       POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
-      DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@postgres:5432/dune
+      DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@postgres:5432/dune_sb_1_4_0_0
       WORLD_NAME: ${WORLD_NAME}
       WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
     volumes:
@@ -348,7 +373,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    networks:
+      default:
+        ipv4_address: 192.168.80.50
 
+  # -------------------------------------------------------------------------
+  # Dashboard Nginx reverse proxy
+  # -------------------------------------------------------------------------
   dashboard-nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -360,9 +391,17 @@ services:
     volumes:
       - ./dashboard/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./dashboard/frontend:/usr/share/nginx/html:ro
+    networks:
+      default:
+        ipv4_address: 192.168.80.51
 
-volumes:
-  postgres-data:
-  admin-rmq-data:
-  game-rmq-data:
+# ===========================================================================
+# Custom bridge network with fixed subnet
+# ===========================================================================
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.80.0/20
 
