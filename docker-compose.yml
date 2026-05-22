@@ -99,6 +99,7 @@ services:
     mem_limit: ${MEM_LIMIT_RMQ}
     volumes:
       - ./config/rabbitmq-admin.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
+      - ./config/rabbitmq-enabled-plugins:/etc/rabbitmq/enabled_plugins:ro
       - ./data/rabbitmq/admin:/var/lib/rabbitmq
     networks:
       default:
@@ -127,6 +128,10 @@ services:
     mem_limit: ${MEM_LIMIT_RMQ}
     volumes:
       - ./config/rabbitmq-game.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
+      - ./config/rabbitmq-enabled-plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./config/tls/rabbitmq/ca.crt:/etc/rabbitmq/cacert.pem:ro
+      - ./config/tls/rabbitmq/server.crt:/etc/rabbitmq/cert.pem:ro
+      - ./config/tls/rabbitmq/server.key:/etc/rabbitmq/key.pem:ro
       - ./data/rabbitmq/game:/var/lib/rabbitmq
     networks:
       default:
