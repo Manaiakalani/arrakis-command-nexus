@@ -36,15 +36,14 @@
 
 ## Dashboard Is Not Accessible
 
-**Cause:** Bad bind address, port conflict, reverse proxy issue, or CORS mismatch.
+**Cause:** Bad bind address, port conflict, or CORS mismatch.
 
 **Fix:**
 
 - Confirm `DUNE_ADMIN_BIND_ADDRESS` and `DUNE_ADMIN_HOST_PORT`
-- Check `docker compose ps` for `dashboard-nginx`
+- Check `docker compose ps` for `dashboard-frontend` and `dashboard-api`
 - Verify `DUNE_ADMIN_ALLOWED_HOSTS` matches the browser origin
 - Test locally with `curl http://127.0.0.1:18080/api/ping`
-- If proxied, confirm the proxy forwards `/api/` and preserves host headers
 
 ## Database Connection Errors
 
@@ -63,7 +62,7 @@
 
 **Fix:**
 
-- Verify `RABBITMQ_ADMIN_USER`, `RABBITMQ_ADMIN_PASSWORD`, `RABBITMQ_GAME_USER`, and `RABBITMQ_GAME_PASSWORD`
+- Verify `RMQ_HTTP_TOKEN_AUTH_SECRET` is set
 - Check `docker compose logs admin-rmq game-rmq rmq-auth-shim`
 - Ensure `31982/tcp` is reachable from players
 - Keep `5672`, `15672`, and `15673` private to localhost

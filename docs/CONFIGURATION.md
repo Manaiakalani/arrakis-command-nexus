@@ -47,10 +47,9 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `RABBITMQ_ADMIN_USER` | `admin` | Internal admin RabbitMQ username. |
-| `RABBITMQ_ADMIN_PASSWORD` | `change-me-rmq-admin` | Internal admin RabbitMQ password. |
-| `RABBITMQ_GAME_USER` | `game` | Public game RabbitMQ username. |
-| `RABBITMQ_GAME_PASSWORD` | `change-me-rmq-game` | Public game RabbitMQ password. |
+| `RMQ_HTTP_TOKEN_AUTH_SECRET` | blank | Shared secret for the RMQ HTTP auth backend. Generate with `openssl rand 64 \| base64 -w 0`. |
+| `DUNE_RMQ_MANAGEMENT_USER` | blank | Optional management UI username for game-rmq. |
+| `DUNE_RMQ_MANAGEMENT_PASSWORD` | blank | Optional management UI password for game-rmq. |
 
 ### Dashboard and API
 
@@ -146,9 +145,8 @@ Controls how the battlegroup registers with Funcom services, including visible r
 
 ## Dashboard Configuration
 
-The dashboard is exposed through `dashboard-nginx` on `DUNE_ADMIN_BIND_ADDRESS:DUNE_ADMIN_HOST_PORT`.
+The dashboard is served by the Next.js frontend container on `DUNE_ADMIN_BIND_ADDRESS:DUNE_ADMIN_HOST_PORT`. The backend API runs as a separate container and is reached via Next.js rewrites.
 
 - The backend API authenticates requests via the `X-Admin-Token` header using `DUNE_ADMIN_TOKEN`.
 - CORS origins are controlled with `DUNE_ADMIN_ALLOWED_HOSTS`.
-- Keep the bind address on `127.0.0.1` unless you are intentionally exposing the dashboard to a trusted LAN or behind a reverse proxy.
-- If you proxy the dashboard, update allowed hosts and preserve the security headers from `dashboard/nginx.conf`.
+- Keep the bind address on `127.0.0.1` unless you are intentionally exposing the dashboard to a trusted LAN.

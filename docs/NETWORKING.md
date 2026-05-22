@@ -87,8 +87,7 @@ Adjust the UDP ranges to match your active deployment profile instead of blindly
 
 ## Docker Networking Considerations
 
-- Game services run with `network_mode: host`, so they bind directly on the Linux host.
+- Game services run on a custom bridge network with fixed IPs.
 - PostgreSQL and RabbitMQ management ports should stay bound to `127.0.0.1`.
 - The dashboard is fronted by Nginx and should normally remain localhost-only.
-- Because host networking is in use, Docker bridge-level isolation does not protect the game ports. Your host firewall is the real perimeter.
-- If you proxy the dashboard, preserve TLS termination, admin token auth, and the security headers from `dashboard/nginx.conf`.
+- Because game services use bridge networking with fixed IPs, Docker network isolation protects internal services. Your host firewall adds an extra layer.
