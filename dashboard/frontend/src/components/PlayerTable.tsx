@@ -77,7 +77,7 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
                 ['sessionSeconds', 'Session Time'],
               ].map(([key, label]) => (
                 <th key={key} className="px-5 py-4 font-medium">
-                  <button type="button" onClick={() => toggleSort(key as SortKey)} className="inline-flex items-center gap-2 transition hover:text-slate-300">
+                  <button type="button" onClick={() => toggleSort(key as SortKey)} className="inline-flex items-center gap-2 transition-colors hover:text-slate-300">
                     {label}
                     <span className={cn('text-[10px]', sortKey === key ? 'text-amber-300' : 'text-slate-700')}>{sortKey === key ? (ascending ? '▲' : '▼') : '•'}</span>
                   </button>
@@ -89,11 +89,11 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
           <tbody className="divide-y divide-slate-800/80">
             {filtered.length > 0 ? (
               filtered.map((player) => (
-                <tr key={player.steamId} className="transition hover:bg-slate-900/50">
+                <tr key={player.steamId} className="transition-colors hover:bg-slate-900/50">
                   <td className="px-5 py-4 font-medium text-slate-100">{player.name}</td>
                   <td className="px-5 py-4 text-slate-300">{player.steamId}</td>
                   <td className="px-5 py-4 text-slate-300">{player.map}</td>
-                  <td className="px-5 py-4 text-slate-300">{formatSession(player.sessionSeconds)}</td>
+                  <td className="px-5 py-4 tabular-nums text-slate-300">{formatSession(player.sessionSeconds)}</td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-2">
                       <button

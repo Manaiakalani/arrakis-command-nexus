@@ -60,10 +60,10 @@ export function BackupList({ backups, schedule, onCreate, onRestore, onDelete, o
             </thead>
             <tbody className="divide-y divide-slate-800/80">
               {backups.map((backup) => (
-                <tr key={backup.id} className="transition hover:bg-slate-900/50">
+                <tr key={backup.id} className="transition-colors hover:bg-slate-900/50">
                   <td className="px-5 py-4 text-slate-100">{backup.name}</td>
-                  <td className="px-5 py-4 text-slate-300">{new Date(backup.createdAt).toLocaleString()}</td>
-                  <td className="px-5 py-4 text-slate-300">{formatBytes(backup.sizeBytes)}</td>
+                  <td className="px-5 py-4 tabular-nums text-slate-300">{new Date(backup.createdAt).toLocaleString()}</td>
+                  <td className="px-5 py-4 tabular-nums text-slate-300">{formatBytes(backup.sizeBytes)}</td>
                   <td className="px-5 py-4 text-slate-300 capitalize">{backup.scope}</td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-2">

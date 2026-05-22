@@ -174,7 +174,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
               aria-label={`${player.name} on ${player.mapLabel}`}
             >
               <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-md" />
-              <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition group-hover:scale-125" />
+              <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition-transform duration-150 ease-[var(--ease-out-expo)] group-hover:scale-125" />
               <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-slate-950/95 px-3 py-2 text-left text-xs text-slate-200 shadow-2xl group-hover:block">
                 <span className="block font-semibold text-amber-200">{player.name}</span>
                 <span className="mt-1 block text-slate-400">{player.mapLabel}</span>

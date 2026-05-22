@@ -17,6 +17,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     setCollapsed((current) => !current);
   }, []);
 
+  const closeMobile = useCallback(() => {
+    setMobileOpen(false);
+  }, []);
+
+  const openMobile = useCallback(() => {
+    setMobileOpen(true);
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-dune-radial">
       <div className="absolute inset-0 bg-dune-grid bg-[size:42px_42px] opacity-[0.08]" />
@@ -24,7 +32,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         <Sidebar
           collapsed={collapsed}
           mobileOpen={mobileOpen}
-          onClose={() => setMobileOpen(false)}
+          onClose={closeMobile}
           onToggle={toggleSidebar}
           status={overview?.status}
         />
@@ -35,7 +43,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   className="dune-button-muted lg:hidden"
-                  onClick={() => setMobileOpen(true)}
+                  onClick={openMobile}
                   aria-label="Open navigation"
                 >
                   <Menu className="h-5 w-5" />
@@ -54,7 +62,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               <div className="glass-panel hidden min-w-[220px] items-center justify-between px-4 py-3 sm:flex">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Server pulse</p>
-                  <p className="mt-1 text-sm font-medium text-slate-100">{overview?.playersOnline ?? 0} players online</p>
+                  <p className="mt-1 text-sm font-medium tabular-nums text-slate-100">{overview?.playersOnline ?? 0} players online</p>
                 </div>
                 <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.75)]" />

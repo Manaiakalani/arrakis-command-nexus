@@ -29,7 +29,7 @@ export function MapCard({ map, onAction }: MapCardProps) {
   }, [map.memoryLimitMb, map.memoryUsedMb]);
 
   return (
-    <div className="glass-panel overflow-hidden p-5 transition hover:border-amber-500/30 hover:shadow-dune">
+    <div className="glass-panel overflow-hidden p-5 transition-[border-color,box-shadow] duration-200 hover:border-amber-500/30 hover:shadow-dune">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
@@ -40,7 +40,7 @@ export function MapCard({ map, onAction }: MapCardProps) {
           </div>
           <p className="mt-2 text-sm text-slate-400">{map.players}{map.maxPlayers ? ` / ${map.maxPlayers}` : ''} players online</p>
         </div>
-        <button type="button" onClick={() => setExpanded((current) => !current)} className="dune-button-muted">
+        <button type="button" onClick={() => setExpanded((current) => !current)} className="dune-button-muted" aria-label={expanded ? 'Collapse details' : 'Expand details'}>
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       </div>
@@ -71,11 +71,11 @@ export function MapCard({ map, onAction }: MapCardProps) {
         <div className="mt-5 grid gap-3 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-4 text-sm text-slate-300 sm:grid-cols-2">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">CPU</p>
-            <p className="mt-1 text-base text-slate-100">{map.cpuPercent ?? 0}%</p>
+            <p className="mt-1 text-base tabular-nums text-slate-100">{map.cpuPercent ?? 0}%</p>
           </div>
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Uptime</p>
-            <p className="mt-1 text-base text-slate-100">{map.uptimeSeconds ? `${Math.floor(map.uptimeSeconds / 3600)}h` : '—'}</p>
+            <p className="mt-1 text-base tabular-nums text-slate-100">{map.uptimeSeconds ? `${Math.floor(map.uptimeSeconds / 3600)}h` : '-'}</p>
           </div>
           {Object.entries(map.settings ?? {}).map(([key, value]) => (
             <div key={key}>

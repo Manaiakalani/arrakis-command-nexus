@@ -38,7 +38,7 @@ export default function PlayersPage() {
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'rounded-full border px-4 py-2 text-sm font-medium capitalize transition',
+              'rounded-full border px-4 py-2 text-sm font-medium capitalize transition-[color,background-color,border-color]',
               activeTab === tab ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/70 text-slate-400',
             )}
           >
@@ -86,12 +86,12 @@ export default function PlayersPage() {
       ) : null}
 
       {selectedPlayer ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="ban-dialog-title">
           <div className="glass-panel w-full max-w-lg p-6">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300"><Ban className="h-5 w-5" /></div>
               <div>
-                <h3 className="text-xl font-semibold text-slate-50">Ban player</h3>
+                <h3 className="text-xl font-semibold text-slate-50" id="ban-dialog-title">Ban player</h3>
                 <p className="text-sm text-slate-400">{selectedPlayer.name} • {selectedPlayer.steamId}</p>
               </div>
             </div>

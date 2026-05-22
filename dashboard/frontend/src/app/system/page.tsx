@@ -19,7 +19,7 @@ export default function SystemPage() {
         <StatusCard icon={Cpu} title="CPU" value={`${metrics.data?.cpuPercent ?? 0}%`} subtitle="Current processor load" variant="warning" />
         <StatusCard icon={Waves} title="RAM" value={`${metrics.data?.memoryPercent ?? 0}%`} subtitle={`${metrics.data?.memoryUsedGb ?? 0} / ${metrics.data?.memoryTotalGb ?? 0} GB`} variant="default" />
         <StatusCard icon={HardDrive} title="Disk" value={`${metrics.data?.diskPercent ?? 0}%`} subtitle={`${metrics.data?.diskUsedGb ?? 0} / ${metrics.data?.diskTotalGb ?? 0} GB`} variant="default" />
-        <StatusCard icon={Network} title="Network" value={`${metrics.data?.networkInMbps ?? 0}/${metrics.data?.networkOutMbps ?? 0}`} subtitle="In / Out Mbps" variant="success" />
+        <StatusCard icon={Network} title="Network" value={`${metrics.data?.networkInMbps ?? 0} / ${metrics.data?.networkOutMbps ?? 0}`} subtitle="In / Out Mbps" variant="success" />
       </section>
       <section className="grid gap-6 xl:grid-cols-2">
         <MetricsChart title="CPU load" description="Real-time compute pressure across the host." history={history.data?.points ?? []} selectedRange={range} onRangeChange={setRange} series={[{ key: 'cpuPercent', label: 'CPU', color: '#f59e0b', unit: '%' }]} />
