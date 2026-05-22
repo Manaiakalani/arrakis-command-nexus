@@ -46,7 +46,8 @@ This project automates the moving parts required to self-host Dune Awakening:
                       +----------------------+
                                 |
                       +----------------------+
-                      | Dashboard API/Nginx  |
+                      | Dashboard API +      |
+                      | Frontend (Next.js)   |
                       | dune CLI + backups   |
                       +----------------------+
 ```

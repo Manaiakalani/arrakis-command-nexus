@@ -383,41 +383,25 @@ services:
         ipv4_address: 192.168.80.50
 
   # -------------------------------------------------------------------------
-  # Dashboard Nginx reverse proxy
-  # -------------------------------------------------------------------------
-  dashboard-nginx:
-    image: nginx:alpine
-    restart: unless-stopped
-    ports:
-      - ${DUNE_ADMIN_BIND_ADDRESS}:${DUNE_ADMIN_HOST_PORT}:80
-    depends_on:
-      dashboard-api:
-        condition: service_started
-      dashboard-frontend:
-        condition: service_started
-    volumes:
-      - ./dashboard/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      default:
-        ipv4_address: 192.168.80.51
-
-  # -------------------------------------------------------------------------
-  # Dashboard Frontend (Next.js)
+  # Dashboard Frontend (Next.js with API proxy)
   # -------------------------------------------------------------------------
   dashboard-frontend:
     build: ./dashboard/frontend
     image: dune-awakening-dashboard-frontend
     restart: unless-stopped
     ports:
-      - "0.0.0.0:3030:3000"
+      - "${DUNE_ADMIN_BIND_ADDRESS}:${DUNE_ADMIN_HOST_PORT}:3000"
     environment:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
+    depends_on:
+      dashboard-api:
+        condition: service_started
     mem_limit: 512m
     networks:
       default:
-        ipv4_address: 192.168.80.52
+        ipv4_address: 192.168.80.51
 
 # ===========================================================================
 # Custom bridge network with fixed subnet
