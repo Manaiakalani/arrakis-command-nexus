@@ -24,12 +24,12 @@ export function StatusCard({ icon: Icon, title, value, subtitle, variant = 'defa
   const TrendIcon = trend?.direction === 'up' ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <div className={cn('glass-panel relative overflow-hidden p-5', variantClasses[variant])}>
+    <div className={cn('glass-panel relative overflow-hidden p-5 transition-[border-color,box-shadow] duration-200', variantClasses[variant])}>
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{title}</p>
-          <p className="mt-3 text-3xl font-semibold leading-none">{value}</p>
+          <p className="mt-3 text-3xl font-semibold tabular-nums leading-none">{value}</p>
           {subtitle ? <p className="mt-2 text-sm text-slate-400">{subtitle}</p> : null}
         </div>
         <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3 text-amber-300 shadow-dune">

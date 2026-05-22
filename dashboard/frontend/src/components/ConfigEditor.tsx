@@ -159,7 +159,7 @@ export function ConfigEditor({ files, onSave }: ConfigEditorProps) {
               type="button"
               onClick={() => setSelected(file.filename)}
               className={cn(
-                'rounded-full border px-4 py-2 text-sm font-medium transition',
+                'rounded-full border px-4 py-2 text-sm font-medium transition-[color,background-color,border-color]',
                 selected === file.filename
                   ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
                   : 'border-slate-700 bg-slate-900/70 text-slate-400 hover:text-slate-200',

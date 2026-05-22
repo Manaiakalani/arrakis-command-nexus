@@ -89,7 +89,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
                 type="button"
                 onClick={() => setService(service)}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition',
+                  'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-[color,background-color,border-color]',
                   selectedService === service
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
                     : 'border-slate-700 bg-slate-900/70 text-slate-400 hover:text-slate-200',
@@ -108,7 +108,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
               <input type="checkbox" checked={autoScroll} onChange={(event) => setAutoScroll(event.target.checked)} className="accent-amber-400" />
               Auto-scroll
             </label>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-slate-300" role="status" aria-label={`Stream ${status}`}>
               {status === 'open' ? <Wifi className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-red-400" />}
               {status}
             </div>
@@ -120,7 +120,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
           <div className="space-y-2">
             {visibleMessages.map((entry) => (
               <div key={entry.id} className="grid gap-2 rounded-xl border border-slate-800/80 bg-slate-900/50 p-3 lg:grid-cols-[180px_120px_1fr] lg:items-start">
-                <div className="text-xs text-slate-500">{new Date(entry.timestamp).toLocaleString()}</div>
+                <div className="text-xs tabular-nums text-slate-500">{new Date(entry.timestamp).toLocaleString()}</div>
                 <div className="flex items-center gap-2">
                   <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-slate-400">{entry.service}</span>
                   <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em]', severityClasses[entry.level])}>{entry.level}</span>

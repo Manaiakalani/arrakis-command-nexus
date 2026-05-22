@@ -54,7 +54,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
     <>
       <div
         className={cn(
-          'fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition lg:hidden',
+          'fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-200 lg:hidden',
           mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
         )}
         onClick={onClose}
@@ -109,7 +109,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'group flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-medium transition',
+                  'group flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-medium transition-[color,background-color,border-color,box-shadow] duration-150',
                   collapsed && 'justify-center px-0',
                   active
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-200 shadow-dune'

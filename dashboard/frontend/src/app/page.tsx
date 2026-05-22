@@ -74,7 +74,7 @@ export default function OverviewPage() {
                 </div>
                 <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
                   <span>Latency</span>
-                  <span>{service.latencyMs ?? 0} ms</span>
+                  <span className="tabular-nums">{service.latencyMs ?? 0} ms</span>
                 </div>
               </div>
             ))}

@@ -24,7 +24,7 @@ export default function LogsPage() {
             <option value="discord">Discord</option>
             <option value="database">Database</option>
           </select>
-          <a href="/api/logs/download" className="dune-button-muted">
+          <a href="/api/logs/download" download className="dune-button-muted">
             <Download className="mr-2 h-4 w-4" /> Download logs
           </a>
         </div>
