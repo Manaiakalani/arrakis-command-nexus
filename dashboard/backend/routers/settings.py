@@ -29,6 +29,8 @@ DEFAULTS: dict[str, dict] = {
     "integrations": {
         "grafanaUrl": "",
         "prometheusUrl": "",
+        "uptimeKumaUrl": "",
+        "uptimeKumaPushToken": "",
         "externalWebhooks": [],
     },
     "appearance": {

@@ -208,17 +208,33 @@ export default function SettingsPage() {
               saveSection('integrations', {
                 grafanaUrl: fd.get('grafanaUrl') as string,
                 prometheusUrl: fd.get('prometheusUrl') as string,
-              });
-            }}
+               uptimeKumaUrl: fd.get('uptimeKumaUrl') as string,
+               uptimeKumaPushToken: fd.get('uptimeKumaPushToken') as string,
+             });
+           }}
           >
-            <div>
-              <label htmlFor="grafanaUrl" className="block text-sm font-medium text-slate-300">Grafana URL</label>
-              <input id="grafanaUrl" name="grafanaUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://grafana.example.com" defaultValue={integrations.grafanaUrl as string ?? ''} key={`gf-${integrations.grafanaUrl}`} />
-            </div>
-            <div>
-              <label htmlFor="prometheusUrl" className="block text-sm font-medium text-slate-300">Prometheus URL</label>
-              <input id="prometheusUrl" name="prometheusUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://prometheus.example.com" defaultValue={integrations.prometheusUrl as string ?? ''} key={`pm-${integrations.prometheusUrl}`} />
-            </div>
+           <div>
+             <label htmlFor="grafanaUrl" className="block text-sm font-medium text-slate-300">Grafana URL</label>
+             <input id="grafanaUrl" name="grafanaUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://grafana.example.com" defaultValue={integrations.grafanaUrl as string ?? ''} key={`gf-${integrations.grafanaUrl}`} />
+           </div>
+           <div>
+             <label htmlFor="prometheusUrl" className="block text-sm font-medium text-slate-300">Prometheus URL</label>
+             <input id="prometheusUrl" name="prometheusUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://prometheus.example.com" defaultValue={integrations.prometheusUrl as string ?? ''} key={`pm-${integrations.prometheusUrl}`} />
+           </div>
+           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+             <p className="mb-3 text-sm font-medium text-emerald-300">Uptime Kuma</p>
+             <div className="space-y-3">
+               <div>
+                 <label htmlFor="uptimeKumaUrl" className="block text-sm font-medium text-slate-300">Instance URL</label>
+                 <input id="uptimeKumaUrl" name="uptimeKumaUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://uptime.example.com" defaultValue={integrations.uptimeKumaUrl as string ?? ''} key={`uk-${integrations.uptimeKumaUrl}`} />
+               </div>
+               <div>
+                 <label htmlFor="uptimeKumaPushToken" className="block text-sm font-medium text-slate-300">Push monitor token</label>
+                 <input id="uptimeKumaPushToken" name="uptimeKumaPushToken" className="dune-input mt-1 w-full" placeholder="abc123..." defaultValue={integrations.uptimeKumaPushToken as string ?? ''} key={`ukt-${integrations.uptimeKumaPushToken}`} />
+                 <p className="mt-1 text-xs text-slate-500">Found in your Push monitor&apos;s URL: /api/push/[token]</p>
+               </div>
+             </div>
+           </div>
             <button type="submit" className="dune-button" disabled={saving === 'integrations'}>
               {saving === 'integrations' ? 'Saving\u2026' : 'Save integrations'}
             </button>
