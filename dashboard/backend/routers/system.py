@@ -1,8 +1,29 @@
 from __future__ import annotations
 
+import os
+import time
+
 from fastapi import APIRouter, Query, Request
 
 router = APIRouter(tags=["system"])
+
+_BOOT_TIME: float | None = None
+
+
+def _get_uptime_seconds() -> float:
+    """Return host uptime in seconds via psutil or /proc/uptime."""
+    global _BOOT_TIME
+    if _BOOT_TIME is None:
+        try:
+            import psutil
+            _BOOT_TIME = psutil.boot_time()
+        except Exception:
+            try:
+                with open("/proc/uptime") as f:
+                    return float(f.read().split()[0])
+            except Exception:
+                return 0
+    return max(0, time.time() - _BOOT_TIME)
 
 
 def _format_snapshot(raw: dict) -> dict:
@@ -18,7 +39,7 @@ def _format_snapshot(raw: dict) -> dict:
         "diskTotalGb": round(raw.get("disk_total_gb", 0), 2),
         "networkInMbps": round(raw.get("network_recv_bps", 0) * 8 / 1_000_000, 3),
         "networkOutMbps": round(raw.get("network_sent_bps", 0) * 8 / 1_000_000, 3),
-        "uptimeSeconds": 0,
+        "uptimeSeconds": round(_get_uptime_seconds()),
     }
 
 

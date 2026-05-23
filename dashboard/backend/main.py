@@ -109,6 +109,11 @@ async def ping() -> dict[str, str]:
     return {"status": "pong"}
 
 
+@app.get("/health")
+async def root_health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 frontend_dir = _frontend_dir()
 if frontend_dir is not None:
 
