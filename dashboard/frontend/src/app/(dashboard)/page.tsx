@@ -116,30 +116,51 @@ export default function OverviewPage() {
               const isCompleted = service.status === 'completed';
               const isInit = !!service.isInit;
               const isBusy = busyService === service.name;
+              const hasLatency = (service.latencyMs ?? 0) > 0;
+              const showCheck = isRunning || (isCompleted && isInit);
+
+              const borderClass = showCheck
+                ? 'border-emerald-500/15'
+                : service.status === 'degraded'
+                  ? 'border-amber-500/15'
+                  : service.status === 'offline'
+                    ? 'border-red-500/15'
+                    : 'border-slate-800/80';
+
+              const dotClass = isRunning
+                ? 'bg-emerald-400'
+                : service.status === 'degraded'
+                  ? 'bg-amber-400'
+                  : service.status === 'stopped'
+                    ? 'bg-slate-500'
+                    : 'bg-red-500';
+
               return (
-                <div key={service.name} className={cn('rounded-3xl border bg-slate-900/50 p-4', isCompleted && isInit ? 'border-emerald-500/15' : 'border-slate-800/80')}>
+                <div key={service.name} className={cn('rounded-3xl border bg-slate-900/50 p-4', borderClass)}>
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-slate-100">{service.label ?? service.name}</h3>
                       <p className="mt-1 text-sm text-slate-400">{service.message ?? 'Monitoring in progress'}</p>
                     </div>
-                    {isCompleted && isInit ? (
+                    {showCheck ? (
                       <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
                         <Check className="h-3 w-3 text-emerald-400" />
                       </span>
                     ) : (
-                      <span className={cn('ml-2 h-3 w-3 shrink-0 rounded-full', isRunning ? 'bg-emerald-400' : isCompleted ? 'bg-sky-300' : service.status === 'degraded' ? 'bg-amber-400' : service.status === 'stopped' ? 'bg-slate-500' : 'bg-red-500')} />
+                      <span className={cn('ml-2 h-3 w-3 shrink-0 rounded-full', dotClass)} />
                     )}
                   </div>
                   {isCompleted && isInit ? (
                     <p className="mt-3 text-xs text-emerald-400/70">One-shot task, no actions needed</p>
                   ) : (
                     <>
-                      <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
-                        <span>Latency</span>
-                        <span className="tabular-nums">{service.latencyMs ?? 0} ms</span>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2 border-t border-slate-800/60 pt-3">
+                      {hasLatency && (
+                        <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
+                          <span>Health check</span>
+                          <span className="tabular-nums">{service.latencyMs} ms</span>
+                        </div>
+                      )}
+                      <div className={cn('flex items-center gap-2', hasLatency ? 'mt-3 border-t border-slate-800/60 pt-3' : 'mt-3')}>
                         {isRunning ? (
                           <>
                             <button

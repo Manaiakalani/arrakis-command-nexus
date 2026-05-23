@@ -38,7 +38,7 @@ def _service_to_frontend(svc) -> dict:
         "name": name,
         "label": label,
         "status": fe_status,
-        "latencyMs": 0,
+        "latencyMs": getattr(svc, "latency_ms", 0),
         "message": message,
         "isInit": is_init,
     }
