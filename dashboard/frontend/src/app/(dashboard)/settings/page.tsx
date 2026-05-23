@@ -279,7 +279,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <p className="mt-2 text-sm text-slate-400">
-            Manage who can access the Command Nexus. Each admin authenticates with the shared API token.
+            Track who has access to the Command Nexus. All administrators share the same API token configured in your environment.
           </p>
         </div>
 
@@ -319,7 +319,7 @@ export default function SettingsPage() {
           ))}
           {(admins.data ?? []).length === 0 ? (
             <div className="p-10 text-center text-slate-400">
-              No additional administrators. The default API token provides root access.
+              No administrators registered. Use the form below to track team members with dashboard access.
             </div>
           ) : null}
         </div>
