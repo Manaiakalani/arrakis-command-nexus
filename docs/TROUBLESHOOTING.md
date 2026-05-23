@@ -89,6 +89,42 @@
 - Re-apply local gateway config changes after updating images
 - Review `scripts/gateway-patch.sh` and `config/gateway.ini` for environment-specific adjustments
 
+## WSL2-Specific Issues
+
+### Out of Memory / Containers Killed
+
+**Cause:** WSL2 defaults to 50% of host RAM, which may not be enough for the game servers.
+
+**Fix:**
+
+- Create or edit `%USERPROFILE%\.wslconfig`:
+  ```ini
+  [wsl2]
+  memory=24GB
+  swap=4GB
+  ```
+- Restart WSL: `wsl --shutdown`, then reopen your terminal
+- Use the `basic` profile if RAM is limited
+
+### Cannot Access Dashboard from Windows Browser
+
+**Cause:** WSL2 uses a virtual network adapter. `localhost` forwarding works for most setups, but some configurations require the WSL2 IP.
+
+**Fix:**
+
+- Try `http://localhost:18080` first (Docker Desktop forwards ports automatically)
+- If that fails, find the WSL2 IP: `hostname -I` inside WSL2, then use `http://<WSL2_IP>:18080`
+- Set `DUNE_ADMIN_BIND_ADDRESS=0.0.0.0` in `.env` to allow non-localhost access
+
+### Slow File I/O Performance
+
+**Cause:** Accessing files on the Windows filesystem (`/mnt/c/...`) from WSL2 is significantly slower than using the native Linux filesystem.
+
+**Fix:**
+
+- Clone the repository inside WSL2's native filesystem (e.g., `~/dune-server-docker`), not under `/mnt/c/`
+- Move Docker volumes to the WSL2 filesystem if they were created on the Windows mount
+
 ## Overmap Partition Load Failure (LoadPartitionDefinition)
 
 **Symptoms:**

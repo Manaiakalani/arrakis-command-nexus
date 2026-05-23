@@ -1,17 +1,41 @@
 # Quick Start
 
-This guide gets a fresh Linux host from zero to a running Dune Awakening self-hosted stack in about five minutes once the server files are downloaded.
+This guide gets a fresh host from zero to a running Dune Awakening self-hosted stack in about five minutes once the server files are downloaded.
 
 ## 1. Prerequisites
 
-- Linux host
-- Docker Engine
-- Docker Compose v2 (`docker compose`)
+- **Linux host** or **Windows 10/11 with WSL2** (see below)
+- Docker Engine and Docker Compose v2 (`docker compose`)
+- AVX2-capable CPU
 - SteamCMD or another way to run Steam's dedicated server download command
 - Recommended RAM:
   - basic: ~20 GB
   - standard: ~30-40 GB
   - full: ~40 GB+
+
+### WSL2 Setup (Windows)
+
+If you are running on Windows, use WSL2 with Docker Desktop:
+
+1. **Enable WSL2** (PowerShell as admin):
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+
+2. **Install Docker Desktop** from [docker.com](https://www.docker.com/products/docker-desktop/) and enable the WSL2 backend in Settings > General > "Use the WSL 2 based engine".
+
+3. **Set memory limits** by creating or editing `%USERPROFILE%\.wslconfig`:
+   ```ini
+   [wsl2]
+   memory=24GB
+   swap=4GB
+   processors=4
+   ```
+   Restart WSL after editing: `wsl --shutdown`
+
+4. **Run all commands inside your WSL2 terminal** (Ubuntu), not PowerShell. Clone the repo and run the `dune` CLI from there.
+
+> **Note:** The Dune Awakening dedicated server requires Linux containers. Docker Desktop's WSL2 backend handles this automatically. Native Windows containers are not supported.
 
 ## 2. Download the dedicated server files from Steam
 
