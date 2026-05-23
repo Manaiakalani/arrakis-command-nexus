@@ -220,12 +220,13 @@ test.describe('Service status display', () => {
       // The status message next to it should say "completed", not "stopped" or "offline"
       const card = dbInit.locator('..');
       const statusText = await card.textContent();
-      expect(statusText).toContain('completed');
+      expect(statusText).toContain('Finished successfully');
 
-      // The status dot should be sky/blue colored (completed), not red
-      const dot = card.locator('.rounded-full');
-      if (await dot.count() > 0) {
-        const classes = await dot.first().getAttribute('class');
+      // The status indicator should be a green checkmark, not red
+      const checkIcon = card.locator('svg');
+      if (await checkIcon.count() > 0) {
+        const wrapper = checkIcon.first().locator('..');
+        const classes = await wrapper.getAttribute('class');
         expect(classes).not.toContain('bg-red');
       }
     }

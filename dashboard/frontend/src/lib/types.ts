@@ -12,6 +12,7 @@ export interface ServiceStatus {
   message?: string;
   port?: number;
   lastCheck?: string;
+  isInit?: boolean;
 }
 
 export interface ServerOverview {
