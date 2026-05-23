@@ -58,11 +58,15 @@ export default function OverviewPage() {
             <NetworkSparkline history={resourceHistory.data?.points ?? []} height={52} />
           </div>
         </StatusCard>
-        <StatusCard icon={Activity} title="Resource overview" value={`${(metrics.data?.cpuPercent ?? 0).toFixed(0)}% / ${(metrics.data?.memoryPercent ?? 0).toFixed(0)}%`} subtitle="CPU / RAM live host load" variant="warning">
-          <div className="grid grid-cols-3 gap-2">
-            <ResourceGauge label="CPU" value={metrics.data?.cpuPercent ?? 0} size={76} />
-            <ResourceGauge label="RAM" value={metrics.data?.memoryPercent ?? 0} size={76} />
-            <ResourceGauge label="Disk" value={metrics.data?.diskPercent ?? 0} size={76} />
+        <StatusCard icon={Activity} title="Resource overview" value="Live host load" subtitle="CPU, memory, and disk utilization" variant="warning">
+          <div className="grid grid-cols-3 gap-4">
+            <ResourceGauge label="CPU" value={metrics.data?.cpuPercent ?? 0} size={88} />
+            <ResourceGauge label="RAM" value={metrics.data?.memoryPercent ?? 0} size={88} />
+            <ResourceGauge label="Disk" value={metrics.data?.diskPercent ?? 0} size={88} />
+          </div>
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-white/5 bg-slate-950/30 px-3 py-2 text-xs text-slate-400">
+            <span>{(metrics.data?.memoryUsedGb ?? 0).toFixed(1)} / {(metrics.data?.memoryTotalGb ?? 0).toFixed(0)} GB RAM</span>
+            <span>{(metrics.data?.diskUsedGb ?? 0).toFixed(0)} / {(metrics.data?.diskTotalGb ?? 0).toFixed(0)} GB disk</span>
           </div>
         </StatusCard>
         <StatusCard icon={Clock3} title="Uptime" value={formatUptime(status.data?.uptimeSeconds)} subtitle="Gateway process">
