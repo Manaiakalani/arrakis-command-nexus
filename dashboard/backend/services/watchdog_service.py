@@ -144,6 +144,12 @@ class WatchdogService:
             previous.status != snapshot.status or previous.exit_code != snapshot.exit_code
         )
 
+        # If the container is running with exit code 0, Docker's internal
+        # restart count can increment due to policy restarts (e.g. OOM or
+        # graceful reload).  Don't flag these as crashes.
+        if restart_increased and snapshot.status == "running" and snapshot.exit_code == 0:
+            return False, ""
+
         if not restart_increased and not unexpected_exit:
             return False, ""
 

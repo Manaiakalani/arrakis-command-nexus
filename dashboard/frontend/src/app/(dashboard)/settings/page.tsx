@@ -105,12 +105,12 @@ export default function SettingsPage() {
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button type="button" className="dune-button" onClick={handleExport}>
-            <Download className="h-4 w-4" aria-hidden="true" />
-            Export settings
+            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+            Export Settings
           </button>
           <button type="button" className="dune-button-muted" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4" aria-hidden="true" />
-            Import settings
+            <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+            Import Settings
           </button>
           <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} aria-label="Import settings file" />
         </div>
