@@ -27,10 +27,10 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
 
   return (
     <div className="glass-panel overflow-hidden">
-      <div className="flex flex-col gap-4 border-b border-slate-800/80 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <div className="flex flex-col gap-4 border-b border-th-border-m/80 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <p className="section-title">Recovery vault</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-50">Backup Inventory</h3>
+          <h3 className="mt-1 text-lg font-semibold text-th-text">Backup Inventory</h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select value={scope} onChange={(event) => setScope(event.target.value)} className="dune-input min-w-[180px]" aria-label="Backup scope">
@@ -45,8 +45,8 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
-          <thead className="bg-slate-900/50 text-xs uppercase tracking-[0.2em] text-slate-500">
+        <table className="min-w-full divide-y divide-th-border-m text-left text-sm">
+          <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text0">
             <tr>
               <th className="px-5 py-4 font-medium">Name</th>
               <th className="px-5 py-4 font-medium">Date</th>
@@ -55,13 +55,13 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
               <th className="px-5 py-4 font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/80">
+          <tbody className="divide-y divide-th-border-m/80">
             {backups.map((backup) => (
-              <tr key={backup.id} className="transition-colors hover:bg-slate-900/50">
-                <td className="px-5 py-4 text-slate-100">{backup.name}</td>
-                <td className="px-5 py-4 tabular-nums text-slate-300">{new Date(backup.createdAt).toLocaleString()}</td>
-                <td className="px-5 py-4 tabular-nums text-slate-300">{formatBytes(backup.sizeBytes)}</td>
-                <td className="px-5 py-4 text-slate-300 capitalize">{backup.scope}</td>
+              <tr key={backup.id} className="transition-colors hover:bg-th-surface-s/50">
+                <td className="px-5 py-4 text-th-text">{backup.name}</td>
+                <td className="px-5 py-4 tabular-nums text-th-text-s">{new Date(backup.createdAt).toLocaleString()}</td>
+                <td className="px-5 py-4 tabular-nums text-th-text-s">{formatBytes(backup.sizeBytes)}</td>
+                <td className="px-5 py-4 text-th-text-s capitalize">{backup.scope}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap gap-2">
                     <button type="button" className="dune-button-muted px-3 py-2 text-xs" onClick={() => window.confirm('Restore this backup?') && void onRestore(backup.id)}>
@@ -76,7 +76,7 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
             ))}
             {backups.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-12 text-center text-slate-400">No backups yet. Create a fresh snapshot before the next sandstorm.</td>
+                <td colSpan={5} className="px-5 py-12 text-center text-th-text-m">No backups yet. Create a fresh snapshot before the next sandstorm.</td>
               </tr>
             ) : null}
           </tbody>

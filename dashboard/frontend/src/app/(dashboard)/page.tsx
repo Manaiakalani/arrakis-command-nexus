@@ -65,7 +65,7 @@ export default function OverviewPage() {
         <StatusCard icon={Server} title="Server status" value={status.data?.status ?? 'loading'} subtitle={status.data?.serverName ?? 'Contacting cluster'} variant="default" />
         <StatusCard icon={Users} title="Players online" value={status.data?.playersOnline ?? 0} subtitle="Across active maps" variant="success">
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-500">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-th-text0">
               <span>Network pulse</span>
               <span>{(metrics.data?.networkInMbps ?? 0).toFixed(2)} / {(metrics.data?.networkOutMbps ?? 0).toFixed(2)} Mbps</span>
             </div>
@@ -78,7 +78,7 @@ export default function OverviewPage() {
             <ResourceGauge label="RAM" value={metrics.data?.memoryPercent ?? 0} size={88} />
             <ResourceGauge label="Disk" value={metrics.data?.diskPercent ?? 0} size={88} />
           </div>
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-white/5 bg-slate-950/30 px-3 py-2 text-xs text-slate-400">
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-white/5 bg-th-bg/30 px-3 py-2 text-xs text-th-text-m">
             <span>{(metrics.data?.memoryUsedGb ?? 0).toFixed(1)} / {(metrics.data?.memoryTotalGb ?? 0).toFixed(0)} GB RAM</span>
             <span>{(metrics.data?.diskUsedGb ?? 0).toFixed(0)} / {(metrics.data?.diskTotalGb ?? 0).toFixed(0)} GB disk</span>
           </div>
@@ -89,7 +89,7 @@ export default function OverviewPage() {
               <span className="text-xs uppercase tracking-[0.22em] text-amber-200/80">24h availability</span>
               <span className="text-lg font-semibold tabular-nums text-amber-100">{(uptime.data?.availabilityPercent ?? 0).toFixed(1)}%</span>
             </div>
-            <p className="mt-2 text-slate-300">{uptime.data?.events.filter((event) => event.status !== 'up').length ?? 0} recent impacted windows</p>
+            <p className="mt-2 text-th-text-s">{uptime.data?.events.filter((event) => event.status !== 'up').length ?? 0} recent impacted windows</p>
           </div>
         </StatusCard>
       </section>
@@ -99,7 +99,7 @@ export default function OverviewPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="section-title">Service health matrix</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-50">Operational Services</h2>
+              <h2 className="mt-1 text-xl font-semibold text-th-text">Operational Services</h2>
             </div>
             <div className="flex flex-wrap gap-3">
               <button type="button" onClick={() => void handleRestartAll()} className="dune-button-muted">
@@ -125,7 +125,7 @@ export default function OverviewPage() {
                   ? 'border-amber-500/15'
                   : service.status === 'offline'
                     ? 'border-red-500/15'
-                    : 'border-slate-800/80';
+                    : 'border-th-border-m/80';
 
               const dotClass = isRunning
                 ? 'bg-emerald-400'
@@ -136,11 +136,11 @@ export default function OverviewPage() {
                     : 'bg-red-500';
 
               return (
-                <div key={service.name} className={cn('rounded-3xl border bg-slate-900/50 p-4', borderClass)}>
+                <div key={service.name} className={cn('rounded-3xl border bg-th-surface-s/50 p-4', borderClass)}>
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-slate-100">{service.label ?? service.name}</h3>
-                      <p className="mt-1 text-sm text-slate-400">{service.message ?? 'Monitoring in progress'}</p>
+                      <h3 className="font-semibold text-th-text">{service.label ?? service.name}</h3>
+                      <p className="mt-1 text-sm text-th-text-m">{service.message ?? 'Monitoring in progress'}</p>
                     </div>
                     {showCheck ? (
                       <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
@@ -155,12 +155,12 @@ export default function OverviewPage() {
                   ) : (
                     <>
                       {hasLatency && (
-                        <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
+                        <div className="mt-3 flex items-center justify-between text-sm text-th-text-m">
                           <span>Health check</span>
                           <span className="tabular-nums">{service.latencyMs} ms</span>
                         </div>
                       )}
-                      <div className={cn('flex items-center gap-2', hasLatency ? 'mt-3 border-t border-slate-800/60 pt-3' : 'mt-3')}>
+                      <div className={cn('flex items-center gap-2', hasLatency ? 'mt-3 border-t border-th-border-m/60 pt-3' : 'mt-3')}>
                         {isRunning ? (
                           <>
                             <button
@@ -168,7 +168,7 @@ export default function OverviewPage() {
                               disabled={isBusy}
                               onClick={() => void handleServiceAction(service.name, 'restart')}
                               aria-label={`Restart ${service.label ?? service.name}`}
-                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200 disabled:opacity-40"
+                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200 disabled:opacity-40"
                             >
                               <RefreshCcw aria-hidden="true" className={cn('h-3 w-3', isBusy && 'animate-spin')} /> Restart
                             </button>
@@ -177,7 +177,7 @@ export default function OverviewPage() {
                               disabled={isBusy}
                               onClick={() => void handleServiceAction(service.name, 'stop')}
                               aria-label={`Stop ${service.label ?? service.name}`}
-                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
+                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
                             >
                               <Square aria-hidden="true" className="h-3 w-3" /> Stop
                             </button>
@@ -188,7 +188,7 @@ export default function OverviewPage() {
                             disabled={isBusy}
                             onClick={() => void handleServiceAction(service.name, 'start')}
                             aria-label={`Start ${service.label ?? service.name}`}
-                            className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-40"
+                            className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-40"
                           >
                             <Play aria-hidden="true" className="h-3 w-3" /> Start
                           </button>
@@ -205,7 +205,7 @@ export default function OverviewPage() {
         <div className="space-y-6">
           <div className={cn('glass-panel p-5', readinessStyles[readiness.data?.status ?? 'warn'])}>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-slate-950/40 p-3">
+              <div className="rounded-2xl bg-th-bg/40 p-3">
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
@@ -215,10 +215,10 @@ export default function OverviewPage() {
             </div>
             <div className="mt-5 space-y-3 text-sm">
               {(readiness.data?.checks ?? []).map((check) => (
-                <div key={check.name} className="flex items-start justify-between gap-3 rounded-2xl border border-white/5 bg-slate-950/25 px-4 py-3">
+                <div key={check.name} className="flex items-start justify-between gap-3 rounded-2xl border border-white/5 bg-th-bg/25 px-4 py-3">
                   <div>
-                    <p className="font-medium text-slate-50">{check.name}</p>
-                    {check.message ? <p className="mt-1 text-slate-300">{check.message}</p> : null}
+                    <p className="font-medium text-th-text">{check.name}</p>
+                    {check.message ? <p className="mt-1 text-th-text-s">{check.message}</p> : null}
                   </div>
                   <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em]">{check.status}</span>
                 </div>
@@ -227,15 +227,15 @@ export default function OverviewPage() {
           </div>
           <div className="glass-panel p-5">
             <p className="section-title">Fleet summary</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Map Deployment</h2>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Map Deployment</h2>
             <div className="mt-5 space-y-3">
               {(maps.data ?? []).map((map) => (
-                <div key={map.name} className="flex items-center justify-between rounded-2xl border border-slate-800/80 bg-slate-900/50 px-4 py-3 text-sm">
+                <div key={map.name} className="flex items-center justify-between rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3 text-sm">
                   <div>
-                    <p className="font-medium text-slate-100">{map.name}</p>
-                    <p className="text-slate-400">{map.players} players • {map.memoryUsedMb} MB</p>
+                    <p className="font-medium text-th-text">{map.name}</p>
+                    <p className="text-th-text-m">{map.players} players • {map.memoryUsedMb} MB</p>
                   </div>
-                  <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">{map.status}</span>
+                  <span className="rounded-full border border-th-border px-3 py-1 text-xs uppercase tracking-[0.18em] text-th-text-s">{map.status}</span>
                 </div>
               ))}
             </div>

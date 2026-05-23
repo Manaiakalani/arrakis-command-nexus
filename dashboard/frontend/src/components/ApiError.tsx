@@ -37,7 +37,7 @@ export function ApiError({ error, onRetry, compact, className }: ApiErrorProps) 
   return (
     <div className={cn('glass-panel border-red-500/20 p-6 text-center', className)}>
       <Icon className="mx-auto h-8 w-8 text-red-400" />
-      <p className="mt-3 text-sm font-medium text-slate-200">{message}</p>
+      <p className="mt-3 text-sm font-medium text-th-text-s">{message}</p>
       {onRetry && (
         <button type="button" onClick={onRetry} className="dune-button-muted mt-4">
           <RefreshCcw className="mr-2 h-4 w-4" />

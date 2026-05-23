@@ -66,13 +66,13 @@ export default function AnnouncementsPage() {
           </div>
           <div>
             <p className="section-title">Broadcast console</p>
-            <h1 className="mt-1 text-2xl font-semibold text-slate-50">In-game announcements</h1>
+            <h1 className="mt-1 text-2xl font-semibold text-th-text">In-game announcements</h1>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-100">Message</span>
+            <span className="mb-2 block text-sm font-medium text-th-text">Message</span>
             <input
               className="dune-input"
               name="announcement-message"
@@ -83,7 +83,7 @@ export default function AnnouncementsPage() {
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-100">Sender</span>
+            <span className="mb-2 block text-sm font-medium text-th-text">Sender</span>
             <input className="dune-input" name="announcement-sender" autoComplete="off" value={sender} onChange={(event) => setSender(event.target.value)} placeholder="Server" />
           </label>
         </div>
@@ -92,7 +92,7 @@ export default function AnnouncementsPage() {
           <button type="button" className="dune-button" onClick={() => void handleSend()} disabled={!canSend}>
             <Megaphone className="mr-2 h-4 w-4" /> Send announcement
           </button>
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 px-3 py-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-th-border-m bg-th-bg/50 px-3 py-3">
             <select className="dune-input min-w-[120px]" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} aria-label="Pre-restart warning minutes">
               {preRestartOptions.map((option) => (
                 <option key={option} value={option}>
@@ -114,10 +114,10 @@ export default function AnnouncementsPage() {
       </div>
 
       <div className="glass-panel overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-800/80 p-5">
+        <div className="flex items-center justify-between border-b border-th-border-m/80 p-5">
           <div>
             <p className="section-title">Recent activity</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Announcement History</h2>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Announcement History</h2>
           </div>
           <button type="button" className="dune-button-muted" onClick={() => void refreshHistory()} disabled={history.loading}>
             Refresh
@@ -125,8 +125,8 @@ export default function AnnouncementsPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-800/80 text-left text-sm">
-            <thead className="bg-slate-950/40 text-slate-400">
+          <table className="min-w-full divide-y divide-th-border-m/80 text-left text-sm">
+            <thead className="bg-th-bg/40 text-th-text-m">
               <tr>
                 <th className="px-5 py-3 font-medium">Message</th>
                 <th className="px-5 py-3 font-medium">Sender</th>
@@ -134,17 +134,17 @@ export default function AnnouncementsPage() {
                 <th className="px-5 py-3 font-medium">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-th-border-m/80">
               {(history.data ?? []).map((entry, index) => (
-                <tr key={`${entry.timestamp}-${index}`} className="align-top text-slate-300">
+                <tr key={`${entry.timestamp}-${index}`} className="align-top text-th-text-s">
                   <td className="px-5 py-4">
                     <div className="max-w-2xl">
                       <p>{entry.message}</p>
                       {entry.error ? <p className="mt-1 text-xs text-red-300">{entry.error}</p> : null}
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-slate-200">{entry.sender}</td>
-                  <td className="px-5 py-4 text-slate-400">{new Date(entry.timestamp).toLocaleString()}</td>
+                  <td className="px-5 py-4 text-th-text-s">{entry.sender}</td>
+                  <td className="px-5 py-4 text-th-text-m">{new Date(entry.timestamp).toLocaleString()}</td>
                   <td className="px-5 py-4">
                     <span
                       className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${entry.status === 'sent' ? 'bg-emerald-500/15 text-emerald-200' : entry.status === 'failed' ? 'bg-red-500/15 text-red-200' : 'bg-amber-500/15 text-amber-200'}`}
@@ -158,7 +158,7 @@ export default function AnnouncementsPage() {
           </table>
         </div>
 
-        {!history.loading && (history.data ?? []).length === 0 ? <div className="p-10 text-center text-slate-400">No announcements have been sent yet.</div> : null}
+        {!history.loading && (history.data ?? []).length === 0 ? <div className="p-10 text-center text-th-text-m">No announcements have been sent yet.</div> : null}
       </div>
     </div>
   );

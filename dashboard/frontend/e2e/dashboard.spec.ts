@@ -233,6 +233,87 @@ test.describe('Service status display', () => {
   });
 });
 
+test.describe('Theme toggle', () => {
+  test('theme toggle switches between light and dark mode', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Default should be dark mode
+    const html = page.locator('html');
+    await expect(html).toHaveClass(/dark/);
+
+    // Find and click the theme toggle
+    const toggle = page.getByLabel(/Switch to light mode/i);
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+    await page.waitForTimeout(300);
+
+    // Should now be in light mode
+    await expect(html).not.toHaveClass(/dark/);
+
+    // Background should be light
+    const body = page.locator('body');
+    const bgColor = await body.evaluate((el) => getComputedStyle(el).backgroundColor);
+    // Light mode bg should be bright (high RGB values)
+    const match = bgColor.match(/(\d+)/g);
+    if (match) {
+      const [r, g, b] = match.map(Number);
+      expect(r).toBeGreaterThan(200);
+      expect(g).toBeGreaterThan(200);
+      expect(b).toBeGreaterThan(200);
+    }
+
+    // Toggle back to dark
+    const darkToggle = page.getByLabel(/Switch to dark mode/i);
+    await darkToggle.click();
+    await page.waitForTimeout(300);
+    await expect(html).toHaveClass(/dark/);
+  });
+
+  test('theme persists across page navigation', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Switch to light mode
+    const toggle = page.getByLabel(/Switch to light mode/i);
+    await toggle.click();
+    await page.waitForTimeout(300);
+
+    // Navigate to another page
+    await page.goto('/maps');
+    await page.waitForLoadState('networkidle');
+
+    // Should still be in light mode
+    const html = page.locator('html');
+    await expect(html).not.toHaveClass(/dark/);
+  });
+
+  test('all dashboard pages render in light mode without errors', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Switch to light mode
+    const toggle = page.getByLabel(/Switch to light mode/i);
+    await toggle.click();
+    await page.waitForTimeout(300);
+
+    const pages = ['/', '/maps', '/players', '/logs', '/system', '/settings', '/public'];
+    for (const path of pages) {
+      const criticalErrors: string[] = [];
+      page.on('pageerror', (err) => {
+        if (/Internal Server Error|fetch|401|403|NetworkError/i.test(err.message)) return;
+        criticalErrors.push(err.message);
+      });
+
+      const response = await page.goto(path);
+      await page.waitForLoadState('domcontentloaded');
+
+      expect(response?.status()).toBe(200);
+      expect(criticalErrors).toEqual([]);
+    }
+  });
+});
+
 test.describe('Interactive features', () => {
   test('settings page: save general settings', async ({ page }) => {
     await page.goto('/settings');

@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
@@ -21,14 +22,26 @@ module.exports = {
           danger: '#ef4444',
           text: '#f8fafc',
           muted: '#94a3b8'
+        },
+        th: {
+          bg:          'rgb(var(--th-bg) / <alpha-value>)',
+          'bg-s':      'rgb(var(--th-bg-s) / <alpha-value>)',
+          surface:     'rgb(var(--th-surface) / <alpha-value>)',
+          'surface-s': 'rgb(var(--th-surface-s) / <alpha-value>)',
+          border:      'rgb(var(--th-border) / <alpha-value>)',
+          'border-m':  'rgb(var(--th-border-m) / <alpha-value>)',
+          text:        'rgb(var(--th-text) / <alpha-value>)',
+          'text-s':    'rgb(var(--th-text-s) / <alpha-value>)',
+          'text-m':    'rgb(var(--th-text-m) / <alpha-value>)',
         }
       },
       boxShadow: {
         dune: '0 20px 45px -20px rgba(245, 158, 11, 0.35)',
-        glass: '0 20px 60px -24px rgba(15, 23, 42, 0.75)'
+        glass: '0 20px 60px -24px rgba(15, 23, 42, 0.75)',
+        'glass-light': '0 20px 60px -24px rgba(0, 0, 0, 0.08)',
       },
       backgroundImage: {
-        'dune-radial': 'radial-gradient(circle at top, rgba(245,158,11,0.18), transparent 40%), radial-gradient(circle at bottom right, rgba(251,146,60,0.12), transparent 32%)',
+        'dune-radial': 'var(--dune-radial)',
         'dune-grid': 'linear-gradient(rgba(148,163,184,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.06) 1px, transparent 1px)'
       },
       keyframes: {

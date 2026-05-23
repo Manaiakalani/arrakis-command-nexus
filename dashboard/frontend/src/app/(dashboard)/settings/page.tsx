@@ -99,8 +99,8 @@ export default function SettingsPage() {
       {/* Import / Export */}
       <div className="glass-panel p-5">
         <p className="section-title">Data portability</p>
-        <h2 className="mt-1 text-xl font-semibold text-slate-50">Import &amp; Export</h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <h2 className="mt-1 text-xl font-semibold text-th-text">Import &amp; Export</h2>
+        <p className="mt-2 text-sm text-th-text-m">
           Transfer your dashboard settings between instances or create a backup of all Nexus preferences.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -121,7 +121,7 @@ export default function SettingsPage() {
         <section className="glass-panel p-5">
           <div className="mb-4 flex items-center gap-2 text-amber-400">
             <Server className="h-5 w-5" aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-slate-50">General</h3>
+            <h3 className="text-lg font-semibold text-th-text">General</h3>
           </div>
           <form
             className="space-y-4"
@@ -137,19 +137,19 @@ export default function SettingsPage() {
             }}
           >
             <div>
-              <label htmlFor="serverName" className="block text-sm font-medium text-slate-300">Server name</label>
+              <label htmlFor="serverName" className="block text-sm font-medium text-th-text-s">Server name</label>
               <input id="serverName" name="serverName" className="dune-input mt-1 w-full" defaultValue={general.serverName as string ?? ''} key={`sn-${general.serverName}`} />
             </div>
             <div>
-              <label htmlFor="serverDescription" className="block text-sm font-medium text-slate-300">Description</label>
+              <label htmlFor="serverDescription" className="block text-sm font-medium text-th-text-s">Description</label>
               <input id="serverDescription" name="serverDescription" className="dune-input mt-1 w-full" defaultValue={general.serverDescription as string ?? ''} key={`sd-${general.serverDescription}`} />
             </div>
             <div>
-              <label htmlFor="motd" className="block text-sm font-medium text-slate-300">Message of the day</label>
+              <label htmlFor="motd" className="block text-sm font-medium text-th-text-s">Message of the day</label>
               <textarea id="motd" name="motd" rows={2} className="dune-input mt-1 w-full resize-none" defaultValue={general.motd as string ?? ''} key={`motd-${general.motd}`} />
             </div>
             <div>
-              <label htmlFor="timezone" className="block text-sm font-medium text-slate-300">Timezone</label>
+              <label htmlFor="timezone" className="block text-sm font-medium text-th-text-s">Timezone</label>
               <input id="timezone" name="timezone" className="dune-input mt-1 w-full" defaultValue={general.timezone as string ?? ''} key={`tz-${general.timezone}`} />
             </div>
             <button type="submit" className="dune-button" disabled={saving === 'general'}>
@@ -162,7 +162,7 @@ export default function SettingsPage() {
         <section className="glass-panel p-5">
           <div className="mb-4 flex items-center gap-2 text-red-400">
             <Shield className="h-5 w-5" aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-slate-50">Security</h3>
+            <h3 className="text-lg font-semibold text-th-text">Security</h3>
           </div>
           <form
             className="space-y-4"
@@ -177,15 +177,15 @@ export default function SettingsPage() {
             }}
           >
             <div>
-              <label htmlFor="sessionTimeout" className="block text-sm font-medium text-slate-300">Session timeout (minutes)</label>
+              <label htmlFor="sessionTimeout" className="block text-sm font-medium text-th-text-s">Session timeout (minutes)</label>
               <input id="sessionTimeout" name="sessionTimeout" type="number" min={5} max={1440} className="dune-input mt-1 w-full" defaultValue={security.sessionTimeoutMinutes as number ?? 60} key={`st-${security.sessionTimeoutMinutes}`} />
             </div>
             <div className="flex items-center gap-3">
-              <input id="mfaEnabled" name="mfaEnabled" type="checkbox" className="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-amber-500" defaultChecked={security.mfaEnabled as boolean ?? false} key={`mfa-${security.mfaEnabled}`} />
-              <label htmlFor="mfaEnabled" className="text-sm font-medium text-slate-300">Enable multi-factor authentication</label>
+              <input id="mfaEnabled" name="mfaEnabled" type="checkbox" className="h-4 w-4 rounded border-th-border bg-th-surface accent-amber-500" defaultChecked={security.mfaEnabled as boolean ?? false} key={`mfa-${security.mfaEnabled}`} />
+              <label htmlFor="mfaEnabled" className="text-sm font-medium text-th-text-s">Enable multi-factor authentication</label>
             </div>
             <div>
-              <label htmlFor="ipAllowlist" className="block text-sm font-medium text-slate-300">IP allowlist (comma-separated)</label>
+              <label htmlFor="ipAllowlist" className="block text-sm font-medium text-th-text-s">IP allowlist (comma-separated)</label>
               <input id="ipAllowlist" name="ipAllowlist" className="dune-input mt-1 w-full" placeholder="Leave empty for unrestricted access" defaultValue={Array.isArray(security.ipAllowlist) ? (security.ipAllowlist as string[]).join(', ') : ''} key={`ip-${JSON.stringify(security.ipAllowlist)}`} />
             </div>
             <button type="submit" className="dune-button" disabled={saving === 'security'}>
@@ -198,7 +198,7 @@ export default function SettingsPage() {
         <section className="glass-panel p-5">
           <div className="mb-4 flex items-center gap-2 text-blue-400">
             <Link2 className="h-5 w-5" aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-slate-50">Integrations</h3>
+            <h3 className="text-lg font-semibold text-th-text">Integrations</h3>
           </div>
           <form
             className="space-y-4"
@@ -214,24 +214,24 @@ export default function SettingsPage() {
            }}
           >
            <div>
-             <label htmlFor="grafanaUrl" className="block text-sm font-medium text-slate-300">Grafana URL</label>
+             <label htmlFor="grafanaUrl" className="block text-sm font-medium text-th-text-s">Grafana URL</label>
              <input id="grafanaUrl" name="grafanaUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://grafana.example.com" defaultValue={integrations.grafanaUrl as string ?? ''} key={`gf-${integrations.grafanaUrl}`} />
            </div>
            <div>
-             <label htmlFor="prometheusUrl" className="block text-sm font-medium text-slate-300">Prometheus URL</label>
+             <label htmlFor="prometheusUrl" className="block text-sm font-medium text-th-text-s">Prometheus URL</label>
              <input id="prometheusUrl" name="prometheusUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://prometheus.example.com" defaultValue={integrations.prometheusUrl as string ?? ''} key={`pm-${integrations.prometheusUrl}`} />
            </div>
            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
              <p className="mb-3 text-sm font-medium text-emerald-300">Uptime Kuma</p>
              <div className="space-y-3">
                <div>
-                 <label htmlFor="uptimeKumaUrl" className="block text-sm font-medium text-slate-300">Instance URL</label>
+                 <label htmlFor="uptimeKumaUrl" className="block text-sm font-medium text-th-text-s">Instance URL</label>
                  <input id="uptimeKumaUrl" name="uptimeKumaUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://uptime.example.com" defaultValue={integrations.uptimeKumaUrl as string ?? ''} key={`uk-${integrations.uptimeKumaUrl}`} />
                </div>
                <div>
-                 <label htmlFor="uptimeKumaPushToken" className="block text-sm font-medium text-slate-300">Push monitor token</label>
+                 <label htmlFor="uptimeKumaPushToken" className="block text-sm font-medium text-th-text-s">Push monitor token</label>
                  <input id="uptimeKumaPushToken" name="uptimeKumaPushToken" className="dune-input mt-1 w-full" placeholder="abc123..." defaultValue={integrations.uptimeKumaPushToken as string ?? ''} key={`ukt-${integrations.uptimeKumaPushToken}`} />
-                 <p className="mt-1 text-xs text-slate-500">Found in your Push monitor&apos;s URL: /api/push/[token]</p>
+                 <p className="mt-1 text-xs text-th-text0">Found in your Push monitor&apos;s URL: /api/push/[token]</p>
                </div>
              </div>
            </div>
@@ -245,7 +245,7 @@ export default function SettingsPage() {
         <section className="glass-panel p-5">
           <div className="mb-4 flex items-center gap-2 text-purple-400">
             <Palette className="h-5 w-5" aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-slate-50">Appearance</h3>
+            <h3 className="text-lg font-semibold text-th-text">Appearance</h3>
           </div>
           <form
             className="space-y-4"
@@ -260,7 +260,7 @@ export default function SettingsPage() {
             }}
           >
             <div>
-              <label htmlFor="accentColor" className="block text-sm font-medium text-slate-300">Accent color</label>
+              <label htmlFor="accentColor" className="block text-sm font-medium text-th-text-s">Accent color</label>
               <select id="accentColor" name="accentColor" className="dune-input mt-1 w-full" defaultValue={appearance.accentColor as string ?? 'amber'} key={`ac-${appearance.accentColor}`} aria-label="Accent color">
                 <option value="amber">Amber (default)</option>
                 <option value="blue">Blue</option>
@@ -270,12 +270,12 @@ export default function SettingsPage() {
               </select>
             </div>
             <div className="flex items-center gap-3">
-              <input id="compactMode" name="compactMode" type="checkbox" className="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-amber-500" defaultChecked={appearance.compactMode as boolean ?? false} key={`cm-${appearance.compactMode}`} />
-              <label htmlFor="compactMode" className="text-sm font-medium text-slate-300">Compact mode</label>
+              <input id="compactMode" name="compactMode" type="checkbox" className="h-4 w-4 rounded border-th-border bg-th-surface accent-amber-500" defaultChecked={appearance.compactMode as boolean ?? false} key={`cm-${appearance.compactMode}`} />
+              <label htmlFor="compactMode" className="text-sm font-medium text-th-text-s">Compact mode</label>
             </div>
             <div className="flex items-center gap-3">
-              <input id="showPublicStatus" name="showPublicStatus" type="checkbox" className="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-amber-500" defaultChecked={appearance.showPublicStatus as boolean ?? true} key={`ps-${appearance.showPublicStatus}`} />
-              <label htmlFor="showPublicStatus" className="text-sm font-medium text-slate-300">Show public status page</label>
+              <input id="showPublicStatus" name="showPublicStatus" type="checkbox" className="h-4 w-4 rounded border-th-border bg-th-surface accent-amber-500" defaultChecked={appearance.showPublicStatus as boolean ?? true} key={`ps-${appearance.showPublicStatus}`} />
+              <label htmlFor="showPublicStatus" className="text-sm font-medium text-th-text-s">Show public status page</label>
             </div>
             <button type="submit" className="dune-button" disabled={saving === 'appearance'}>
               {saving === 'appearance' ? 'Saving\u2026' : 'Save appearance'}
@@ -286,20 +286,20 @@ export default function SettingsPage() {
 
       {/* Admin management */}
       <div className="glass-panel overflow-hidden">
-        <div className="border-b border-slate-800/80 p-5">
+        <div className="border-b border-th-border-m/80 p-5">
           <div className="flex items-center gap-2 text-amber-400">
             <Key className="h-5 w-5" aria-hidden="true" />
             <div>
               <p className="section-title">Access control</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-50">Administrators</h2>
+              <h2 className="mt-1 text-xl font-semibold text-th-text">Administrators</h2>
             </div>
           </div>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-th-text-m">
             Track who has access to the Command Nexus. All administrators share the same API token configured in your environment.
           </p>
         </div>
 
-        <div className="divide-y divide-slate-800/80">
+        <div className="divide-y divide-th-border-m/80">
           {(admins.data ?? []).map((admin) => (
             <div key={admin.id} className="flex items-center justify-between p-5">
               <div className="flex items-center gap-3">
@@ -307,8 +307,8 @@ export default function SettingsPage() {
                   <UserPlus className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="font-medium text-slate-100">{admin.username}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="font-medium text-th-text">{admin.username}</p>
+                  <p className="text-xs text-th-text-m">
                     {admin.role} &middot; {admin.enabled ? 'Active' : 'Disabled'}
                     {admin.lastLogin ? ` \u00b7 Last seen ${new Date(admin.lastLogin).toLocaleDateString()}` : ''}
                   </p>
@@ -334,13 +334,13 @@ export default function SettingsPage() {
             </div>
           ))}
           {(admins.data ?? []).length === 0 ? (
-            <div className="p-10 text-center text-slate-400">
+            <div className="p-10 text-center text-th-text-m">
               No administrators registered. Use the form below to track team members with dashboard access.
             </div>
           ) : null}
         </div>
 
-        <div className="border-t border-slate-800/80 p-5">
+        <div className="border-t border-th-border-m/80 p-5">
           <form
             className="flex items-end gap-3"
             onSubmit={(e) => {
@@ -349,7 +349,7 @@ export default function SettingsPage() {
             }}
           >
             <div className="flex-1">
-              <label htmlFor="newAdminUser" className="block text-sm font-medium text-slate-300">Add administrator</label>
+              <label htmlFor="newAdminUser" className="block text-sm font-medium text-th-text-s">Add administrator</label>
               <input
                 id="newAdminUser"
                 className="dune-input mt-1 w-full"

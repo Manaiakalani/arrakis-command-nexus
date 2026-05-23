@@ -37,24 +37,24 @@ export default function WatchdogPage() {
             </div>
             <div>
               <p className="section-title">Watchdog state</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-50">{status.data?.enabled ? 'Enabled' : 'Disabled'}</h2>
+              <h2 className="mt-1 text-xl font-semibold text-th-text">{status.data?.enabled ? 'Enabled' : 'Disabled'}</h2>
             </div>
           </div>
         </div>
         <div className="glass-panel p-5">
           <p className="section-title">Monitored containers</p>
-          <h2 className="mt-1 text-3xl font-semibold text-slate-50">{status.data?.monitoredContainers ?? 0}</h2>
-          <p className="mt-2 text-sm text-slate-400">Active map services under supervision.</p>
+          <h2 className="mt-1 text-3xl font-semibold text-th-text">{status.data?.monitoredContainers ?? 0}</h2>
+          <p className="mt-2 text-sm text-th-text-m">Active map services under supervision.</p>
         </div>
         <div className="glass-panel p-5">
           <p className="section-title">Auto restart</p>
-          <h2 className="mt-1 text-3xl font-semibold text-slate-50">{status.data?.autoRestart ? 'On' : 'Off'}</h2>
-          <p className="mt-2 text-sm text-slate-400">Crashes trigger automatic recovery when enabled.</p>
+          <h2 className="mt-1 text-3xl font-semibold text-th-text">{status.data?.autoRestart ? 'On' : 'Off'}</h2>
+          <p className="mt-2 text-sm text-th-text-m">Crashes trigger automatic recovery when enabled.</p>
         </div>
         <div className="glass-panel p-5">
           <p className="section-title">Poll interval</p>
-          <h2 className="mt-1 text-3xl font-semibold text-slate-50">{status.data?.intervalSeconds ?? 0}s</h2>
-          <p className="mt-2 text-sm text-slate-400">Docker crash checks cadence.</p>
+          <h2 className="mt-1 text-3xl font-semibold text-th-text">{status.data?.intervalSeconds ?? 0}s</h2>
+          <p className="mt-2 text-sm text-th-text-m">Docker crash checks cadence.</p>
         </div>
       </section>
 
@@ -66,15 +66,15 @@ export default function WatchdogPage() {
             </div>
             <div>
               <p className="section-title">Manual recovery</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-50">Restart Monitored Services</h2>
+              <h2 className="mt-1 text-xl font-semibold text-th-text">Restart Monitored Services</h2>
             </div>
           </div>
           <div className="mt-5 space-y-3">
             {services.map((service) => (
-              <div key={service} className="flex items-center justify-between rounded-2xl border border-slate-800/80 bg-slate-900/50 px-4 py-3">
+              <div key={service} className="flex items-center justify-between rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3">
                 <div>
-                  <p className="font-medium text-slate-100">{service}</p>
-                  <p className="text-sm text-slate-400">Manual restart through watchdog controls.</p>
+                  <p className="font-medium text-th-text">{service}</p>
+                  <p className="text-sm text-th-text-m">Manual restart through watchdog controls.</p>
                 </div>
                 <button
                   type="button"
@@ -87,25 +87,25 @@ export default function WatchdogPage() {
                 </button>
               </div>
             ))}
-            {services.length === 0 ? <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 text-sm text-slate-400">No monitored map services detected.</div> : null}
+            {services.length === 0 ? <div className="rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 p-6 text-sm text-th-text-m">No monitored map services detected.</div> : null}
           </div>
         </div>
 
         <div className="glass-panel overflow-hidden">
-          <div className="border-b border-slate-800/80 p-5">
+          <div className="border-b border-th-border-m/80 p-5">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-red-500/10 p-3 text-red-300">
                 <TriangleAlert className="h-6 w-6" />
               </div>
               <div>
                 <p className="section-title">Crash history</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-50">Last 100 Watchdog Events</h2>
+                <h2 className="mt-1 text-xl font-semibold text-th-text">Last 100 Watchdog Events</h2>
               </div>
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
-              <thead className="bg-slate-950/40 text-slate-400">
+            <table className="min-w-full divide-y divide-th-border-m text-left text-sm">
+              <thead className="bg-th-bg/40 text-th-text-m">
                 <tr>
                   <th className="px-4 py-3 font-medium">Time</th>
                   <th className="px-4 py-3 font-medium">Service</th>
@@ -115,18 +115,18 @@ export default function WatchdogPage() {
                   <th className="px-4 py-3 font-medium text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-th-border-m/80">
                 {(crashes.data ?? []).map((event) => (
-                  <tr key={`${event.service}-${event.timestamp}-${event.message}`} className="bg-slate-950/10">
-                    <td className="px-4 py-4 text-slate-300">{new Date(event.timestamp).toLocaleString()}</td>
-                    <td className="px-4 py-4 font-medium text-slate-100">{event.service}</td>
-                    <td className="px-4 py-4 text-slate-300">{event.exitCode ?? '—'}</td>
+                  <tr key={`${event.service}-${event.timestamp}-${event.message}`} className="bg-th-bg/10">
+                    <td className="px-4 py-4 text-th-text-s">{new Date(event.timestamp).toLocaleString()}</td>
+                    <td className="px-4 py-4 font-medium text-th-text">{event.service}</td>
+                    <td className="px-4 py-4 text-th-text-s">{event.exitCode ?? '—'}</td>
                     <td className="px-4 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${event.restarted ? 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border border-slate-700 bg-slate-900/60 text-slate-300'}`}>
+                      <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${event.restarted ? 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border border-th-border bg-th-surface-s/60 text-th-text-s'}`}>
                         {event.restarted ? 'Yes' : 'No'}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-slate-300">{event.message}</td>
+                    <td className="px-4 py-4 text-th-text-s">{event.message}</td>
                     <td className="px-4 py-4 text-right">
                       <button
                         type="button"
@@ -141,7 +141,7 @@ export default function WatchdogPage() {
                 ))}
               </tbody>
             </table>
-            {(crashes.data ?? []).length === 0 ? <div className="p-10 text-center text-slate-400">No crash events recorded.</div> : null}
+            {(crashes.data ?? []).length === 0 ? <div className="p-10 text-center text-th-text-m">No crash events recorded.</div> : null}
           </div>
         </div>
       </section>

@@ -45,7 +45,7 @@ export default function SystemPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="section-title">System telemetry</p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-50">Resource Overview</h2>
+          <h2 className="mt-1 text-xl font-semibold text-th-text">Resource Overview</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -58,7 +58,7 @@ export default function SystemPage() {
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <div className="inline-flex overflow-hidden rounded-lg border border-slate-700">
+          <div className="inline-flex overflow-hidden rounded-lg border border-th-border">
             {(['csv', 'json'] as const).map((fmt) => (
               <button
                 key={fmt}
@@ -68,7 +68,7 @@ export default function SystemPage() {
                   'px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors dune-focus',
                   exportFormat === fmt
                     ? 'bg-amber-500/15 text-amber-200'
-                    : 'bg-slate-900/70 text-slate-400 hover:text-slate-200',
+                    : 'bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',
                 )}
               >
                 {fmt}
@@ -85,18 +85,18 @@ export default function SystemPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="section-title">Resource</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-50">CPU load</h3>
-              <p className="mt-2 text-sm text-slate-400">Current processor saturation across the host.</p>
+              <h3 className="mt-1 text-lg font-semibold text-th-text">CPU load</h3>
+              <p className="mt-2 text-sm text-th-text-m">Current processor saturation across the host.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3 text-amber-300 shadow-dune">
+            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-amber-300 shadow-dune">
               <Cpu className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between gap-4">
             <ResourceGauge label="CPU" value={metrics.data?.cpuPercent ?? 0} size={116} />
             <div className="text-right">
-              <p className="text-3xl font-semibold tabular-nums text-slate-50">{formatPercent(metrics.data?.cpuPercent)}</p>
-              <p className="mt-2 text-sm text-slate-400">Real-time processor load</p>
+              <p className="text-3xl font-semibold tabular-nums text-th-text">{formatPercent(metrics.data?.cpuPercent)}</p>
+              <p className="mt-2 text-sm text-th-text-m">Real-time processor load</p>
             </div>
           </div>
         </div>
@@ -105,18 +105,18 @@ export default function SystemPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="section-title">Resource</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-50">Memory pressure</h3>
-              <p className="mt-2 text-sm text-slate-400">Resident RAM usage on the dashboard host.</p>
+              <h3 className="mt-1 text-lg font-semibold text-th-text">Memory pressure</h3>
+              <p className="mt-2 text-sm text-th-text-m">Resident RAM usage on the dashboard host.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3 text-orange-300 shadow-dune">
+            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-orange-300 shadow-dune">
               <Waves className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between gap-4">
             <ResourceGauge label="RAM" value={metrics.data?.memoryPercent ?? 0} size={116} />
             <div className="text-right">
-              <p className="text-3xl font-semibold tabular-nums text-slate-50">{formatPercent(metrics.data?.memoryPercent)}</p>
-              <p className="mt-2 text-sm text-slate-400">{formatGb(metrics.data?.memoryUsedGb, metrics.data?.memoryTotalGb)}</p>
+              <p className="text-3xl font-semibold tabular-nums text-th-text">{formatPercent(metrics.data?.memoryPercent)}</p>
+              <p className="mt-2 text-sm text-th-text-m">{formatGb(metrics.data?.memoryUsedGb, metrics.data?.memoryTotalGb)}</p>
             </div>
           </div>
         </div>
@@ -125,18 +125,18 @@ export default function SystemPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="section-title">Resource</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-50">Disk usage</h3>
-              <p className="mt-2 text-sm text-slate-400">Persistent storage utilisation on the host volume.</p>
+              <h3 className="mt-1 text-lg font-semibold text-th-text">Disk usage</h3>
+              <p className="mt-2 text-sm text-th-text-m">Persistent storage utilisation on the host volume.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3 text-amber-200 shadow-dune">
+            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-amber-200 shadow-dune">
               <HardDrive className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between gap-4">
             <ResourceGauge label="Disk" value={metrics.data?.diskPercent ?? 0} size={116} />
             <div className="text-right">
-              <p className="text-3xl font-semibold tabular-nums text-slate-50">{formatPercent(metrics.data?.diskPercent)}</p>
-              <p className="mt-2 text-sm text-slate-400">{formatGb(metrics.data?.diskUsedGb, metrics.data?.diskTotalGb)}</p>
+              <p className="text-3xl font-semibold tabular-nums text-th-text">{formatPercent(metrics.data?.diskPercent)}</p>
+              <p className="mt-2 text-sm text-th-text-m">{formatGb(metrics.data?.diskUsedGb, metrics.data?.diskTotalGb)}</p>
             </div>
           </div>
         </div>
@@ -145,21 +145,21 @@ export default function SystemPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="section-title">Throughput</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-50">Network pulse</h3>
-              <p className="mt-2 text-sm text-slate-400">Live ingress and egress throughput over the selected window.</p>
+              <h3 className="mt-1 text-lg font-semibold text-th-text">Network pulse</h3>
+              <p className="mt-2 text-sm text-th-text-m">Live ingress and egress throughput over the selected window.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3 text-amber-300 shadow-dune">
+            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-amber-300 shadow-dune">
               <Network className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-5 flex items-end justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Inbound</p>
-              <p className="mt-2 text-xl font-semibold tabular-nums text-slate-50">{formatMbps(metrics.data?.networkInMbps)}</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-th-text0">Inbound</p>
+              <p className="mt-2 text-xl font-semibold tabular-nums text-th-text">{formatMbps(metrics.data?.networkInMbps)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Outbound</p>
-              <p className="mt-2 text-xl font-semibold tabular-nums text-slate-50">{formatMbps(metrics.data?.networkOutMbps)}</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-th-text0">Outbound</p>
+              <p className="mt-2 text-xl font-semibold tabular-nums text-th-text">{formatMbps(metrics.data?.networkOutMbps)}</p>
             </div>
           </div>
           <div className="mt-4">
