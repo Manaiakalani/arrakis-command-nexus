@@ -119,7 +119,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
 
         <div className="glass-panel p-5">
           <p className="section-title">Manual broadcast</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-50">Send announcement</h3>
+          <h3 className="mt-1 text-lg font-semibold text-slate-50">Send Announcement</h3>
           <textarea className="dune-input mt-4 min-h-[200px]" value={announcement} onChange={(event) => setAnnouncement(event.target.value)} placeholder="Attention, sleepers. Maintenance begins at sunset\u2026" />
           <div className="mt-4 flex flex-wrap gap-3">
             <button

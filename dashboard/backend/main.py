@@ -103,6 +103,17 @@ async def lifespan(app: FastAPI):
         chat_guard_service.start(),
     )
     logger.info("Dune dashboard backend started")
+
+    # Security warnings for weak defaults
+    admin_token = os.getenv("DUNE_ADMIN_TOKEN", "")
+    if not admin_token:
+        logger.warning("SECURITY: DUNE_ADMIN_TOKEN is not set — API mutations are unprotected")
+    elif admin_token.startswith("change-me"):
+        logger.warning("SECURITY: DUNE_ADMIN_TOKEN is using a default value — change it for production")
+    pg_pw = os.getenv("POSTGRES_DUNE_PASSWORD", "")
+    if pg_pw.startswith("change-me"):
+        logger.warning("SECURITY: POSTGRES_DUNE_PASSWORD is using a default value — change it for production")
+
     try:
         yield
     finally:
@@ -120,13 +131,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Dune Awakening Dashboard API", version="1.0.0", lifespan=lifespan)
 
-allowed_hosts = [host.strip() for host in os.getenv("DUNE_ADMIN_ALLOWED_HOSTS", "*").split(",") if host.strip()]
+allowed_hosts_raw = os.getenv("DUNE_ADMIN_ALLOWED_HOSTS", "").strip()
+allowed_hosts = [host.strip() for host in allowed_hosts_raw.split(",") if host.strip()] if allowed_hosts_raw else []
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_hosts or ["*"],
+    allow_origins=allowed_hosts or ["http://dashboard-frontend:3000"],
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept", "X-Admin-Token"],
 )
 app.add_middleware(AdminTokenMiddleware)
 

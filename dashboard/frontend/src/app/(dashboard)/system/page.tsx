@@ -45,7 +45,7 @@ export default function SystemPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="section-title">System telemetry</p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-50">Resource overview</h2>
+          <h2 className="mt-1 text-xl font-semibold text-slate-50">Resource Overview</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select

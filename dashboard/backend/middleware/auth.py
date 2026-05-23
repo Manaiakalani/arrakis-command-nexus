@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import os
 
 from fastapi.responses import JSONResponse
@@ -37,7 +38,7 @@ class AdminTokenMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Admin token is not configured."},
             )
 
-        if provided_token != expected_token:
+        if not hmac.compare_digest(provided_token, expected_token):
             return JSONResponse(status_code=401, content={"detail": "Invalid admin token."})
 
         mutations_enabled = os.getenv("DUNE_ADMIN_MUTATIONS_ENABLED", "true").lower() in {

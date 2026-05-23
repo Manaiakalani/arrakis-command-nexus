@@ -117,7 +117,7 @@ export default function AnnouncementsPage() {
         <div className="flex items-center justify-between border-b border-slate-800/80 p-5">
           <div>
             <p className="section-title">Recent activity</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Announcement history</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Announcement History</h2>
           </div>
           <button type="button" className="dune-button-muted" onClick={() => void refreshHistory()} disabled={history.loading}>
             Refresh

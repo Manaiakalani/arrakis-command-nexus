@@ -78,7 +78,7 @@ export default function EconomyPage() {
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="glass-panel p-5">
           <p className="section-title">Manual injection</p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-50">Create economy alert</h2>
+          <h2 className="mt-1 text-xl font-semibold text-slate-50">Create Economy Alert</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-slate-100">Type</span>
@@ -113,7 +113,7 @@ export default function EconomyPage() {
         <div className="glass-panel overflow-hidden">
           <div className="border-b border-slate-800/80 p-5">
             <p className="section-title">Anomaly feed</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Economy alerts</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Economy Alerts</h2>
           </div>
           <div className="divide-y divide-slate-800/80">
             {(alerts.data ?? []).map((alert) => (
@@ -150,7 +150,7 @@ export default function EconomyPage() {
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 p-8 text-center">
                 <Coins className="h-10 w-10 text-amber-300" />
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-50">No economy alerts</h3>
+                  <h3 className="text-xl font-semibold text-slate-50">No Economy Alerts</h3>
                   <p className="mt-2 max-w-xl text-slate-400">Monitoring is active, but no anomalies have been recorded yet.</p>
                 </div>
               </div>

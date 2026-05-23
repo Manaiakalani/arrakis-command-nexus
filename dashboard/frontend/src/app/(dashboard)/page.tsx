@@ -99,7 +99,7 @@ export default function OverviewPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="section-title">Service health matrix</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-50">Operational services</h2>
+              <h2 className="mt-1 text-xl font-semibold text-slate-50">Operational Services</h2>
             </div>
             <div className="flex flex-wrap gap-3">
               <button type="button" onClick={() => void handleRestartAll()} className="dune-button-muted">
@@ -227,7 +227,7 @@ export default function OverviewPage() {
           </div>
           <div className="glass-panel p-5">
             <p className="section-title">Fleet summary</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Map deployment</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Map Deployment</h2>
             <div className="mt-5 space-y-3">
               {(maps.data ?? []).map((map) => (
                 <div key={map.name} className="flex items-center justify-between rounded-2xl border border-slate-800/80 bg-slate-900/50 px-4 py-3 text-sm">

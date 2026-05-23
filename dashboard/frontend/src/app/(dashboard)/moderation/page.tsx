@@ -34,7 +34,7 @@ export default function ModerationPage() {
               <Shield className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-slate-50">Chat guard</h2>
+              <h2 className="text-xl font-semibold text-slate-50">Chat Guard</h2>
               <p className="text-sm text-slate-400">Active spam limits and the latest enforcement activity.</p>
             </div>
           </div>
@@ -52,7 +52,7 @@ export default function ModerationPage() {
         <div className="flex flex-col gap-3 border-b border-slate-800/80 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="section-title">Spam enforcement</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Recent violations</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Recent Violations</h2>
           </div>
           <button type="button" className="dune-button-muted" onClick={() => void handleClear()}>
             <Trash2 className="mr-2 h-4 w-4" /> Clear violations

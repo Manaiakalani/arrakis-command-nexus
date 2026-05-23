@@ -36,7 +36,7 @@ export default function MapsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="section-title">Map orchestration</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Shard fleet</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Shard Fleet</h2>
           </div>
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => void handleBulk('start')} className="dune-button">

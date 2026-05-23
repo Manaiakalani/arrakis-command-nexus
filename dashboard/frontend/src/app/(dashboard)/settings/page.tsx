@@ -90,7 +90,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="glass-panel border-amber-500/20 bg-amber-500/10 p-5 text-amber-100">
         <p className="section-title text-amber-200/80">Command Nexus</p>
-        <h2 className="mt-1 text-xl font-semibold">Dashboard settings</h2>
+        <h2 className="mt-1 text-xl font-semibold">Dashboard Settings</h2>
         <p className="mt-2 max-w-3xl text-sm text-amber-100/80">
           Configure the Command Nexus dashboard itself. Server-specific game settings live under Configuration.
         </p>
@@ -99,7 +99,7 @@ export default function SettingsPage() {
       {/* Import / Export */}
       <div className="glass-panel p-5">
         <p className="section-title">Data portability</p>
-        <h2 className="mt-1 text-xl font-semibold text-slate-50">Import &amp; export</h2>
+        <h2 className="mt-1 text-xl font-semibold text-slate-50">Import &amp; Export</h2>
         <p className="mt-2 text-sm text-slate-400">
           Transfer your dashboard settings between instances or create a backup of all Nexus preferences.
         </p>

@@ -42,7 +42,7 @@ export default function DiscordPage() {
       <div className="glass-panel overflow-hidden">
         <div className="border-b border-slate-800/80 p-5">
           <p className="section-title">Event history</p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-50">Last 10 notifications</h2>
+          <h2 className="mt-1 text-xl font-semibold text-slate-50">Last 10 Notifications</h2>
         </div>
         <div className="divide-y divide-slate-800/80">
           {eventHistory.map((event) => (

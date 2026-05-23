@@ -99,7 +99,7 @@ export default function PlayersPage() {
             <div className="flex flex-col gap-4 border-b border-slate-800/80 p-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="section-title">Spatial telemetry</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-50">Live player position analysis</h2>
+                <h2 className="mt-1 text-xl font-semibold text-slate-50">Live Player Position Analysis</h2>
                 <p className="mt-2 text-sm text-slate-400">Expand to inspect the Hagga Basin tactical overlay and density heatmap without leaving the players roster.</p>
               </div>
               <div className="flex items-center gap-3">
@@ -130,7 +130,7 @@ export default function PlayersPage() {
         <div className="glass-panel overflow-hidden">
           <div className="border-b border-slate-800/80 p-5">
             <p className="section-title">Enforcement</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Banned players</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Banned Players</h2>
           </div>
           <div className="divide-y divide-slate-800/80">
             {(bans.data ?? []).map((entry) => (
@@ -154,7 +154,7 @@ export default function PlayersPage() {
         <div className="glass-panel flex min-h-[320px] flex-col items-center justify-center gap-4 p-8 text-center">
           <ShieldAlert className="h-10 w-10 text-amber-300" />
           <div>
-            <h2 className="text-xl font-semibold text-slate-50">Allowlist view</h2>
+            <h2 className="text-xl font-semibold text-slate-50">Allowlist View</h2>
             <p className="mt-2 max-w-xl text-slate-400">Allowlist management is reserved for the backend control plane. Once exposed, the dashboard is ready to surface it here.</p>
           </div>
         </div>
@@ -166,7 +166,7 @@ export default function PlayersPage() {
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300"><Ban className="h-5 w-5" /></div>
               <div>
-                <h3 className="text-xl font-semibold text-slate-50" id="ban-dialog-title">Ban player</h3>
+                <h3 className="text-xl font-semibold text-slate-50" id="ban-dialog-title">Ban Player</h3>
                 <p className="text-sm text-slate-400">{selectedPlayer.name} • {selectedPlayer.steamId}</p>
               </div>
             </div>
