@@ -58,6 +58,44 @@ async def get_status(request: Request) -> dict:
     }
 
 
+@router.get("/public/status")
+async def get_public_status(request: Request) -> dict:
+    """Public-facing status endpoint with no auth and limited data."""
+    docker_service = request.app.state.docker_service
+    services = await docker_service.list_containers()
+
+    readiness = docker_service.evaluate_readiness(services)
+    uptime = docker_service.calculate_uptime(services)
+
+    maps_active = sum(
+        1
+        for service in services
+        if getattr(service, "status", "") == "running"
+        and (
+            docker_service._map_role(getattr(service, "name", "")) in {"survival", "overmap"}
+            or "deepdesert" in getattr(service, "name", "").lower()
+        )
+    )
+
+    player_count = 0
+    try:
+        players = await request.app.state.postgres_service.get_online_players()
+        player_count = len(players)
+    except Exception:  # noqa: BLE001
+        pass
+
+    status_map = {"ok": "online", "warn": "degraded", "fail": "offline"}
+
+    return {
+        "serverName": os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
+        "status": status_map.get(readiness.get("status"), "unknown"),
+        "playersOnline": player_count,
+        "mapsActive": maps_active,
+        "uptimeSeconds": uptime or 0,
+        "lastUpdated": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @router.get("/health")
 async def get_health(request: Request) -> dict[str, object]:
     return {

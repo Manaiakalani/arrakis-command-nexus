@@ -1,4 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -18,9 +19,10 @@ interface StatusCardProps {
   subtitle?: string;
   variant?: Variant;
   trend?: { value: number; direction: 'up' | 'down' };
+  children?: ReactNode;
 }
 
-export function StatusCard({ icon: Icon, title, value, subtitle, variant = 'default', trend }: StatusCardProps) {
+export function StatusCard({ icon: Icon, title, value, subtitle, variant = 'default', trend, children }: StatusCardProps) {
   const TrendIcon = trend?.direction === 'up' ? ArrowUpRight : ArrowDownRight;
 
   return (
@@ -42,6 +44,7 @@ export function StatusCard({ icon: Icon, title, value, subtitle, variant = 'defa
           {trend.value}% vs last window
         </div>
       ) : null}
+      {children ? <div className="mt-4">{children}</div> : null}
     </div>
   );
 }

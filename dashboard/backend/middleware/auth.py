@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-SAFE_PATHS = {"/api/ping", "/api/health"}
+SAFE_PATHS = {"/api/ping", "/api/health", "/api/public/status"}
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 

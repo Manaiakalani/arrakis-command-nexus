@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import configparser
+import hashlib
 import logging
 import os
+from datetime import datetime, timezone
 from io import StringIO
 from pathlib import Path
 
@@ -56,12 +58,64 @@ class ConfigService:
                 ),
             },
         }
+        self._baseline_hashes: dict[str, str] = {}
+        self._drift_status: dict[str, dict] = {}
 
     async def list_configs(self) -> list[str]:
+        return await asyncio.to_thread(self.list_configs_sync)
+
+    def list_configs_sync(self) -> list[str]:
         if not self.config_dir.exists():
             return []
-        files = await asyncio.to_thread(lambda: sorted(path.name for path in self.config_dir.iterdir() if path.is_file()))
+        files = sorted(path.name for path in self.config_dir.iterdir() if path.is_file())
         return [name for name in files if name in self.allowed_files]
+
+    def _compute_hash(self, filepath: Path) -> str:
+        """Compute SHA256 hash of a config file."""
+        if not filepath.exists():
+            return ""
+        return hashlib.sha256(filepath.read_bytes()).hexdigest()[:16]
+
+    def snapshot_baseline(self, filename: str) -> None:
+        """Record the current file hash as the baseline."""
+        self._validate_filename(filename)
+        filepath = self.config_dir / filename
+        current_hash = self._compute_hash(filepath)
+        self._baseline_hashes[filename] = current_hash
+        self._drift_status[filename] = {
+            "drifted": False,
+            "baselineHash": current_hash,
+            "currentHash": current_hash,
+            "detectedAt": None,
+        }
+
+    def check_drift(self, filename: str) -> dict:
+        """Check if a config file has drifted from its baseline."""
+        self._validate_filename(filename)
+        filepath = self.config_dir / filename
+        current_hash = self._compute_hash(filepath)
+        baseline_hash = self._baseline_hashes.get(filename, "")
+
+        if not baseline_hash:
+            self.snapshot_baseline(filename)
+            return self._drift_status[filename]
+
+        drifted = current_hash != baseline_hash
+        self._drift_status[filename] = {
+            "drifted": drifted,
+            "baselineHash": baseline_hash,
+            "currentHash": current_hash,
+            "detectedAt": datetime.now(timezone.utc).isoformat() if drifted else None,
+        }
+        return self._drift_status[filename]
+
+    def check_all_drift(self) -> dict[str, dict]:
+        """Check drift for all known config files."""
+        return {filename: self.check_drift(filename) for filename in self.list_configs_sync()}
+
+    def reset_baseline(self, filename: str) -> None:
+        """Accept current state as the new baseline."""
+        self.snapshot_baseline(filename)
 
     async def read_config(self, filename: str) -> ConfigFile:
         path = self._resolve_file(filename)
@@ -105,9 +159,12 @@ class ConfigService:
     def get_field_definitions(self, filename: str) -> dict[str, ConfigField]:
         return self.field_definitions.get(filename, {})
 
-    def _resolve_file(self, filename: str) -> Path:
+    def _validate_filename(self, filename: str) -> None:
         if filename not in self.allowed_files:
             raise FileNotFoundError(f"Unsupported config file: {filename}")
+
+    def _resolve_file(self, filename: str) -> Path:
+        self._validate_filename(filename)
         path = self.config_dir / filename
         if not path.exists():
             raise FileNotFoundError(f"Config file not found: {filename}")

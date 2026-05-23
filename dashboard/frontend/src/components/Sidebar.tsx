@@ -5,30 +5,42 @@ import { usePathname } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
+  Coins,
   Cpu,
   Database,
+  Globe,
   Home,
   Map,
+  Megaphone,
   MessageSquare,
   Settings,
+  Shield,
+  ShieldAlert,
   Terminal,
+  UserCog,
   Users,
   Worm,
   X,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import type { HealthState } from '@/lib/types';
+import type { HealthState, SystemVersion } from '@/lib/types';
 
 const navigation = [
   { href: '/', label: 'Overview', icon: Home },
   { href: '/maps', label: 'Maps', icon: Map },
   { href: '/players', label: 'Players', icon: Users },
+  { href: '/characters', label: 'Characters', icon: UserCog },
   { href: '/config', label: 'Configuration', icon: Settings },
   { href: '/logs', label: 'Logs', icon: Terminal },
   { href: '/system', label: 'System', icon: Cpu },
+  { href: '/economy', label: 'Economy', icon: Coins },
   { href: '/backups', label: 'Backups', icon: Database },
+  { href: '/moderation', label: 'Moderation', icon: Shield },
   { href: '/discord', label: 'Discord', icon: MessageSquare },
+  { href: '/announcements', label: 'Announcements', icon: Megaphone },
+  { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
+  { href: '/public', label: 'Public Status', icon: Globe },
 ];
 
 const statusMap: Record<HealthState, string> = {
@@ -45,10 +57,12 @@ interface SidebarProps {
   onToggle: () => void;
   onClose: () => void;
   status?: HealthState;
+  version?: SystemVersion;
 }
 
-export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'healthy' }: SidebarProps) {
+export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'healthy', version }: SidebarProps) {
   const pathname = usePathname();
+  const environmentLabel = version?.environment === 'beta' ? 'PTC' : 'Live';
 
   return (
     <>
@@ -132,6 +146,20 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             <>
               <p className="text-xs uppercase tracking-[0.24em] text-amber-200/70">Spice Forecast</p>
               <p className="mt-2 text-sm text-slate-300">High telemetry visibility with live map, player, and service intelligence.</p>
+              <div className="mt-4 space-y-2 border-t border-amber-500/10 pt-4 text-xs text-slate-400">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-[0.18em] text-slate-500">Version</span>
+                  <span className="font-medium text-slate-100">{version?.version ?? 'unknown'}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-[0.18em] text-slate-500">Profile</span>
+                  <span className="font-medium capitalize text-slate-100">{version?.profile ?? 'basic'}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-[0.18em] text-slate-500">Environment</span>
+                  <span className="font-medium text-slate-100">{environmentLabel}</span>
+                </div>
+              </div>
             </>
           )}
         </div>

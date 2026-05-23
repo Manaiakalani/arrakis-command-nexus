@@ -161,6 +161,31 @@ class DockerService:
         services = await self.list_containers()
         return self.calculate_uptime(services)
 
+    async def kick_player(self, steam_id: str) -> bool:
+        """Kick a player by sending RemoveSessionMember command to the director."""
+        if not self.client:
+            return False
+        try:
+            containers = await asyncio.to_thread(
+                lambda: self.client.containers.list(
+                    filters={"label": f"com.docker.compose.project={self.compose_project}"}
+                )
+            )
+            director = next((container for container in containers if "director" in container.name.lower()), None)
+            if not director:
+                logger.warning("Director container not found for kick")
+                return False
+
+            result = await asyncio.to_thread(
+                director.exec_run,
+                f"curl -s http://localhost:8080/api/v1/sessions/members/{steam_id} -X DELETE",
+            )
+            logger.info("Kick result for %s: exit_code=%s", steam_id, result.exit_code)
+            return result.exit_code == 0
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to kick player %s: %s", steam_id, exc)
+            return False
+
     def calculate_uptime(self, services: list[ServiceStatus]) -> float | None:
         running = [service for service in services if service.status == "running" and service.created]
         if not running:

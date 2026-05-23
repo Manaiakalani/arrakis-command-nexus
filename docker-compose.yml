@@ -367,6 +367,14 @@ services:
       DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@postgres:5432/dune_sb_1_4_0_0
       WORLD_NAME: ${WORLD_NAME}
       WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
+      DUNE_RMQ_HOST: game-rmq
+      DUNE_RMQ_PORT: "5672"
+      DUNE_RMQ_TLS_ENABLED: "true"
+      DUNE_RMQ_CA_CERT: /workspace/config/tls/rabbitmq/ca.crt
+      DUNE_RMQ_MANAGEMENT_USER: ${DUNE_RMQ_MANAGEMENT_USER:-}
+      DUNE_RMQ_MANAGEMENT_PASSWORD: ${DUNE_RMQ_MANAGEMENT_PASSWORD:-}
+      DUNE_ANNOUNCE_ENABLED: ${DUNE_ANNOUNCE_ENABLED:-true}
+      DUNE_ANNOUNCE_NAME: ${DUNE_ANNOUNCE_NAME:-Server}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/workspace/config:ro

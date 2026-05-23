@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class MetricsService:
-    def __init__(self, interval_seconds: int = 60, retention: int = 1440) -> None:
+    def __init__(self, interval_seconds: int = 60, retention: int = 43200) -> None:
         self.interval_seconds = max(interval_seconds, 5)
         self.root_path = os.getenv("DUNE_METRICS_DISK_PATH", "/")
-        self.snapshots: deque[SystemMetricSnapshot] = deque(maxlen=retention)
+        self.snapshots: deque[SystemMetricSnapshot] = deque(maxlen=max(retention, 1))
         self._task: asyncio.Task[None] | None = None
         self._previous_net: tuple[int, int] | None = None
         self._previous_disk: tuple[int, int] | None = None
@@ -57,9 +57,13 @@ class MetricsService:
             await self.collect_snapshot()
         return self.snapshots[-1].model_dump(mode="json")
 
-    async def get_history(self, hours: int = 24) -> list[dict[str, Any]]:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=max(hours, 1))
-        return [snapshot.model_dump(mode="json") for snapshot in self.snapshots if snapshot.timestamp >= cutoff]
+    async def get_snapshots(self, duration: timedelta = timedelta(hours=24)) -> list[SystemMetricSnapshot]:
+        cutoff = datetime.now(timezone.utc) - max(duration, timedelta(minutes=1))
+        return [snapshot for snapshot in self.snapshots if snapshot.timestamp >= cutoff]
+
+    async def get_history(self, duration: timedelta = timedelta(hours=24)) -> list[dict[str, Any]]:
+        snapshots = await self.get_snapshots(duration=duration)
+        return [snapshot.model_dump(mode="json") for snapshot in snapshots]
 
     def _collect_snapshot_sync(self) -> SystemMetricSnapshot:
         timestamp = datetime.now(timezone.utc)

@@ -10,7 +10,7 @@ import { apiClient } from '@/lib/api';
 
 export default function MapsPage() {
   const { data: maps = [], refetch } = useApi(() => apiClient.getMaps(), { refreshInterval: 15000, initialData: [] });
-  const { data: players = [] } = useApi(() => apiClient.getPlayers(), { initialData: [] });
+  const { data: players = [] } = useApi(() => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
 
   const totals = useMemo(() => {
     const used = maps.reduce((sum, map) => sum + map.memoryUsedMb, 0);
@@ -62,7 +62,7 @@ export default function MapsPage() {
           <MapCard key={map.name} map={map} onAction={handleAction} />
         ))}
       </div>
-      <HaggaBasinMap players={players} />
+      <HaggaBasinMap players={players} refreshIntervalMs={0} />
     </div>
   );
 }

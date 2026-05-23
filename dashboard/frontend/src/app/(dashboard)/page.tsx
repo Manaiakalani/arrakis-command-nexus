@@ -3,6 +3,8 @@
 import { Activity, Clock3, Database, RefreshCcw, Server, ShieldCheck, Users } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
+import { NetworkSparkline } from '@/components/NetworkSparkline';
+import { ResourceGauge } from '@/components/ResourceGauge';
 import { StatusCard } from '@/components/StatusCard';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
@@ -24,6 +26,12 @@ export default function OverviewPage() {
   const status = useApi(() => apiClient.getStatus(), { refreshInterval: 15000 });
   const readiness = useApi(() => apiClient.getReady(), { refreshInterval: 20000 });
   const maps = useApi(() => apiClient.getMaps(), { refreshInterval: 20000 });
+  const metrics = useApi(() => apiClient.getSystemMetrics(), { refreshInterval: 10000 });
+  const resourceHistory = useApi(() => apiClient.getSystemHistory('1h'), { refreshInterval: 15000, initialData: { range: '1h', points: [] } });
+  const uptime = useApi(() => apiClient.getUptimeData('24h'), {
+    refreshInterval: 30000,
+    initialData: { range: '24h', availabilityPercent: 0, totalUpSeconds: 0, totalDownSeconds: 0, events: [] },
+  });
 
   const serviceSummary = useMemo(() => status.data?.services ?? [], [status.data?.services]);
 
@@ -41,9 +49,31 @@ export default function OverviewPage() {
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatusCard icon={Server} title="Server status" value={status.data?.status ?? 'loading'} subtitle={status.data?.serverName ?? 'Contacting cluster'} variant="default" />
-        <StatusCard icon={Users} title="Players online" value={status.data?.playersOnline ?? 0} subtitle="Across active maps" variant="success" />
-        <StatusCard icon={Activity} title="Maps active" value={status.data?.mapsActive ?? 0} subtitle="Current shard count" variant="warning" />
-        <StatusCard icon={Clock3} title="Uptime" value={formatUptime(status.data?.uptimeSeconds)} subtitle="Gateway process" />
+        <StatusCard icon={Users} title="Players online" value={status.data?.playersOnline ?? 0} subtitle="Across active maps" variant="success">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-500">
+              <span>Network pulse</span>
+              <span>{(metrics.data?.networkInMbps ?? 0).toFixed(2)} / {(metrics.data?.networkOutMbps ?? 0).toFixed(2)} Mbps</span>
+            </div>
+            <NetworkSparkline history={resourceHistory.data?.points ?? []} height={52} />
+          </div>
+        </StatusCard>
+        <StatusCard icon={Activity} title="Resource overview" value={`${(metrics.data?.cpuPercent ?? 0).toFixed(0)}% / ${(metrics.data?.memoryPercent ?? 0).toFixed(0)}%`} subtitle="CPU / RAM live host load" variant="warning">
+          <div className="grid grid-cols-3 gap-2">
+            <ResourceGauge label="CPU" value={metrics.data?.cpuPercent ?? 0} size={76} />
+            <ResourceGauge label="RAM" value={metrics.data?.memoryPercent ?? 0} size={76} />
+            <ResourceGauge label="Disk" value={metrics.data?.diskPercent ?? 0} size={76} />
+          </div>
+        </StatusCard>
+        <StatusCard icon={Clock3} title="Uptime" value={formatUptime(status.data?.uptimeSeconds)} subtitle="Gateway process">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs uppercase tracking-[0.22em] text-amber-200/80">24h availability</span>
+              <span className="text-lg font-semibold tabular-nums text-amber-100">{(uptime.data?.availabilityPercent ?? 0).toFixed(1)}%</span>
+            </div>
+            <p className="mt-2 text-slate-300">{uptime.data?.events.filter((event) => event.status !== 'up').length ?? 0} recent impacted windows</p>
+          </div>
+        </StatusCard>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">

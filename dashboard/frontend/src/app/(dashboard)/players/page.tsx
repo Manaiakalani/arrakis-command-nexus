@@ -1,8 +1,10 @@
 'use client';
 
-import { Ban, ShieldAlert, UserCheck, Users } from 'lucide-react';
-import { useState } from 'react';
+import { Ban, ChevronDown, ChevronUp, LocateFixed, ShieldAlert, UserCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
+import { HaggaBasinMap } from '@/components/HaggaBasinMap';
+import { PlayerHeatmap } from '@/components/PlayerHeatmap';
 import { PlayerTable } from '@/components/PlayerTable';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
@@ -11,13 +13,30 @@ import { cn } from '@/lib/utils';
 
 const tabs = ['online', 'banned', 'allowlist'] as const;
 
+type KickStatus = {
+  tone: 'success' | 'error';
+  message: string;
+};
+
 export default function PlayersPage() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('online');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [reason, setReason] = useState('Rule violation');
   const [duration, setDuration] = useState('24');
+  const [kickStatus, setKickStatus] = useState<KickStatus | null>(null);
+  const [mapExpanded, setMapExpanded] = useState(false);
   const players = useApi(() => apiClient.getPlayers(), { refreshInterval: 10000, initialData: [] });
+  const playerPositions = useApi(() => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
   const bans = useApi(() => apiClient.getBans(), { refreshInterval: 15000, initialData: [] });
+
+  useEffect(() => {
+    if (!kickStatus) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setKickStatus(null), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [kickStatus]);
 
   const handleBan = async () => {
     if (!selectedPlayer) {
@@ -26,7 +45,20 @@ export default function PlayersPage() {
 
     await apiClient.banPlayer(selectedPlayer.steamId, reason, duration ? Number(duration) : undefined);
     setSelectedPlayer(null);
-    await Promise.all([players.refetch(), bans.refetch()]);
+    await Promise.all([players.refetch(), playerPositions.refetch(), bans.refetch()]);
+  };
+
+  const handleKick = async (player: Player) => {
+    try {
+      const response = await apiClient.kickPlayer(player.steamId);
+      setKickStatus({ tone: response.status === 'ok' ? 'success' : 'error', message: response.message });
+      await Promise.all([players.refetch(), playerPositions.refetch()]);
+    } catch (error) {
+      setKickStatus({
+        tone: 'error',
+        message: error instanceof Error ? error.message : `Failed to kick ${player.steamId}`,
+      });
+    }
   };
 
   return (
@@ -47,8 +79,51 @@ export default function PlayersPage() {
         ))}
       </div>
 
+      {kickStatus ? (
+        <div
+          className={cn(
+            'rounded-3xl border px-4 py-3 text-sm',
+            kickStatus.tone === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+          )}
+        >
+          {kickStatus.message}
+        </div>
+      ) : null}
+
       {activeTab === 'online' ? (
-        <PlayerTable players={players.data ?? []} onBan={setSelectedPlayer} />
+        <>
+          <PlayerTable players={players.data ?? []} onBan={setSelectedPlayer} onKick={(player) => void handleKick(player)} />
+          <div className="glass-panel overflow-hidden">
+            <div className="flex flex-col gap-4 border-b border-slate-800/80 p-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="section-title">Spatial telemetry</p>
+                <h2 className="mt-1 text-xl font-semibold text-slate-50">Live player position analysis</h2>
+                <p className="mt-2 text-sm text-slate-400">Expand to inspect the Hagga Basin tactical overlay and density heatmap without leaving the players roster.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200">
+                  <LocateFixed className="h-4 w-4" /> {(playerPositions.data ?? []).length} tracked
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMapExpanded((current) => !current)}
+                  className="dune-button-muted"
+                  aria-label={mapExpanded ? 'Collapse live position analysis' : 'Expand live position analysis'}
+                >
+                  {mapExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            {mapExpanded ? (
+              <div className="space-y-5 p-5">
+                <HaggaBasinMap players={playerPositions.data ?? []} refreshIntervalMs={0} />
+                <PlayerHeatmap players={playerPositions.data ?? []} refreshIntervalMs={0} />
+              </div>
+            ) : null}
+          </div>
+        </>
       ) : null}
 
       {activeTab === 'banned' ? (

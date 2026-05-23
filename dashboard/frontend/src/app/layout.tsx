@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 
 import '@/app/globals.css';
-import { DashboardShell } from '@/components/DashboardShell';
 
 export const metadata: Metadata = {
   title: 'Dune Awakening Dashboard',
@@ -12,9 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
-        <DashboardShell>{children}</DashboardShell>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
