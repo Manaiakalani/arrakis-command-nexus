@@ -5,8 +5,8 @@ services:
       - 1.1.1.1
       - 8.8.8.8
     restart: unless-stopped
+    entrypoint: ["/bin/bash", "/workspace/scripts/survival-pre-start.sh"]
     command:
-      - /home/dune/run.sh
       - -FarmRegion=${WORLD_REGION:-US}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
       - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-beta}
@@ -27,6 +27,8 @@ services:
     environment:
       POD_IP: 192.168.80.10
       NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+      POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
       DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD:-}
       DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
       BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
@@ -63,8 +65,8 @@ services:
       - 1.1.1.1
       - 8.8.8.8
     restart: unless-stopped
+    entrypoint: ["/bin/bash", "/workspace/scripts/survival-pre-start.sh"]
     command:
-      - /home/dune/run.sh
       - -FarmRegion=${WORLD_REGION:-US}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
       - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-beta}
@@ -88,6 +90,8 @@ services:
     environment:
       POD_IP: 192.168.80.11
       NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Overmap
+      POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
       DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD:-}
       DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
       BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}

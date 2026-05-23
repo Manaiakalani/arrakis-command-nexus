@@ -179,6 +179,7 @@ export default function SystemPage() {
           onRangeChange={setRange}
           chartType="area"
           series={[{ key: 'cpuPercent', label: 'CPU', color: '#f59e0b', unit: '%' }]}
+          yDomain={[0, 100]}
         />
         <MetricsChart
           title="Memory pressure"
@@ -188,6 +189,7 @@ export default function SystemPage() {
           onRangeChange={setRange}
           chartType="area"
           series={[{ key: 'memoryPercent', label: 'Memory', color: '#fb923c', unit: '%' }]}
+          yDomain={[0, 100]}
         />
         <MetricsChart
           title="Disk activity"
@@ -197,6 +199,7 @@ export default function SystemPage() {
           onRangeChange={setRange}
           chartType="area"
           series={[{ key: 'diskPercent', label: 'Disk', color: '#fbbf24', unit: '%' }]}
+          yDomain={[0, 100]}
         />
         <MetricsChart
           title="Network throughput"

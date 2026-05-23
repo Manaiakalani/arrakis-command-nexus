@@ -203,7 +203,7 @@ services:
       DB_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
       PARTITION_REPAIR_MAX_WAIT: "120"
       PARTITION_REPAIR_WATCH: "true"
-      PARTITION_REPAIR_WATCH_INTERVAL: "30"
+      PARTITION_REPAIR_WATCH_INTERVAL: "10"
     command:
       - /workspace/scripts/partition_repair.py
     volumes:
