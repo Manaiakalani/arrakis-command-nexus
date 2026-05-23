@@ -51,9 +51,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   <Menu className="h-5 w-5" />
                 </button>
                 <div>
-                  <p className="section-title">Dune Awakening</p>
+                  <p className="section-title">Arrakis Command Nexus</p>
                   <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-semibold text-slate-50">{overview?.serverName ?? 'Arrakis Command'}</h1>
+                    <h1 className="text-2xl font-semibold text-slate-50">{overview?.serverName ?? 'Loading\u2026'}</h1>
                     <div className="hidden items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3 py-1 text-xs text-slate-300 sm:flex">
                       <Signal className="h-3.5 w-3.5 text-amber-300" />
                       {overview?.region ?? 'Self-hosted cluster'}
