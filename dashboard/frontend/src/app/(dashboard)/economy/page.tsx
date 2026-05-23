@@ -94,7 +94,7 @@ export default function EconomyPage() {
             </label>
             <label className="block md:col-span-2">
               <span className="mb-2 block text-sm font-medium text-slate-100">Message</span>
-              <input className="dune-input" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Flag suspicious market behavior..." />
+              <input className="dune-input" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Flag suspicious market behavior\u2026" />
             </label>
             <label className="block md:col-span-2">
               <span className="mb-2 block text-sm font-medium text-slate-100">Details (JSON)</span>
@@ -105,7 +105,7 @@ export default function EconomyPage() {
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
             <span>Thresholds: {summary.data?.solariThreshold?.toLocaleString() ?? 0} Solari • {summary.data?.baseClaimThreshold ?? 0} claims</span>
             <button type="button" className="dune-button" onClick={() => void handleCreateAlert()} disabled={submitting}>
-              <Coins className="mr-2 h-4 w-4" /> {submitting ? 'Creating...' : 'Create alert'}
+              <Coins className="mr-2 h-4 w-4" /> {submitting ? 'Creating\u2026' : 'Create alert'}
             </button>
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function EconomyPage() {
                     onClick={() => void handleAcknowledge(alert.id)}
                     disabled={alert.acknowledged || acknowledgingId === alert.id}
                   >
-                    {alert.acknowledged ? 'Acknowledged' : acknowledgingId === alert.id ? 'Saving...' : 'Acknowledge'}
+                    {alert.acknowledged ? 'Acknowledged' : acknowledgingId === alert.id ? 'Saving\u2026' : 'Acknowledge'}
                   </button>
                 </div>
               </div>

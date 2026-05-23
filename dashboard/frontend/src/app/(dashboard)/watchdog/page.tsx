@@ -83,7 +83,7 @@ export default function WatchdogPage() {
                   className="dune-button-muted px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <RefreshCcw className="mr-2 inline h-4 w-4" />
-                  {restarting === service ? 'Restarting...' : 'Restart'}
+                  {restarting === service ? 'Restarting\u2026' : 'Restart'}
                 </button>
               </div>
             ))}

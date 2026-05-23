@@ -17,6 +17,9 @@ export default function ModerationPage() {
   const violations = useApi(() => apiClient.getChatGuardViolations(), { refreshInterval: 10000, initialData: [] });
 
   const handleClear = async () => {
+    if (!window.confirm('Clear all chat guard violations? This action cannot be undone.')) {
+      return;
+    }
     await apiClient.clearChatGuardViolations();
     await Promise.all([settings.refetch(), violations.refetch()]);
   };

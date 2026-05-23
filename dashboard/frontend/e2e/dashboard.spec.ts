@@ -109,7 +109,7 @@ test.describe('Sidebar mobile behavior', () => {
     await expect(closeBtn).toBeVisible();
 
     // Backdrop should be visible
-    const backdrop = page.locator('[aria-hidden="true"]');
+    const backdrop = page.getByTestId('sidebar-backdrop');
     await expect(backdrop).toHaveCSS('opacity', '1');
   });
 
@@ -122,7 +122,7 @@ test.describe('Sidebar mobile behavior', () => {
     await page.waitForTimeout(400);
 
     // Click backdrop
-    const backdrop = page.locator('[aria-hidden="true"]');
+    const backdrop = page.getByTestId('sidebar-backdrop');
     await backdrop.click({ position: { x: 350, y: 400 } });
     await page.waitForTimeout(400);
 

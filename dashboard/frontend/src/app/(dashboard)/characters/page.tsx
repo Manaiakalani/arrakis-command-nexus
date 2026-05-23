@@ -324,7 +324,7 @@ export default function CharactersPage() {
           <div className="max-h-[720px] space-y-3 overflow-y-auto p-4">
             {characters.loading && (characters.data ?? []).length === 0 ? (
               <div className="flex items-center justify-center gap-3 rounded-3xl border border-slate-800/80 bg-slate-950/30 px-4 py-12 text-slate-400">
-                <Loader2 className="h-5 w-5 animate-spin" /> Loading characters...
+                <Loader2 className="h-5 w-5 animate-spin" /> Loading characters\u2026
               </div>
             ) : null}
 
@@ -397,7 +397,7 @@ export default function CharactersPage() {
                   <RefreshCcw className="mr-2 h-4 w-4" /> Reload
                 </button>
                 <button type="button" className="dune-button" onClick={() => void handleSave()} disabled={!selectedId || saving || !mutationsEnabled}>
-                  <Save className="mr-2 h-4 w-4" /> {saving ? 'Saving...' : 'Save changes'}
+                  <Save className="mr-2 h-4 w-4" /> {saving ? 'Saving\u2026' : 'Save changes'}
                 </button>
               </div>
             </div>

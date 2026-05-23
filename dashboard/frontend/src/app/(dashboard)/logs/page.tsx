@@ -17,7 +17,7 @@ export default function LogsPage() {
           <h2 className="mt-1 text-xl font-semibold text-slate-50">Service logs</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <select value={service} onChange={(event) => setService(event.target.value)} className="dune-input min-w-[200px]">
+          <select value={service} onChange={(event) => setService(event.target.value)} className="dune-input min-w-[200px]" aria-label="Filter by service">
             <option value="all">All services</option>
             <option value="gateway">Gateway</option>
             <option value="director">Director</option>

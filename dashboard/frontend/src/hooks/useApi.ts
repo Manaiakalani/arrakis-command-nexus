@@ -14,6 +14,7 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
   const [data, setData] = useState<T | undefined>(initialData);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
+  const hasData = useRef(initialData !== undefined);
 
   useEffect(() => {
     fetcherRef.current = fetcher;
@@ -25,9 +26,13 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     }
 
     try {
-      setLoading(true);
+      // Only show loading spinner on initial fetch (stale-while-revalidate)
+      if (!hasData.current) {
+        setLoading(true);
+      }
       const next = await fetcherRef.current();
       setData(next);
+      hasData.current = true;
       setError(null);
       return next;
     } catch (err) {
