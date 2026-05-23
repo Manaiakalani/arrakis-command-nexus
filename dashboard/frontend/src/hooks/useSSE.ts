@@ -19,10 +19,15 @@ function defaultParser<T>(raw: string): T {
 }
 
 export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> = {}) {
-  const { enabled = true, maxMessages = 250, parse = defaultParser } = options;
+  const { enabled = true, maxMessages = 250, parse } = options;
   const [messages, setMessages] = useState<T[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const reconnectRef = useRef<number>();
+  const parseRef = useRef(parse ?? defaultParser<T>);
+
+  useEffect(() => {
+    parseRef.current = parse ?? defaultParser<T>;
+  }, [parse]);
 
   useEffect(() => {
     if (!enabled) {
@@ -48,7 +53,7 @@ export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> =
           return;
         }
 
-        const parsed = parse(event.data);
+        const parsed = parseRef.current(event.data);
         setMessages((current) => {
           const next = [...current, parsed];
           return next.slice(-maxMessages);
@@ -76,7 +81,7 @@ export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> =
       source?.close();
       setStatus('closed');
     };
-  }, [enabled, endpoint, maxMessages, parse]);
+  }, [enabled, endpoint, maxMessages]);
 
   return { messages, status, setMessages };
 }
