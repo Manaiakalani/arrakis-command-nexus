@@ -48,7 +48,7 @@ export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> =
         }
       };
 
-      source.onmessage = (event) => {
+      const handleEvent = (event: MessageEvent) => {
         if (!mounted) {
           return;
         }
@@ -59,6 +59,10 @@ export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> =
           return next.slice(-maxMessages);
         });
       };
+
+      // Listen for both unnamed ("message") and named events ("log")
+      source.onmessage = handleEvent;
+      source.addEventListener('log', handleEvent);
 
       source.onerror = () => {
         if (!mounted) {
