@@ -33,7 +33,7 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
           <h3 className="mt-1 text-lg font-semibold text-slate-50">Backup inventory</h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <select value={scope} onChange={(event) => setScope(event.target.value)} className="dune-input min-w-[180px]">
+          <select value={scope} onChange={(event) => setScope(event.target.value)} className="dune-input min-w-[180px]" aria-label="Backup scope">
             <option value="full">Full backup</option>
             <option value="configs">Configs only</option>
             <option value="save-data">Save data</option>

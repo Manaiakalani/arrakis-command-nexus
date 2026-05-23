@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timezone
 
@@ -48,9 +49,11 @@ def _service_to_frontend(svc) -> dict:
 async def get_status(request: Request) -> dict:
     docker_service = request.app.state.docker_service
     postgres_service = request.app.state.postgres_service
-    services = await docker_service.list_containers()
+    services, players = await asyncio.gather(
+        docker_service.list_containers(),
+        postgres_service.get_online_players(),
+    )
     readiness = docker_service.evaluate_readiness(services)
-    players = await postgres_service.get_online_players()
     uptime = docker_service.calculate_uptime(services)
 
     map_roles = {"overmap", "survival"}
@@ -78,7 +81,13 @@ async def get_status(request: Request) -> dict:
 async def get_public_status(request: Request) -> dict:
     """Public-facing status endpoint with no auth and limited data."""
     docker_service = request.app.state.docker_service
-    services = await docker_service.list_containers()
+    services, players_result = await asyncio.gather(
+        docker_service.list_containers(),
+        request.app.state.postgres_service.get_online_players(),
+        return_exceptions=True,
+    )
+    if isinstance(services, BaseException):
+        raise HTTPException(status_code=503, detail="Cannot reach Docker")
 
     readiness = docker_service.evaluate_readiness(services)
     uptime = docker_service.calculate_uptime(services)
@@ -93,12 +102,7 @@ async def get_public_status(request: Request) -> dict:
         )
     )
 
-    player_count = 0
-    try:
-        players = await request.app.state.postgres_service.get_online_players()
-        player_count = len(players)
-    except Exception:  # noqa: BLE001
-        pass
+    player_count = len(players_result) if isinstance(players_result, list) else 0
 
     status_map = {"ok": "online", "warn": "degraded", "fail": "offline"}
 

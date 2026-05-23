@@ -167,17 +167,19 @@ export default function OverviewPage() {
                               type="button"
                               disabled={isBusy}
                               onClick={() => void handleServiceAction(service.name, 'restart')}
-                              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200 disabled:opacity-40"
+                              aria-label={`Restart ${service.label ?? service.name}`}
+                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200 disabled:opacity-40"
                             >
-                              <RefreshCcw className={cn('h-3 w-3', isBusy && 'animate-spin')} /> Restart
+                              <RefreshCcw aria-hidden="true" className={cn('h-3 w-3', isBusy && 'animate-spin')} /> Restart
                             </button>
                             <button
                               type="button"
                               disabled={isBusy}
                               onClick={() => void handleServiceAction(service.name, 'stop')}
-                              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
+                              aria-label={`Stop ${service.label ?? service.name}`}
+                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
                             >
-                              <Square className="h-3 w-3" /> Stop
+                              <Square aria-hidden="true" className="h-3 w-3" /> Stop
                             </button>
                           </>
                         ) : (
@@ -185,9 +187,10 @@ export default function OverviewPage() {
                             type="button"
                             disabled={isBusy}
                             onClick={() => void handleServiceAction(service.name, 'start')}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-40"
+                            aria-label={`Start ${service.label ?? service.name}`}
+                            className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-40"
                           >
-                            <Play className="h-3 w-3" /> Start
+                            <Play aria-hidden="true" className="h-3 w-3" /> Start
                           </button>
                         )}
                       </div>

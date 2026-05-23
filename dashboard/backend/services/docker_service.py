@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -187,9 +188,14 @@ class DockerService:
                 logger.warning("Director container not found for kick")
                 return False
 
+            # Sanitize steam_id to prevent command injection
+            if not re.fullmatch(r"[A-Za-z0-9_\-]+", steam_id):
+                logger.warning("Rejected invalid steam_id: %s", steam_id)
+                return False
+
             result = await asyncio.to_thread(
                 director.exec_run,
-                f"curl -s http://localhost:8080/api/v1/sessions/members/{steam_id} -X DELETE",
+                ["curl", "-s", f"http://localhost:8080/api/v1/sessions/members/{steam_id}", "-X", "DELETE"],
             )
             logger.info("Kick result for %s: exit_code=%s", steam_id, result.exit_code)
             return result.exit_code == 0

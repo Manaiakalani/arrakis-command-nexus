@@ -35,11 +35,11 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
           <label className="flex-1">
             <span className="mb-2 block text-sm font-medium text-slate-100">Webhook name</span>
-            <input className="dune-input" value={newWebhook.name} onChange={(event) => setNewWebhook((current) => ({ ...current, name: event.target.value }))} />
+            <input className="dune-input" name="webhook-name" autoComplete="off" value={newWebhook.name} onChange={(event) => setNewWebhook((current) => ({ ...current, name: event.target.value }))} />
           </label>
           <label className="flex-[2]">
             <span className="mb-2 block text-sm font-medium text-slate-100">Webhook URL</span>
-            <input className="dune-input" value={newWebhook.url} onChange={(event) => setNewWebhook((current) => ({ ...current, url: event.target.value }))} placeholder="https://discord.com/api/webhooks/\u2026" />
+            <input className="dune-input" name="webhook-url" type="url" autoComplete="off" spellCheck={false} value={newWebhook.url} onChange={(event) => setNewWebhook((current) => ({ ...current, url: event.target.value }))} placeholder="https://discord.com/api/webhooks/&#x2026;" />
           </label>
           <button
             type="button"
