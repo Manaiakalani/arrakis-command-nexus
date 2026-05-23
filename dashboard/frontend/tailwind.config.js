@@ -3,6 +3,9 @@ module.exports = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+      },
       colors: {
         dune: {
           night: '#020617',
@@ -36,11 +39,16 @@ module.exports = {
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' }
+        },
+        'pulse-slow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.6' }
         }
       },
       animation: {
         float: 'float 4s ease-in-out infinite',
-        shimmer: 'shimmer 2.5s linear infinite'
+        shimmer: 'shimmer 2.5s linear infinite',
+        'pulse-slow': 'pulse-slow 2s ease-in-out infinite'
       }
     }
   },
