@@ -70,7 +70,7 @@ export default function PlayersPage() {
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'rounded-full border px-4 py-2 text-sm font-medium capitalize transition-[color,background-color,border-color]',
+              'rounded-full border px-4 py-2 text-sm font-medium capitalize transition-[color,background-color,border-color] dune-focus',
               activeTab === tab ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/70 text-slate-400',
             )}
           >
@@ -173,11 +173,11 @@ export default function PlayersPage() {
             <div className="mt-5 space-y-4">
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-100">Reason</span>
-                <input className="dune-input" value={reason} onChange={(event) => setReason(event.target.value)} />
+                <input className="dune-input" name="ban-reason" autoComplete="off" value={reason} onChange={(event) => setReason(event.target.value)} />
               </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-100">Duration (hours)</span>
-                <input className="dune-input" type="number" value={duration} onChange={(event) => setDuration(event.target.value)} />
+                <input className="dune-input" name="ban-duration" type="number" min="0" autoComplete="off" value={duration} onChange={(event) => setDuration(event.target.value)} />
               </label>
             </div>
             <div className="mt-6 flex justify-end gap-3">

@@ -89,7 +89,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
                 type="button"
                 onClick={() => setService(service)}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-[color,background-color,border-color]',
+                  'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-[color,background-color,border-color] dune-focus',
                   selectedService === service
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
                     : 'border-slate-700 bg-slate-900/70 text-slate-400 hover:text-slate-200',
