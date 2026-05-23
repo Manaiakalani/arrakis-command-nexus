@@ -74,6 +74,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
           mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
         )}
         onClick={onClose}
+        data-testid="sidebar-backdrop"
         aria-hidden="true"
       />
 

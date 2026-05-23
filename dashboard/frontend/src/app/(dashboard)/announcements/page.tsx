@@ -77,7 +77,7 @@ export default function AnnouncementsPage() {
               className="dune-input"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder="Attention, sleepers. Maintenance begins at sunset..."
+              placeholder="Attention, sleepers. Maintenance begins at sunset\u2026"
             />
           </label>
           <label className="block">
@@ -91,7 +91,7 @@ export default function AnnouncementsPage() {
             <Megaphone className="mr-2 h-4 w-4" /> Send announcement
           </button>
           <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 px-3 py-3">
-            <select className="dune-input min-w-[120px]" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))}>
+            <select className="dune-input min-w-[120px]" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} aria-label="Pre-restart warning minutes">
               {preRestartOptions.map((option) => (
                 <option key={option} value={option}>
                   {option} minute{option === 1 ? '' : 's'}

@@ -1,5 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -22,7 +22,7 @@ interface StatusCardProps {
   children?: ReactNode;
 }
 
-export function StatusCard({ icon: Icon, title, value, subtitle, variant = 'default', trend, children }: StatusCardProps) {
+export const StatusCard = memo(function StatusCard({ icon: Icon, title, value, subtitle, variant = 'default', trend, children }: StatusCardProps) {
   const TrendIcon = trend?.direction === 'up' ? ArrowUpRight : ArrowDownRight;
 
   return (
@@ -35,7 +35,7 @@ export function StatusCard({ icon: Icon, title, value, subtitle, variant = 'defa
           {subtitle ? <p className="mt-2 text-sm text-slate-400">{subtitle}</p> : null}
         </div>
         <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3 text-amber-300 shadow-dune">
-          <Icon className="h-6 w-6" />
+          <Icon className="h-6 w-6" aria-hidden="true" />
         </div>
       </div>
       {trend ? (
@@ -47,4 +47,4 @@ export function StatusCard({ icon: Icon, title, value, subtitle, variant = 'defa
       {children ? <div className="mt-4">{children}</div> : null}
     </div>
   );
-}
+});

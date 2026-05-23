@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { PolarAngleAxis, RadialBar, RadialBarChart, ResponsiveContainer } from 'recharts';
 
 interface ResourceGaugeProps {
@@ -31,7 +32,7 @@ function resolveGaugeColor(value: number, color?: string) {
   return '#22c55e';
 }
 
-export function ResourceGauge({ label, value, color, size = 148 }: ResourceGaugeProps) {
+export const ResourceGauge = memo(function ResourceGauge({ label, value, color, size = 148 }: ResourceGaugeProps) {
   const normalizedValue = clamp(value);
   const gaugeColor = resolveGaugeColor(normalizedValue, color);
 
@@ -58,4 +59,4 @@ export function ResourceGauge({ label, value, color, size = 148 }: ResourceGauge
       </div>
     </div>
   );
-}
+});

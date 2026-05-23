@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo } from 'react';
+import { memo, useId, useMemo } from 'react';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 import type { MetricsPoint } from '@/lib/types';
@@ -10,7 +10,7 @@ interface NetworkSparklineProps {
   height?: number;
 }
 
-export function NetworkSparkline({ history, height = 64 }: NetworkSparklineProps) {
+export const NetworkSparkline = memo(function NetworkSparkline({ history, height = 64 }: NetworkSparklineProps) {
   const gradientPrefix = useId().replace(/:/g, '');
   const data = useMemo(
     () =>
@@ -41,4 +41,4 @@ export function NetworkSparkline({ history, height = 64 }: NetworkSparklineProps
       </ResponsiveContainer>
     </div>
   );
-}
+});
