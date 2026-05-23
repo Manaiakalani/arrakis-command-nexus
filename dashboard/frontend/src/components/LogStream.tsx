@@ -115,23 +115,31 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
           </div>
         </div>
       </div>
-      <div ref={containerRef} className="max-h-[65vh] overflow-auto bg-slate-950/80 p-4 font-mono text-sm leading-6 text-slate-200">
+      <div ref={containerRef} className="max-h-[70vh] min-h-[400px] overflow-auto bg-slate-950/90 p-3 font-mono text-[13px] leading-relaxed">
         {visibleMessages.length > 0 ? (
-          <div className="space-y-2">
-            {visibleMessages.map((entry) => (
-              <div key={entry.id} className="grid gap-2 rounded-xl border border-slate-800/80 bg-slate-900/50 p-3 lg:grid-cols-[180px_120px_1fr] lg:items-start">
-                <div className="text-xs tabular-nums text-slate-500">{new Date(entry.timestamp).toLocaleString()}</div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-slate-400">{entry.service}</span>
-                  <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em]', severityClasses[entry.level])}>{entry.level}</span>
-                </div>
-                <p className="break-words text-slate-200">{entry.message}</p>
-              </div>
-            ))}
-          </div>
+          <table className="w-full border-collapse">
+            <tbody>
+              {visibleMessages.map((entry) => (
+                <tr key={entry.id} className="border-b border-slate-800/40 hover:bg-slate-900/60">
+                  <td className="whitespace-nowrap px-2 py-1.5 align-top tabular-nums text-slate-500">{new Date(entry.timestamp).toLocaleTimeString()}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 align-top">
+                    <span className={cn('inline-block w-[3.5rem] text-center rounded border px-1 py-0.5 text-[10px] font-bold uppercase', severityClasses[entry.level])}>{entry.level}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-1.5 align-top text-slate-400">{entry.service.replace('dune-awakening-', '').replace(/-1$/, '')}</td>
+                  <td className="w-full break-all px-2 py-1.5 align-top text-slate-200">{entry.message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (
-          <div className="flex min-h-[320px] items-center justify-center text-slate-500">No matching log events yet.</div>
+          <div className="flex min-h-[320px] items-center justify-center text-slate-500">
+            {status === 'connecting' ? 'Connecting to log stream\u2026' : 'No matching log events yet.'}
+          </div>
         )}
+      </div>
+      <div className="flex items-center justify-between border-t border-slate-800/80 px-4 py-2 text-xs text-slate-500">
+        <span>{visibleMessages.length} entries</span>
+        <span>{messages.length} total in buffer</span>
       </div>
     </div>
   );
