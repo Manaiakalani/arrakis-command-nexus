@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import PlainTextResponse
 
 router = APIRouter(tags=["system"])
 
@@ -177,6 +178,69 @@ def _build_uptime_payload(snapshots: list[Any], duration: timedelta, interval_se
 async def get_system_metrics(request: Request) -> dict[str, object]:
     raw = await request.app.state.metrics_service.get_current_metrics()
     return _format_snapshot(raw)
+
+
+# Widget -> field mapping for selective export
+_WIDGET_FIELDS: dict[str, list[str]] = {
+    "cpu": ["timestamp", "cpuPercent"],
+    "memory": ["timestamp", "memoryPercent", "memoryUsedGb", "memoryTotalGb"],
+    "disk": ["timestamp", "diskPercent", "diskUsedGb", "diskTotalGb"],
+    "network": ["timestamp", "networkInMbps", "networkOutMbps"],
+}
+
+
+@router.get("/system/export", response_model=None)
+async def export_system_metrics(
+    request: Request,
+    range: str = Query(default="24h", alias="range"),
+    widget: str | None = Query(default=None, description="Filter by widget: cpu, memory, disk, network"),
+    format: str = Query(default="csv", description="Export format: csv or json"),
+) -> PlainTextResponse:
+    """Export stored system metrics as CSV or JSON, optionally filtered to a single widget."""
+    import io
+    import json as json_module
+
+    duration = _parse_range_to_duration(range)
+    history = await request.app.state.metrics_service.get_history(duration=duration)
+    points = [_format_snapshot(snapshot) for snapshot in history]
+
+    # Filter fields if widget specified
+    widget_key = (widget or "").strip().lower()
+    fields = _WIDGET_FIELDS.get(widget_key) if widget_key else None
+
+    if fields:
+        points = [{k: p[k] for k in fields if k in p} for p in points]
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    widget_suffix = f"-{widget_key}" if widget_key and widget_key in _WIDGET_FIELDS else ""
+
+    if format.strip().lower() == "json":
+        content = json_module.dumps({"range": range, "widget": widget_key or "all", "points": points}, indent=2, default=str)
+        return PlainTextResponse(
+            content=content,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="nexus-system{widget_suffix}-{stamp}.json"'},
+        )
+
+    # CSV format
+    if not points:
+        return PlainTextResponse(
+            content="No data points available for the selected range.",
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="nexus-system{widget_suffix}-{stamp}.csv"'},
+        )
+
+    headers = list(points[0].keys())
+    buf = io.StringIO()
+    buf.write(",".join(headers) + "\n")
+    for point in points:
+        buf.write(",".join(str(point.get(h, "")) for h in headers) + "\n")
+
+    return PlainTextResponse(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="nexus-system{widget_suffix}-{stamp}.csv"'},
+    )
 
 
 @router.get("/system/history")
