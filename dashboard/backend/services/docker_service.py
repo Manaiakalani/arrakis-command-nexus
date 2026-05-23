@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -35,6 +36,8 @@ class DockerService:
             "dashboard": ("dashboard",),
         }
         self.critical_roles = {"gateway", "director", "postgres"}
+        self._stats_cache: dict[str, tuple[float, dict[str, float | None]]] = {}
+        self._stats_ttl = 5.0  # seconds
 
     async def start(self) -> None:
         await asyncio.to_thread(self._connect)
@@ -68,16 +71,23 @@ class DockerService:
         return [self._to_service_status(container) for container in containers]
 
     async def get_container_stats(self, name: str) -> dict[str, float | None]:
+        now = time.monotonic()
+        cached = self._stats_cache.get(name)
+        if cached and (now - cached[0]) < self._stats_ttl:
+            return cached[1]
+
         container = await self._get_container(name)
         stats = await asyncio.to_thread(lambda: container.stats(stream=False))
         cpu_percent = self._calculate_cpu_percent(stats)
         memory_usage = float(stats.get("memory_stats", {}).get("usage", 0)) / (1024 * 1024)
         memory_limit = float(stats.get("memory_stats", {}).get("limit", 0)) / (1024 * 1024)
-        return {
+        result = {
             "cpu_percent": cpu_percent,
             "memory_usage_mb": round(memory_usage, 2),
             "memory_limit_mb": round(memory_limit, 2) if memory_limit else None,
         }
+        self._stats_cache[name] = (now, result)
+        return result
 
     async def restart_container(self, name: str) -> dict[str, str]:
         container = await self._get_container(name)
@@ -134,28 +144,29 @@ class DockerService:
 
     async def list_map_statuses(self) -> list[MapStatus]:
         services = await self.list_containers()
-        maps: list[MapStatus] = []
-        for service in services:
-            role = self._map_role(service.name)
-            if role not in {"overmap", "survival"}:
-                continue
+        map_services = [
+            s for s in services if self._map_role(s.name) in {"overmap", "survival"}
+        ]
+        if not map_services:
+            return []
+
+        async def _collect(service: ServiceStatus) -> MapStatus:
             stats: dict[str, float | None] = {}
             try:
                 stats = await self.get_container_stats(service.name)
             except Exception as exc:  # noqa: BLE001
                 logger.debug("Could not collect stats for %s: %s", service.name, exc)
-            maps.append(
-                MapStatus(
-                    name=service.name,
-                    status=service.status,
-                    player_count=0,
-                    memory_usage_mb=stats.get("memory_usage_mb") if stats else None,
-                    memory_limit_mb=stats.get("memory_limit_mb") if stats else None,
-                    port=self._extract_primary_port(service.ports),
-                    partition=role,
-                )
+            return MapStatus(
+                name=service.name,
+                status=service.status,
+                player_count=0,
+                memory_usage_mb=stats.get("memory_usage_mb") if stats else None,
+                memory_limit_mb=stats.get("memory_limit_mb") if stats else None,
+                port=self._extract_primary_port(service.ports),
+                partition=self._map_role(service.name),
             )
-        return maps
+
+        return list(await asyncio.gather(*[_collect(s) for s in map_services]))
 
     async def get_uptime_seconds(self) -> float | None:
         services = await self.list_containers()
