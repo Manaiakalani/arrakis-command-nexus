@@ -5,6 +5,8 @@ import contextlib
 import logging
 from typing import Any
 
+from db.database import SessionLocal
+
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,6 +100,19 @@ class DiscordService:
 
     async def queue_event(self, session: AsyncSession, event_type: str, title: str, message: str) -> int:
         return await self.announce(session, title, message, event_type)
+
+    async def enqueue(self, event_type: str, message: str, title: str | None = None) -> int:
+        async with SessionLocal() as session:
+            webhooks = await self._select_targets(session, event_type=event_type)
+            rendered_title = title or f"Dune Dashboard {event_type.title()}"
+            for webhook in webhooks:
+                await self.queue.put(
+                    {
+                        "url": webhook.url,
+                        "payload": self._build_payload(event_type, rendered_title, message),
+                    }
+                )
+            return len(webhooks)
 
     async def _select_targets(
         self,

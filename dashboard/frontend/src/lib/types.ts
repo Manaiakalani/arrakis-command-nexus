@@ -39,6 +39,16 @@ export interface MapStatus {
   notes?: string;
 }
 
+export interface PlayerPosition {
+  name: string;
+  steamId: string;
+  map: string;
+  x: number | null;
+  y: number | null;
+  z: number | null;
+  sessionSeconds: number;
+}
+
 export interface Player {
   name: string;
   steamId: string;
@@ -55,6 +65,7 @@ export interface Player {
   } | null;
   x?: number | null;
   y?: number | null;
+  z?: number | null;
 }
 
 export interface BanEntry {
@@ -78,11 +89,19 @@ export interface ConfigField {
   options?: Array<{ label: string; value: string }>;
 }
 
+export interface ConfigDriftStatus {
+  drifted: boolean;
+  baselineHash: string;
+  currentHash: string;
+  detectedAt: string | null;
+}
+
 export interface ConfigFile {
   filename: string;
   title: string;
   description?: string;
   fields: ConfigField[];
+  drift?: ConfigDriftStatus;
 }
 
 export interface SystemMetrics {
@@ -112,6 +131,26 @@ export interface MetricsHistory {
   points: MetricsPoint[];
 }
 
+export interface UptimePoint {
+  timestamp: string;
+  status: 'up' | 'down' | 'degraded';
+  durationSeconds: number;
+}
+
+export interface UptimeData {
+  range: string;
+  availabilityPercent: number;
+  totalUpSeconds: number;
+  totalDownSeconds: number;
+  events: UptimePoint[];
+}
+
+export interface SystemVersion {
+  version: string;
+  profile: string;
+  environment: string;
+}
+
 export interface BackupEntry {
   id: string;
   name: string;
@@ -124,8 +163,11 @@ export interface BackupEntry {
 
 export interface BackupSchedule {
   enabled: boolean;
-  cron: string;
+  intervalHours: number;
   retentionDays: number;
+  lastRunAt?: string | null;
+  nextRunAt?: string | null;
+  cron?: string;
 }
 
 export interface DiscordEventRecord {
@@ -147,6 +189,14 @@ export interface DiscordWebhook {
   recentEvents?: DiscordEventRecord[];
 }
 
+export interface AnnouncementHistoryEntry {
+  message: string;
+  sender: string;
+  timestamp: string;
+  status: 'sent' | 'failed' | 'skipped';
+  error?: string;
+}
+
 export interface ReadinessCheck {
   name: string;
   status: 'ok' | 'warn' | 'fail';
@@ -165,4 +215,91 @@ export interface LogEvent {
   service: string;
   level: Severity;
   message: string;
+}
+
+export interface WatchdogStatus {
+  enabled: boolean;
+  autoRestart: boolean;
+  intervalSeconds: number;
+  monitoredContainers: number;
+}
+
+export interface WatchdogCrashEvent {
+  service: string;
+  timestamp: string;
+  exitCode?: number | null;
+  restarted: boolean;
+  message: string;
+}
+
+export interface EconomySummary {
+  enabled: boolean;
+  checkIntervalSeconds: number;
+  solariThreshold: number;
+  baseClaimThreshold: number;
+  totalAlerts: number;
+  unacknowledgedAlerts: number;
+}
+
+export interface EconomyAlert {
+  id: string;
+  type: string;
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  details: Record<string, unknown>;
+  timestamp: string;
+  acknowledged: boolean;
+}
+
+export interface ManualEconomyAlertRequest {
+  type?: string;
+  severity?: 'info' | 'warning' | 'critical';
+  message: string;
+  details?: Record<string, unknown> | null;
+}
+
+export interface ChatGuardSettings {
+  enabled: boolean;
+  maxConsecutive: number;
+  rateWindowSeconds: number;
+  rateMaxMessages: number;
+  autoKick: boolean;
+  totalViolations: number;
+}
+
+export interface ChatGuardViolation {
+  steamId: string;
+  playerName: string;
+  type: 'consecutive_duplicate' | 'rate_limit' | 'pattern_match';
+  message: string;
+  action: 'warned' | 'muted' | 'kicked';
+  timestamp: string;
+}
+
+export interface CharacterStatField {
+  key: string;
+  label: string;
+  type: 'number' | 'string' | 'boolean';
+  category: 'stats' | 'economy' | 'specialization' | 'faction';
+}
+
+export interface CharacterSummary {
+  mutationsEnabled: boolean;
+  editableStats: number;
+  categories: CharacterStatField['category'][];
+}
+
+export interface CharacterRecord {
+  id: string;
+  name: string;
+  source?: string;
+  table?: string;
+  lastUpdated?: string | null;
+  stats: Record<string, number | string | boolean | null>;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CharacterStatsSchema {
+  stats: CharacterStatField[];
+  summary: CharacterSummary;
 }

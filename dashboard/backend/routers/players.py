@@ -25,26 +25,30 @@ async def _write_audit(session: AsyncSession, action: str, details: dict[str, ob
     )
 
 
+def _compute_session_seconds(p) -> int:
+    if not p.session_start:
+        return 0
+    try:
+        start = p.session_start
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        return max(0, int((datetime.now(timezone.utc) - start).total_seconds()))
+    except Exception:
+        return 0
+
+
 def _player_to_frontend(p) -> dict:
     """Convert backend Player model to frontend expected shape."""
-    session_seconds = 0
-    if p.session_start:
-        try:
-            start = p.session_start
-            if start.tzinfo is None:
-                start = start.replace(tzinfo=timezone.utc)
-            session_seconds = max(0, int((datetime.now(timezone.utc) - start).total_seconds()))
-        except Exception:
-            pass
     return {
         "name": p.name or "Unknown",
         "steamId": p.steam_id,
         "map": p.map_name or "Unknown",
         "map_name": p.map_name,
-        "sessionSeconds": session_seconds,
+        "sessionSeconds": _compute_session_seconds(p),
         "position": p.position,
         "x": p.position.get("x") if p.position else None,
         "y": p.position.get("y") if p.position else None,
+        "z": p.position.get("z") if p.position else None,
     }
 
 
@@ -67,6 +71,53 @@ def _ban_to_frontend(entry) -> dict:
 async def list_players(request: Request) -> list[dict]:
     players = await request.app.state.postgres_service.get_online_players()
     return [_player_to_frontend(p) for p in players]
+
+
+@router.get("/players/positions")
+async def get_player_positions(request: Request) -> list[dict]:
+    """Get player positions optimized for map rendering."""
+    players = await request.app.state.postgres_service.get_online_players()
+    return [
+        {
+            "name": p.name or "Unknown",
+            "steamId": p.steam_id,
+            "map": p.map_name or "Unknown",
+            "x": p.position.get("x") if p.position else None,
+            "y": p.position.get("y") if p.position else None,
+            "z": p.position.get("z") if p.position else None,
+            "sessionSeconds": _compute_session_seconds(p),
+        }
+        for p in players
+    ]
+
+
+class KickRequest(BaseModel):
+    steamId: str | None = None
+    steam_id: str | None = None
+    reason: str = "Kicked by admin"
+
+
+@router.post("/players/kick")
+async def kick_player(
+    payload: KickRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    sid = payload.steamId or payload.steam_id
+    if not sid:
+        raise HTTPException(status_code=422, detail="steamId is required")
+
+    docker_service = request.app.state.docker_service
+    success = await docker_service.kick_player(sid)
+
+    await _write_audit(session, "player_kick", {"steam_id": sid, "reason": payload.reason}, request)
+    await session.commit()
+
+    return {
+        "status": "ok" if success else "failed",
+        "steamId": sid,
+        "message": f"Player {sid} kicked" if success else "Kick command sent but player may not have been found",
+    }
 
 
 @router.get("/players/bans")

@@ -1,6 +1,6 @@
 'use client';
 
-import { Save } from 'lucide-react';
+import { AlertTriangle, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { ConfigFile, ConfigField } from '@/lib/types';
@@ -9,13 +9,14 @@ import { cn } from '@/lib/utils';
 interface ConfigEditorProps {
   files: ConfigFile[];
   onSave: (filename: string, data: Record<string, string | number | boolean>) => Promise<void> | void;
+  onAcceptDrift?: (filename: string) => Promise<void> | void;
 }
 
 function fieldKey(field: ConfigField) {
   return `${field.section}.${field.key}`;
 }
 
-export function ConfigEditor({ files, onSave }: ConfigEditorProps) {
+export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps) {
   const [selected, setSelected] = useState(files[0]?.filename ?? '');
   const [drafts, setDrafts] = useState<Record<string, Record<string, string | number | boolean>>>({});
 
@@ -149,29 +150,68 @@ export function ConfigEditor({ files, onSave }: ConfigEditorProps) {
     await onSave(activeFile.filename, drafts[activeFile.filename] ?? {});
   };
 
+  const handleAcceptDrift = async () => {
+    if (!activeFile || !onAcceptDrift) {
+      return;
+    }
+
+    await onAcceptDrift(activeFile.filename);
+  };
+
   return (
     <div className="glass-panel overflow-hidden">
       <div className="border-b border-slate-800/80 p-4 sm:p-5">
         <div className="flex flex-wrap gap-2">
-          {files.map((file) => (
-            <button
-              key={file.filename}
-              type="button"
-              onClick={() => setSelected(file.filename)}
-              className={cn(
-                'rounded-full border px-4 py-2 text-sm font-medium transition-[color,background-color,border-color]',
-                selected === file.filename
-                  ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
-                  : 'border-slate-700 bg-slate-900/70 text-slate-400 hover:text-slate-200',
-              )}
-            >
-              {file.filename}
-            </button>
-          ))}
+          {files.map((file) => {
+            const drifted = file.drift?.drifted;
+            return (
+              <button
+                key={file.filename}
+                type="button"
+                onClick={() => setSelected(file.filename)}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-[color,background-color,border-color]',
+                  selected === file.filename
+                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
+                    : 'border-slate-700 bg-slate-900/70 text-slate-400 hover:text-slate-200',
+                  drifted && 'border-amber-500/50 bg-amber-500/10 text-amber-100',
+                )}
+              >
+                <span>{file.filename}</span>
+                {drifted ? (
+                  <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-200">
+                    Drifted
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
         <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           Changes will be applied after restart. Save carefully before rotating the active shards.
         </div>
+        {activeFile?.drift?.drifted ? (
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+              <div>
+                <p className="font-medium text-amber-100">Config has changed since last baseline</p>
+                <p className="mt-1 text-amber-100/80">
+                  Baseline {activeFile.drift.baselineHash || 'none'} · Current {activeFile.drift.currentHash || 'missing'}
+                </p>
+              </div>
+            </div>
+            {onAcceptDrift ? (
+              <button
+                type="button"
+                onClick={() => void handleAcceptDrift()}
+                className="rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+              >
+                Accept Changes
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div className="space-y-6 p-4 sm:p-5">
         {sections.map(([section, fields]) => (

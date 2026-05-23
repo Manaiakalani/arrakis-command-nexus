@@ -12,6 +12,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: overview } = useApi(() => apiClient.getStatus(), { refreshInterval: 15000 });
+  const { data: version } = useApi(() => apiClient.getVersion(), { refreshInterval: 60000 });
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((current) => !current);
@@ -35,6 +36,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           onClose={closeMobile}
           onToggle={toggleSidebar}
           status={overview?.status}
+          version={version}
         />
         <div className={cn('flex min-h-screen flex-1 flex-col transition-all duration-300', collapsed ? 'lg:ml-24' : 'lg:ml-80')}>
           <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">

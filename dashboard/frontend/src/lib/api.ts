@@ -1,14 +1,29 @@
 import {
+  AnnouncementHistoryEntry,
   BackupEntry,
+  BackupSchedule,
+  BanEntry,
+  CharacterRecord,
+  CharacterStatsSchema,
+  PlayerPosition,
+  ChatGuardSettings,
+  ChatGuardViolation,
+  ConfigDriftStatus,
   ConfigFile,
   DiscordWebhook,
-  BanEntry,
+  EconomyAlert,
+  EconomySummary,
+  ManualEconomyAlertRequest,
   MapStatus,
   MetricsHistory,
   Player,
   ReadinessStatus,
   ServerOverview,
   SystemMetrics,
+  SystemVersion,
+  UptimeData,
+  WatchdogCrashEvent,
+  WatchdogStatus,
 } from '@/lib/types';
 
 const DEFAULT_BASE_URL = '/api';
@@ -87,6 +102,36 @@ export class ApiClient {
     return this.request<Player[]>('/players');
   }
 
+  getCharacters() {
+    return this.request<CharacterRecord[]>('/characters');
+  }
+
+  getCharacterStatsSchema() {
+    return this.request<CharacterStatsSchema>('/characters/stats-schema');
+  }
+
+  getCharacter(id: string) {
+    return this.request<CharacterRecord>(`/characters/${encodeURIComponent(id)}`);
+  }
+
+  updateCharacter(id: string, updates: Record<string, unknown>) {
+    return this.request<CharacterRecord>(`/characters/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ updates }),
+    });
+  }
+
+  getPlayerPositions() {
+    return this.request<PlayerPosition[]>('/players/positions');
+  }
+
+  kickPlayer(steamId: string, reason?: string) {
+    return this.request<{ status: string; steamId: string; message: string }>('/players/kick', {
+      method: 'POST',
+      body: JSON.stringify({ steamId, reason: reason ?? 'Kicked by admin' }),
+    });
+  }
+
   banPlayer(steamId: string, reason: string, duration?: number) {
     return this.request<BanEntry>('/players/bans', {
       method: 'POST',
@@ -106,6 +151,14 @@ export class ApiClient {
     return this.request<ConfigFile>(`/config/${encodeURIComponent(filename)}`);
   }
 
+  getConfigDrift() {
+    return this.request<{ files: Record<string, ConfigDriftStatus> }>('/config/drift');
+  }
+
+  acceptConfigDrift(filename: string) {
+    return this.request<{ status: string }>(`/config/${encodeURIComponent(filename)}/accept-drift`, { method: 'POST' });
+  }
+
   updateConfig(filename: string, data: Record<string, unknown>) {
     return this.request<ConfigFile>(`/config/${encodeURIComponent(filename)}`, {
       method: 'PUT',
@@ -119,6 +172,14 @@ export class ApiClient {
 
   getSystemHistory(range: string) {
     return this.request<MetricsHistory>(`/system/history?range=${encodeURIComponent(range)}`);
+  }
+
+  getUptimeData(range: string) {
+    return this.request<UptimeData>(`/system/uptime?range=${encodeURIComponent(range)}`);
+  }
+
+  getVersion() {
+    return this.request<SystemVersion>('/system/version');
   }
 
   getBackups() {
@@ -138,6 +199,17 @@ export class ApiClient {
 
   deleteBackup(id: string) {
     return this.request<void>(`/backups/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  getBackupSchedule() {
+    return this.request<BackupSchedule>('/backups/schedule');
+  }
+
+  updateBackupSchedule(schedule: Partial<BackupSchedule>) {
+    return this.request<BackupSchedule>('/backups/schedule', {
+      method: 'PUT',
+      body: JSON.stringify(schedule),
+    });
   }
 
   getDiscordWebhooks() {
@@ -171,6 +243,69 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify({ text }),
     });
+  }
+
+  sendGameAnnouncement(message: string, sender?: string) {
+    return this.request<{ success: boolean; message: string }>('/announce', {
+      method: 'POST',
+      body: JSON.stringify({ message, sender }),
+    });
+  }
+
+  sendPreRestartWarning(minutes: number = 5) {
+    return this.request<{ success: boolean }>('/announce/pre-restart', {
+      method: 'POST',
+      body: JSON.stringify({ minutes }),
+    });
+  }
+
+  getAnnouncementHistory() {
+    return this.request<AnnouncementHistoryEntry[]>('/announce/history');
+  }
+
+  getChatGuardSettings() {
+    return this.request<ChatGuardSettings>('/chat-guard/settings');
+  }
+
+  getChatGuardViolations() {
+    return this.request<ChatGuardViolation[]>('/chat-guard/violations');
+  }
+
+  clearChatGuardViolations() {
+    return this.request<{ status: string; message: string }>('/chat-guard/violations', { method: 'DELETE' });
+  }
+
+  getEconomySummary() {
+    return this.request<EconomySummary>('/economy/summary');
+  }
+
+  getEconomyAlerts() {
+    return this.request<EconomyAlert[]>('/economy/alerts');
+  }
+
+  acknowledgeAlert(alertId: string) {
+    return this.request<{ status: string }>(`/economy/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+      method: 'POST',
+    });
+  }
+
+  createEconomyAlert(data: ManualEconomyAlertRequest) {
+    return this.request<EconomyAlert>('/economy/alerts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  getWatchdogStatus() {
+    return this.request<WatchdogStatus>('/watchdog/status');
+  }
+
+  getWatchdogCrashes() {
+    return this.request<WatchdogCrashEvent[]>('/watchdog/crashes');
+  }
+
+  restartService(service: string) {
+    return this.request<{ status: string; service: string; restarted: boolean }>(`/watchdog/restart/${encodeURIComponent(service)}`, { method: 'POST' });
   }
 
   getLogStreamUrl() {

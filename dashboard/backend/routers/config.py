@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session
 from models.config import ConfigUpdate
+from services.backup_service import BackupService
 from services.config_service import ConfigService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["config"])
 
@@ -52,11 +58,33 @@ async def list_configs(request: Request) -> dict[str, object]:
     return {"files": files, "definitions": {name: defs for name, defs in ((file, service.get_field_definitions(file)) for file in files)}}
 
 
+@router.get("/config/drift")
+async def get_drift_status(request: Request) -> dict:
+    """Get drift status for all config files."""
+    service: ConfigService = request.app.state.config_service
+    drift = await asyncio.to_thread(service.check_all_drift)
+    return {"files": drift}
+
+
+@router.post("/config/{filename}/accept-drift")
+async def accept_drift(filename: str, request: Request) -> dict:
+    """Accept current config as new baseline."""
+    try:
+        service: ConfigService = request.app.state.config_service
+        await asyncio.to_thread(service.reset_baseline, filename)
+        return {"status": "ok", "filename": filename}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.get("/config/{filename}")
 async def get_config(filename: str, request: Request) -> dict:
     try:
-        config = await request.app.state.config_service.read_config(filename)
-        return _config_to_frontend(config)
+        service: ConfigService = request.app.state.config_service
+        config = await service.read_config(filename)
+        result = _config_to_frontend(config)
+        result["drift"] = await asyncio.to_thread(service.check_drift, filename)
+        return result
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -71,6 +99,11 @@ async def update_config(
     try:
         # Frontend sends { "section.key": value } - convert to ConfigUpdate calls
         service: ConfigService = request.app.state.config_service
+        backup_service: BackupService = request.app.state.backup_service
+        try:
+            await backup_service.create_backup(scope="configs")
+        except Exception as exc:
+            logger.warning("Pre-save config backup failed for %s: %s", filename, exc)
         for compound_key, value in payload.items():
             if "." not in compound_key:
                 continue

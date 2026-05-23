@@ -45,6 +45,8 @@ Commands:
   backup [--scope SCOPE]  Create a backup (full, config, db)
   restore <file>          Restore a backup file
   update                  Download and load new Funcom images
+  self-update             Update the Dune management tooling
+  profile                 Show or switch deployment profiles
   doctor                  Run detailed health diagnostics
   dashboard               Open the dashboard in a browser
   preflight               Run quick pre-start validation
@@ -264,6 +266,12 @@ main() {
       ;;
     update)
       exec "$PROJECT_ROOT/scripts/update.sh" "$@"
+      ;;
+    self-update)
+      exec "$PROJECT_ROOT/scripts/self-update.sh" "$@"
+      ;;
+    profile)
+      exec "$PROJECT_ROOT/scripts/profile.sh" "$@"
       ;;
     doctor)
       exec "$PROJECT_ROOT/scripts/health-check.sh" "$@"

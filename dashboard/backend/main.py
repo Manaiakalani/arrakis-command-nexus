@@ -13,14 +13,20 @@ from fastapi.responses import FileResponse
 from db.database import dispose_db, init_db
 from middleware.auth import AdminTokenMiddleware
 from middleware.redaction import redact
-from routers import backups, config, discord, logs, maps, players, status, system
+from routers import announce, backups, characters, chat_guard, config, discord, economy, logs, maps, players, status, system, watchdog
+from services.announce_service import AnnounceService
+from services.backup_scheduler import BackupScheduler
 from services.backup_service import BackupService
+from services.character_service import CharacterService
+from services.chat_guard_service import ChatGuardService
 from services.config_service import ConfigService
 from services.discord_service import DiscordService
 from services.docker_service import DockerService
+from services.economy_service import EconomyService
 from services.log_service import LogService
 from services.metrics_service import MetricsService
 from services.postgres_service import PostgresService
+from services.watchdog_service import WatchdogService
 
 load_dotenv()
 
@@ -52,28 +58,51 @@ async def lifespan(app: FastAPI):
 
     docker_service = DockerService()
     config_service = ConfigService()
-    metrics_service = MetricsService(interval_seconds=int(os.getenv("DUNE_METRICS_INTERVAL", "60")))
+    metrics_service = MetricsService(
+        interval_seconds=int(os.getenv("DUNE_METRICS_INTERVAL", "60")),
+        retention=int(os.getenv("DUNE_METRICS_RETENTION", "43200")),
+    )
     backup_service = BackupService()
+    backup_scheduler = BackupScheduler(backup_service)
+    announce_service = AnnounceService()
     discord_service = DiscordService()
     postgres_service = PostgresService()
+    character_service = CharacterService(postgres_service=postgres_service)
+    economy_service = EconomyService(postgres_service=postgres_service)
     log_service = LogService(docker_service)
+    chat_guard_service = ChatGuardService(docker_service=docker_service)
+    watchdog_service = WatchdogService(docker_service, discord_service)
 
     app.state.docker_service = docker_service
     app.state.config_service = config_service
     app.state.metrics_service = metrics_service
     app.state.backup_service = backup_service
+    app.state.backup_scheduler = backup_scheduler
+    app.state.announce_service = announce_service
     app.state.discord_service = discord_service
     app.state.postgres_service = postgres_service
+    app.state.character_service = character_service
+    app.state.economy_service = economy_service
     app.state.log_service = log_service
+    app.state.chat_guard_service = chat_guard_service
+    app.state.watchdog_service = watchdog_service
 
     await docker_service.start()
     await postgres_service.start()
     await metrics_service.start()
     await discord_service.start()
+    await backup_scheduler.start()
+    await watchdog_service.start()
+    await economy_service.start()
+    await chat_guard_service.start()
     logger.info("Dune dashboard backend started")
     try:
         yield
     finally:
+        await chat_guard_service.stop()
+        await economy_service.stop()
+        await watchdog_service.stop()
+        await backup_scheduler.stop()
         await discord_service.stop()
         await metrics_service.stop()
         await postgres_service.close()
@@ -95,6 +124,7 @@ app.add_middleware(
 app.add_middleware(AdminTokenMiddleware)
 
 app.include_router(status.router, prefix="/api")
+app.include_router(announce.router, prefix="/api")
 app.include_router(maps.router, prefix="/api")
 app.include_router(config.router, prefix="/api")
 app.include_router(players.router, prefix="/api")
@@ -102,6 +132,10 @@ app.include_router(logs.router, prefix="/api")
 app.include_router(system.router, prefix="/api")
 app.include_router(backups.router, prefix="/api")
 app.include_router(discord.router, prefix="/api")
+app.include_router(watchdog.router, prefix="/api")
+app.include_router(economy.router, prefix="/api")
+app.include_router(characters.router, prefix="/api")
+app.include_router(chat_guard.router, prefix="/api")
 
 
 @app.get("/api/ping")

@@ -103,6 +103,7 @@ These are not part of the default `.env.example` but are supported when you need
 | --- | --- | --- |
 | `DUNE_LOG_LEVEL` | `INFO` | Backend API log verbosity. |
 | `DUNE_METRICS_INTERVAL` | `60` | Metrics collection interval in seconds. |
+| `DUNE_METRICS_RETENTION` | `43200` | Maximum number of retained metric snapshots (30 days at 60-second sampling). |
 | `DUNE_ADMIN_FRONTEND_DIR` | frontend dist path | Overrides the backend's static frontend directory. |
 | `DUNE_FUNCOM_POSTGRES_DSN` | blank | Explicit DSN for the Funcom player telemetry database. |
 | `DUNE_POSTGRES_DSN` | blank | Alternate DSN name accepted by the backend player service. |
