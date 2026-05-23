@@ -13,6 +13,7 @@ class ServiceStatus(BaseModel):
     image: str | None = None
     created: str | None = None
     ports: list[str] = Field(default_factory=list)
+    latency_ms: int = 0
 
 
 class ServerOverview(BaseModel):

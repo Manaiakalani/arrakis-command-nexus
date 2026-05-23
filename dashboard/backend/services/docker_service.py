@@ -229,7 +229,8 @@ class DockerService:
     def _to_service_status(self, container) -> ServiceStatus:
         attrs = container.attrs or {}
         state = attrs.get("State", {})
-        health = (state.get("Health") or {}).get("Status")
+        health_data = state.get("Health") or {}
+        health = health_data.get("Status")
         ports = self._format_ports(attrs.get("NetworkSettings", {}).get("Ports", {}))
         exit_code = state.get("ExitCode", -1)
         if container.status == "running":
@@ -240,6 +241,23 @@ class DockerService:
             status = "stopped"
         else:
             status = "error"
+
+        # Compute health-check latency from the most recent log entry
+        latency_ms = 0
+        log_entries = health_data.get("Log") or []
+        if log_entries:
+            latest = log_entries[-1]
+            start_str = latest.get("Start", "")
+            end_str = latest.get("End", "")
+            if start_str and end_str:
+                try:
+                    fmt = "%Y-%m-%dT%H:%M:%S.%fZ"
+                    s = datetime.strptime(start_str[:26] + "Z", fmt)
+                    e = datetime.strptime(end_str[:26] + "Z", fmt)
+                    latency_ms = max(0, int((e - s).total_seconds() * 1000))
+                except (ValueError, TypeError):
+                    pass
+
         # Use image name from Config to avoid expensive per-container Image API call
         image_name = attrs.get("Config", {}).get("Image", container.short_id)
         return ServiceStatus(
@@ -250,6 +268,7 @@ class DockerService:
             image=image_name,
             created=attrs.get("Created"),
             ports=ports,
+            latency_ms=latency_ms,
         )
 
     def _map_role(self, name: str) -> str:
