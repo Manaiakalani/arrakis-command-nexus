@@ -20,6 +20,8 @@ dashboard/frontend/node_modules/
 dashboard/frontend/.next/
 dashboard/frontend/out/
 dashboard/frontend/coverage/
+dashboard/frontend/test-results/
+dashboard/frontend/playwright-report/
 node_modules/
 .next/
 out/
