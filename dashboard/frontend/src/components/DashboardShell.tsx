@@ -38,7 +38,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           status={overview?.status}
           version={version}
         />
-        <div className={cn('flex min-h-screen flex-1 flex-col transition-all duration-300', collapsed ? 'lg:ml-24' : 'lg:ml-80')}>
+        <div className={cn('flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
           <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
