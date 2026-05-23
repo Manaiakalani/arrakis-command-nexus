@@ -5,12 +5,12 @@ name: dune-awakening
 # ---------------------------------------------------------------------------
 x-game-server-command:
   run: &cmd-run /workspace/scripts/run_server_safe.sh
-  farm-region: &cmd-farm-region -FarmRegion=${WORLD_REGION:-US}
+  farm-region: &cmd-farm-region -FarmRegion=${WORLD_REGION:-North America}
   fls-token: &cmd-fls-token -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
   fls-env: &cmd-fls-env -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
   server-name: &cmd-server-name -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
   server-login-password: &cmd-server-login-password -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
-  datacenter: &cmd-datacenter -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-US-West}
+  datacenter: &cmd-datacenter -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
   db-host: &cmd-db-host -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
   db-user: &cmd-db-user -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
   db-password: &cmd-db-password -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
@@ -211,8 +211,8 @@ services:
       OPT_DISPLAY_NAME: ${WORLD_NAME}
       FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
       FuncomLiveServices__RmqTlsEnabled: "true"
-      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-US}
-      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-US-West}
+      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-North America}
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
       FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
     mem_limit: ${MEM_LIMIT_DIRECTOR}
@@ -264,11 +264,11 @@ services:
       WORLD_NAME: ${WORLD_NAME}
       OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
       OPT_DISPLAY_NAME: ${WORLD_NAME}
-      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-US}
+      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-North America}
       FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
       FuncomLiveServices__RmqTlsEnabled: "true"
       BATTLEGROUP_LANGUAGE: en-US
-      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-US-West}
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
       FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
     mem_limit: ${MEM_LIMIT_TEXT_ROUTER}
@@ -298,11 +298,17 @@ services:
       - sh
       - -lc
       - >-
+        mkdir -p /etc/app/conf.d;
+        printf '[OnlineSubsystem]\nServerName=%s\nDatacenterId=%s\n\n[Gateway]\ndisplay_name=%s\nProvider=self-hosted\n'
+        "$$OPT_SERVERNAME" "$$HOST_DATACENTER_ID" "$$OPT_DISPLAY_NAME"
+        > /etc/app/conf.d/gateway.ini;
+        cat /etc/app/conf.d/gateway.ini;
         sleep 30;
         exec python -m service
         -c /Tools/Battlegroups/GatewayService/service/configs/service.conf
-        --RMQGameHostname ${GAME_RMQ_PUBLIC_HOST:-${EXTERNAL_ADDRESS}}
-        --RMQGamePort ${GAME_RMQ_PUBLIC_PORT:-31982}
+        --RMQGameHostname $$GAME_RMQ_PUBLIC_HOST
+        --RMQGamePort $$GAME_RMQ_PUBLIC_PORT
+        --RMQGameHttpPort $$GAME_RMQ_PUBLIC_HTTP_PORT
     environment:
       DuneDatabaseInterfacePSQL_DatabaseHost: postgres
       DuneDatabaseInterfacePSQL_DatabasePort: "5432"
@@ -318,11 +324,12 @@ services:
       OPT_DISPLAY_NAME: ${WORLD_NAME}
       gateway_farm_api_key: ${FLS_SECRET}
       RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
-      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-US-West}
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
+      GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST:-${EXTERNAL_ADDRESS}}
+      GAME_RMQ_PUBLIC_PORT: "${GAME_RMQ_PUBLIC_PORT:-31982}"
+      GAME_RMQ_PUBLIC_HTTP_PORT: "${GAME_RMQ_PUBLIC_HTTP_PORT:-31983}"
     mem_limit: ${MEM_LIMIT_GATEWAY}
-    volumes:
-      - ./config/gateway.ini:/etc/app/conf.d/gateway.ini:ro
     depends_on:
       postgres:
         condition: service_healthy
