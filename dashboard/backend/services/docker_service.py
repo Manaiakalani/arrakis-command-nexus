@@ -19,15 +19,20 @@ class DockerService:
     def __init__(self, base_url: str | None = None) -> None:
         default_base_url = "npipe:////./pipe/docker_engine" if os.name == "nt" else "unix:///var/run/docker.sock"
         self.base_url = base_url or os.getenv("DUNE_DOCKER_BASE_URL", default_base_url)
+        self.compose_project = os.getenv("DUNE_COMPOSE_PROJECT", "dune-awakening")
         self.client: docker.DockerClient | None = None
         self.available = False
         self.role_patterns: dict[str, tuple[str, ...]] = {
+            "db-init": ("db-init", "db_init"),
             "gateway": ("gateway",),
             "director": ("director",),
-            "postgres": ("postgres", "database", "db"),
-            "rabbitmq": ("rabbit", "mq"),
+            "postgres": ("postgres", "database"),
+            "rabbitmq": ("rabbit", "rmq"),
+            "auth-shim": ("auth-shim", "auth_shim"),
+            "text-router": ("text-router", "text_router"),
             "overmap": ("overmap",),
             "survival": ("survival", "sietch", "hagga", "deepdesert"),
+            "dashboard": ("dashboard",),
         }
         self.critical_roles = {"gateway", "director", "postgres"}
 
@@ -54,7 +59,12 @@ class DockerService:
     async def list_containers(self) -> list[ServiceStatus]:
         if not self.client:
             return []
-        containers = await asyncio.to_thread(lambda: self.client.containers.list(all=True))
+        containers = await asyncio.to_thread(
+            lambda: self.client.containers.list(
+                all=True,
+                filters={"label": f"com.docker.compose.project={self.compose_project}"},
+            )
+        )
         return [self._to_service_status(container) for container in containers]
 
     async def get_container_stats(self, name: str) -> dict[str, float | None]:
@@ -101,6 +111,9 @@ class DockerService:
 
     async def get_readiness(self) -> dict[str, Any]:
         services = await self.list_containers()
+        return self.evaluate_readiness(services)
+
+    def evaluate_readiness(self, services: list[ServiceStatus]) -> dict[str, Any]:
         if not self.available:
             return {"status": "fail", "details": {"docker": "unavailable"}}
 
@@ -146,6 +159,9 @@ class DockerService:
 
     async def get_uptime_seconds(self) -> float | None:
         services = await self.list_containers()
+        return self.calculate_uptime(services)
+
+    def calculate_uptime(self, services: list[ServiceStatus]) -> float | None:
         running = [service for service in services if service.status == "running" and service.created]
         if not running:
             return None
@@ -182,12 +198,14 @@ class DockerService:
         status = "running" if container.status == "running" else "stopped"
         if container.status not in {"running", "exited", "created", "paused"}:
             status = "error"
+        # Use image name from Config to avoid expensive per-container Image API call
+        image_name = attrs.get("Config", {}).get("Image", container.short_id)
         return ServiceStatus(
             name=container.name,
             status=status,
             health=health,
             container_id=container.short_id,
-            image=(container.image.tags or [container.image.short_id])[0],
+            image=image_name,
             created=attrs.get("Created"),
             ports=ports,
         )

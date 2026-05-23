@@ -13,10 +13,11 @@ router = APIRouter(tags=["status"])
 async def get_status(request: Request) -> ServerOverview:
     docker_service = request.app.state.docker_service
     postgres_service = request.app.state.postgres_service
+    # Fetch containers once and reuse for readiness/uptime calculations
     services = await docker_service.list_containers()
-    readiness = await docker_service.get_readiness()
+    readiness = docker_service.evaluate_readiness(services)
     players = await postgres_service.get_online_players()
-    uptime = await docker_service.get_uptime_seconds()
+    uptime = docker_service.calculate_uptime(services)
     return ServerOverview(
         world_name=os.getenv("DUNE_WORLD_NAME", "Dune Awakening"),
         profile=os.getenv("DUNE_SERVER_PROFILE", "default"),
