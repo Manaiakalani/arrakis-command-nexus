@@ -88,3 +88,52 @@
 - Restart the gateway after PostgreSQL and RabbitMQ are healthy
 - Re-apply local gateway config changes after updating images
 - Review `scripts/gateway-patch.sh` and `config/gateway.ini` for environment-specific adjustments
+
+## Overmap Partition Load Failure (LoadPartitionDefinition)
+
+**Symptoms:**
+
+```
+LogIgwDatabaseInterface: Error: LoadPartitionDefinition:
+  Sql::load_world_partition(Survival_1, <SERVER_ID>, 0, 2) got 0 rows, expected exactly 1.
+LogIGW: Error: On partition loaded: FAIL!
+```
+
+The overmap enters a tight retry loop, the gateway logs `Got invalid partition index (None)`,
+and the overmap shows as `ready=false` in `farm_state`.
+
+**Cause:** Each game server generates a new process correlation ID (PCID/server_id) on every
+restart. Servers register themselves in `farm_state`, but the `world_partition` table is NOT
+updated automatically. The overmap tries to look up its own server_id in `world_partition`
+and finds zero rows.
+
+**Fix (automatic):**
+
+The `partition-repair` service runs automatically on `docker compose up` and fixes the
+partition table. If the overmap is already stuck, restart it after the repair runs:
+
+```bash
+docker compose run --rm partition-repair
+docker compose restart overmap
+```
+
+**Fix (manual):**
+
+```sql
+-- Check current state
+SELECT * FROM dune.farm_state WHERE alive = true;
+SELECT * FROM dune.world_partition;
+
+-- Insert/update the overmap partition (replace <OVERMAP_SERVER_ID> with actual PCID)
+INSERT INTO dune.world_partition (server_id, map, partition_definition, dimension_index)
+VALUES (
+  '<OVERMAP_SERVER_ID>',
+  'Survival_1',
+  '{"box": {"max_x": 1, "max_y": 1, "min_x": 0, "min_y": 0}, "type": "box2d_array"}',
+  0
+)
+ON CONFLICT (server_id, map) DO NOTHING;
+```
+
+**Prevention:** Keep the `partition-repair` service in your compose configuration. It waits
+for servers to register in `farm_state`, then ensures matching `world_partition` rows exist.
