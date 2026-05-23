@@ -231,3 +231,178 @@ test.describe('Service status display', () => {
     }
   });
 });
+
+test.describe('Interactive features', () => {
+  test('settings page: save general settings', async ({ page }) => {
+    await page.goto('/settings');
+    await page.waitForLoadState('networkidle');
+
+    // Fill and save general settings
+    const serverNameInput = page.locator('#serverName');
+    await expect(serverNameInput).toBeVisible();
+    await serverNameInput.clear();
+    await serverNameInput.fill('Test Nexus');
+
+    const saveBtn = page.getByRole('button', { name: 'Save general' });
+    await saveBtn.click();
+
+    // Wait for save to complete (button text changes to "Saving…" then back)
+    await expect(saveBtn).toHaveText('Save general', { timeout: 5000 });
+
+    // Reload and verify persistence
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('#serverName')).toHaveValue('Test Nexus');
+
+    // Restore original name
+    await page.locator('#serverName').clear();
+    await page.locator('#serverName').fill('Arrakis Command Nexus');
+    await page.getByRole('button', { name: 'Save general' }).click();
+    await expect(page.getByRole('button', { name: 'Save general' })).toHaveText('Save general', { timeout: 5000 });
+  });
+
+  test('settings page: add and remove admin', async ({ page }) => {
+    await page.goto('/settings');
+    await page.waitForLoadState('networkidle');
+
+    // Add an admin
+    const usernameInput = page.locator('#newAdminUser');
+    await usernameInput.fill('playwright-test-admin');
+    await page.getByRole('button', { name: 'Add' }).click();
+
+    // Wait for the admin to appear
+    await expect(page.getByText('playwright-test-admin')).toBeVisible({ timeout: 5000 });
+
+    // Accept the confirm dialog and remove
+    page.on('dialog', (dialog) => dialog.accept());
+    const removeBtn = page.getByLabel('Remove playwright-test-admin');
+    await removeBtn.click();
+
+    // Should disappear
+    await expect(page.getByText('playwright-test-admin')).not.toBeVisible({ timeout: 5000 });
+  });
+
+  test('settings page: export settings downloads JSON', async ({ page }) => {
+    await page.goto('/settings');
+    await page.waitForLoadState('networkidle');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Export settings' }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toMatch(/^nexus-settings-.*\.json$/);
+  });
+
+  test('maps page: map cards render with action buttons', async ({ page }) => {
+    await page.goto('/maps');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for map cards to load
+    const startBtn = page.getByRole('button', { name: 'Start' }).first();
+    const stopBtn = page.getByRole('button', { name: 'Stop' }).first();
+    const restartBtn = page.getByRole('button', { name: 'Restart' }).first();
+
+    // At least one set of action buttons should be visible
+    const hasButtons = await startBtn.or(stopBtn).or(restartBtn).count();
+    expect(hasButtons).toBeGreaterThan(0);
+  });
+
+  test('overview page: action buttons render', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Restart all and Backup now buttons should be visible
+    await expect(page.getByRole('button', { name: /Restart all/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Backup now/i })).toBeVisible();
+  });
+
+  test('backups page: schedule controls render', async ({ page }) => {
+    await page.goto('/backups');
+    await page.waitForLoadState('networkidle');
+
+    // Schedule section should have enable/disable and save buttons
+    const scheduleToggle = page.getByRole('button', { name: /scheduling/i });
+    await expect(scheduleToggle).toBeVisible();
+
+    const saveBtn = page.getByRole('button', { name: /Save schedule/i });
+    await expect(saveBtn).toBeVisible();
+  });
+
+  test('announcements page: send form renders', async ({ page }) => {
+    await page.goto('/announcements');
+    await page.waitForLoadState('networkidle');
+
+    // Should have the send announcement button
+    await expect(page.getByRole('button', { name: /Send announcement/i })).toBeVisible();
+  });
+
+  test('moderation page: chat guard renders', async ({ page }) => {
+    await page.goto('/moderation');
+    await page.waitForLoadState('networkidle');
+
+    // Should show "Chat guard" heading
+    await expect(page.getByRole('heading', { name: 'Chat guard' })).toBeVisible();
+  });
+
+  test('players page: player table or empty state renders', async ({ page }) => {
+    await page.goto('/players');
+    await page.waitForLoadState('networkidle');
+
+    // Should have either a player table or the page content
+    const body = page.locator('main');
+    await expect(body).not.toBeEmpty();
+  });
+
+  test('watchdog page: status cards render', async ({ page }) => {
+    await page.goto('/watchdog');
+    await page.waitForLoadState('networkidle');
+
+    // Should show watchdog state
+    await expect(page.getByText(/Watchdog state/i)).toBeVisible();
+  });
+
+  test('economy page: alert form renders', async ({ page }) => {
+    await page.goto('/economy');
+    await page.waitForLoadState('networkidle');
+
+    // Should show the manual injection section
+    await expect(page.getByText(/Manual injection/i)).toBeVisible();
+  });
+
+  test('config page: config editor renders', async ({ page }) => {
+    await page.goto('/config');
+    await page.waitForLoadState('networkidle');
+
+    // Should show configuration changes warning and drift summary
+    await expect(page.getByText(/Changes require restart/i)).toBeVisible();
+    await expect(page.getByText(/Drift summary/i)).toBeVisible();
+  });
+
+  test('system page: resource metrics render', async ({ page }) => {
+    await page.goto('/system');
+    await page.waitForLoadState('networkidle');
+
+    // Should show CPU, Memory, Disk, Network sections
+    await expect(page.getByRole('heading', { name: 'CPU load' }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Memory pressure' }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Disk usage' }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Network pulse' }).first()).toBeVisible();
+  });
+
+  test('discord page: webhook management renders', async ({ page }) => {
+    await page.goto('/discord');
+    await page.waitForLoadState('networkidle');
+
+    // Should show the event history section
+    await expect(page.getByText('Event history')).toBeVisible();
+  });
+
+  test('logs page: log stream renders', async ({ page }) => {
+    await page.goto('/logs');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Should show service logs heading and filter
+    await expect(page.getByText('Service logs')).toBeVisible({ timeout: 10000 });
+  });
+});
