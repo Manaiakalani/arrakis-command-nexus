@@ -9,6 +9,15 @@ router = APIRouter(tags=["status"])
 
 _HEALTH_MAP = {"running": "healthy", "stopped": "stopped", "completed": "completed", "error": "offline"}
 
+# Containers that are one-shot init tasks — exited 0 is expected and healthy
+_INIT_CONTAINERS = {"db-init", "db_init", "dbinit"}
+
+
+def _is_init_container(name: str) -> bool:
+    """Check if a container is a known one-shot init task."""
+    short = name.replace("dune-awakening-", "").replace("-1", "").lower()
+    return any(tag in short for tag in _INIT_CONTAINERS)
+
 
 def _service_to_frontend(svc) -> dict:
     """Convert backend ServiceStatus to the shape the frontend expects."""
@@ -18,13 +27,20 @@ def _service_to_frontend(svc) -> dict:
     fe_status = _HEALTH_MAP.get(raw_status, "offline")
     if health == "unhealthy":
         fe_status = "degraded"
+    is_init = _is_init_container(name)
+    if is_init and raw_status in ("completed", "exited"):
+        fe_status = "completed"
     label = name.replace("dune-awakening-", "").replace("-1", "").replace("_", " ").title()
+    message = health or raw_status
+    if is_init and fe_status == "completed":
+        message = "Finished successfully"
     return {
         "name": name,
         "label": label,
         "status": fe_status,
         "latencyMs": 0,
-        "message": health or raw_status,
+        "message": message,
+        "isInit": is_init,
     }
 
 

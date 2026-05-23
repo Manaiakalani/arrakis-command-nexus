@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Clock3, Database, Play, RefreshCcw, Server, ShieldCheck, Square, Users } from 'lucide-react';
+import { Activity, Check, Clock3, Database, Play, RefreshCcw, Server, ShieldCheck, Square, Users } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { NetworkSparkline } from '@/components/NetworkSparkline';
@@ -113,51 +113,65 @@ export default function OverviewPage() {
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {serviceSummary.map((service) => {
               const isRunning = service.status === 'healthy';
+              const isCompleted = service.status === 'completed';
+              const isInit = !!service.isInit;
               const isBusy = busyService === service.name;
               return (
-                <div key={service.name} className="rounded-3xl border border-slate-800/80 bg-slate-900/50 p-4">
+                <div key={service.name} className={cn('rounded-3xl border bg-slate-900/50 p-4', isCompleted && isInit ? 'border-emerald-500/15' : 'border-slate-800/80')}>
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-slate-100">{service.label ?? service.name}</h3>
                       <p className="mt-1 text-sm text-slate-400">{service.message ?? 'Monitoring in progress'}</p>
                     </div>
-                    <span className={cn('ml-2 h-3 w-3 shrink-0 rounded-full', service.status === 'healthy' ? 'bg-emerald-400' : service.status === 'completed' ? 'bg-sky-300' : service.status === 'degraded' ? 'bg-amber-400' : service.status === 'stopped' ? 'bg-slate-500' : 'bg-red-500')} />
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
-                    <span>Latency</span>
-                    <span className="tabular-nums">{service.latencyMs ?? 0} ms</span>
-                  </div>
-                  <div className="mt-3 flex items-center gap-2 border-t border-slate-800/60 pt-3">
-                    {isRunning ? (
-                      <>
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => void handleServiceAction(service.name, 'restart')}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200 disabled:opacity-40"
-                        >
-                          <RefreshCcw className={cn('h-3 w-3', isBusy && 'animate-spin')} /> Restart
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => void handleServiceAction(service.name, 'stop')}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
-                        >
-                          <Square className="h-3 w-3" /> Stop
-                        </button>
-                      </>
+                    {isCompleted && isInit ? (
+                      <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+                        <Check className="h-3 w-3 text-emerald-400" />
+                      </span>
                     ) : (
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => void handleServiceAction(service.name, 'start')}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-40"
-                      >
-                        <Play className="h-3 w-3" /> Start
-                      </button>
+                      <span className={cn('ml-2 h-3 w-3 shrink-0 rounded-full', isRunning ? 'bg-emerald-400' : isCompleted ? 'bg-sky-300' : service.status === 'degraded' ? 'bg-amber-400' : service.status === 'stopped' ? 'bg-slate-500' : 'bg-red-500')} />
                     )}
                   </div>
+                  {isCompleted && isInit ? (
+                    <p className="mt-3 text-xs text-emerald-400/70">One-shot task, no actions needed</p>
+                  ) : (
+                    <>
+                      <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
+                        <span>Latency</span>
+                        <span className="tabular-nums">{service.latencyMs ?? 0} ms</span>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 border-t border-slate-800/60 pt-3">
+                        {isRunning ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleServiceAction(service.name, 'restart')}
+                              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200 disabled:opacity-40"
+                            >
+                              <RefreshCcw className={cn('h-3 w-3', isBusy && 'animate-spin')} /> Restart
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleServiceAction(service.name, 'stop')}
+                              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
+                            >
+                              <Square className="h-3 w-3" /> Stop
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleServiceAction(service.name, 'start')}
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-40"
+                          >
+                            <Play className="h-3 w-3" /> Start
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
