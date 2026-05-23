@@ -82,7 +82,7 @@ export default function EconomyPage() {
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-slate-100">Type</span>
-              <input className="dune-input" value={type} onChange={(event) => setType(event.target.value)} />
+              <input className="dune-input" name="alert-type" autoComplete="off" value={type} onChange={(event) => setType(event.target.value)} />
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-slate-100">Severity</span>
@@ -94,11 +94,11 @@ export default function EconomyPage() {
             </label>
             <label className="block md:col-span-2">
               <span className="mb-2 block text-sm font-medium text-slate-100">Message</span>
-              <input className="dune-input" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Flag suspicious market behavior\u2026" />
+              <input className="dune-input" name="alert-message" autoComplete="off" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Flag suspicious market behavior&#x2026;" />
             </label>
             <label className="block md:col-span-2">
               <span className="mb-2 block text-sm font-medium text-slate-100">Details (JSON)</span>
-              <textarea className="dune-input min-h-[160px]" value={detailsText} onChange={(event) => setDetailsText(event.target.value)} />
+              <textarea className="dune-input min-h-[160px]" name="alert-details" autoComplete="off" spellCheck={false} value={detailsText} onChange={(event) => setDetailsText(event.target.value)} />
             </label>
           </div>
           {formError ? <p className="mt-4 text-sm text-red-300">{formError}</p> : null}

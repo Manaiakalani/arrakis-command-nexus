@@ -354,7 +354,7 @@ export default function CharactersPage() {
                     setSaveState(null);
                   }}
                   className={cn(
-                    'w-full rounded-3xl border p-4 text-left transition-[color,background-color,border-color,box-shadow]',
+                    'w-full rounded-3xl border p-4 text-left transition-[color,background-color,border-color,box-shadow] dune-focus',
                     active
                       ? 'border-amber-500/40 bg-amber-500/10 shadow-dune'
                       : 'border-slate-800/80 bg-slate-950/30 hover:border-slate-700 hover:bg-slate-900/60',
@@ -430,7 +430,7 @@ export default function CharactersPage() {
                         type="button"
                         onClick={() => setActiveCategory(category)}
                         className={cn(
-                          'rounded-3xl border px-4 py-4 text-left transition-[color,background-color,border-color]',
+                          'rounded-3xl border px-4 py-4 text-left transition-[color,background-color,border-color] dune-focus',
                           isActive ? 'border-amber-500/40 bg-amber-500/10 text-amber-100' : 'border-slate-800/80 bg-slate-950/30 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60',
                         )}
                       >

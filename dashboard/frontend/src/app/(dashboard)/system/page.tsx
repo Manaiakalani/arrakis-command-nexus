@@ -65,7 +65,7 @@ export default function SystemPage() {
                 type="button"
                 onClick={() => setExportFormat(fmt)}
                 className={cn(
-                  'px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
+                  'px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors dune-focus',
                   exportFormat === fmt
                     ? 'bg-amber-500/15 text-amber-200'
                     : 'bg-slate-900/70 text-slate-400 hover:text-slate-200',

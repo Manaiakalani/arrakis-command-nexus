@@ -75,14 +75,16 @@ export default function AnnouncementsPage() {
             <span className="mb-2 block text-sm font-medium text-slate-100">Message</span>
             <input
               className="dune-input"
+              name="announcement-message"
+              autoComplete="off"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder="Attention, sleepers. Maintenance begins at sunset\u2026"
+              placeholder="Attention, sleepers. Maintenance begins at sunset&#x2026;"
             />
           </label>
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-100">Sender</span>
-            <input className="dune-input" value={sender} onChange={(event) => setSender(event.target.value)} placeholder="Server" />
+            <input className="dune-input" name="announcement-sender" autoComplete="off" value={sender} onChange={(event) => setSender(event.target.value)} placeholder="Server" />
           </label>
         </div>
 
