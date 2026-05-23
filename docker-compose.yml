@@ -375,6 +375,9 @@ services:
       DUNE_RMQ_MANAGEMENT_PASSWORD: ${DUNE_RMQ_MANAGEMENT_PASSWORD:-}
       DUNE_ANNOUNCE_ENABLED: ${DUNE_ANNOUNCE_ENABLED:-true}
       DUNE_ANNOUNCE_NAME: ${DUNE_ANNOUNCE_NAME:-Server}
+      DUNE_IMAGE_TAG: ${DUNE_IMAGE_TAG}
+      DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-basic}
+      DUNE_FLS_ENV: ${DUNE_FLS_ENV:-retail}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/workspace/config:ro

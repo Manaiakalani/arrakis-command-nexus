@@ -204,10 +204,15 @@ async def get_uptime(request: Request, range: str = Query(default="24h", alias="
 @router.get("/system/version")
 async def get_version(request: Request) -> dict[str, str]:
     del request
-    version_file = Path(__file__).resolve().parents[3] / "VERSION"
-    version = "unknown"
-    if version_file.exists():
-        version = version_file.read_text(encoding="utf-8").strip() or "unknown"
+    # Look for VERSION file relative to the project root
+    version = os.getenv("DUNE_IMAGE_TAG", "unknown")
+    for candidate in [
+        Path("/app/VERSION"),
+        Path(__file__).resolve().parent.parent.parent / "VERSION",
+    ]:
+        if candidate.exists():
+            version = candidate.read_text(encoding="utf-8").strip() or version
+            break
     return {
         "version": version,
         "profile": os.getenv("DEPLOYMENT_PROFILE", "basic"),
