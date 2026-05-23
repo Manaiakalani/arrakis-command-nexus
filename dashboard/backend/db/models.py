@@ -64,3 +64,22 @@ class AuditLog(Base):
     details: Mapped[dict[str, Any]] = mapped_column(JSON())
     performed_by: Mapped[str] = mapped_column(String(255), default="dashboard")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class DashboardSetting(Base):
+    __tablename__ = "dashboard_settings"
+
+    key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    value: Mapped[dict[str, Any] | None] = mapped_column(JSON(), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    role: Mapped[str] = mapped_column(String(32), default="admin")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    enabled: Mapped[bool] = mapped_column(default=True)

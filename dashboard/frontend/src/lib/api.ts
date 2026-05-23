@@ -311,6 +311,55 @@ export class ApiClient {
   getLogStreamUrl() {
     return `${this.baseUrl}/logs/stream`;
   }
+
+  // Settings
+  getSettings() {
+    return this.request<Record<string, Record<string, unknown>>>('/settings');
+  }
+
+  getSettingsSection(section: string) {
+    return this.request<Record<string, unknown>>(`/settings/${encodeURIComponent(section)}`);
+  }
+
+  updateSettingsSection(section: string, data: Record<string, unknown>) {
+    return this.request<Record<string, unknown>>(`/settings/${encodeURIComponent(section)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  exportSettings() {
+    return this.request<{ version: number; exportedAt: string; settings: Record<string, unknown> }>('/settings/export/all');
+  }
+
+  importSettings(payload: { version: number; settings: Record<string, unknown> }) {
+    return this.request<{ status: string; imported: string[] }>('/settings/import/all', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  getAdmins() {
+    return this.request<Array<{ id: number; username: string; role: string; enabled: boolean; createdAt: string | null; lastLogin: string | null }>>('/settings/admins');
+  }
+
+  addAdmin(username: string, role?: string) {
+    return this.request<{ id: number; username: string; role: string; enabled: boolean } | { error: string }>('/settings/admins', {
+      method: 'POST',
+      body: JSON.stringify({ username, role }),
+    });
+  }
+
+  removeAdmin(adminId: number) {
+    return this.request<{ status: string; removed: string }>(`/settings/admins/${adminId}`, { method: 'DELETE' });
+  }
+
+  updateAdmin(adminId: number, data: { role?: string; enabled?: boolean }) {
+    return this.request<{ id: number; username: string; role: string; enabled: boolean }>(`/settings/admins/${adminId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
