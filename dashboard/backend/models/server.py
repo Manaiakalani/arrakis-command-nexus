@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class ServiceStatus(BaseModel):
     name: str
-    status: Literal["running", "stopped", "error"]
+    status: Literal["running", "stopped", "completed", "error"]
     health: str | None = None
     container_id: str | None = None
     image: str | None = None
@@ -26,7 +26,7 @@ class ServerOverview(BaseModel):
 
 class MapStatus(BaseModel):
     name: str
-    status: Literal["running", "stopped", "error"]
+    status: Literal["running", "stopped", "completed", "error"]
     player_count: int = 0
     memory_usage_mb: float | None = None
     memory_limit_mb: float | None = None

@@ -49,6 +49,7 @@ const statusMap: Record<HealthState, string> = {
   offline: 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.75)]',
   starting: 'bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.75)]',
   stopped: 'bg-slate-500',
+  completed: 'bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.5)]',
 };
 
 interface SidebarProps {

@@ -1,5 +1,5 @@
-export type HealthState = 'healthy' | 'degraded' | 'offline' | 'starting' | 'stopped';
-export type MapState = 'running' | 'stopped' | 'error' | 'starting' | 'stopping';
+export type HealthState = 'healthy' | 'degraded' | 'offline' | 'starting' | 'stopped' | 'completed';
+export type MapState = 'running' | 'stopped' | 'completed' | 'error' | 'starting' | 'stopping';
 export type FieldType = 'string' | 'number' | 'boolean' | 'select' | 'textarea';
 export type Severity = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
 

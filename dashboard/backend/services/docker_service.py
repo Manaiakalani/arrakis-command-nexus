@@ -123,7 +123,7 @@ class DockerService:
             role = self._map_role(service.name)
             details[service.name] = {"role": role, "status": service.status, "health": service.health}
             if role in self.critical_roles:
-                if service.status != "running":
+                if service.status not in ("running", "completed"):
                     overall = "fail"
                 elif service.health not in {None, "healthy"} and overall != "fail":
                     overall = "warn"
@@ -220,8 +220,14 @@ class DockerService:
         state = attrs.get("State", {})
         health = (state.get("Health") or {}).get("Status")
         ports = self._format_ports(attrs.get("NetworkSettings", {}).get("Ports", {}))
-        status = "running" if container.status == "running" else "stopped"
-        if container.status not in {"running", "exited", "created", "paused"}:
+        exit_code = state.get("ExitCode", -1)
+        if container.status == "running":
+            status = "running"
+        elif container.status == "exited" and exit_code == 0:
+            status = "completed"
+        elif container.status in {"exited", "created", "paused"}:
+            status = "stopped"
+        else:
             status = "error"
         # Use image name from Config to avoid expensive per-container Image API call
         image_name = attrs.get("Config", {}).get("Image", container.short_id)

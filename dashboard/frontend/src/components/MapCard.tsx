@@ -14,6 +14,7 @@ interface MapCardProps {
 const badgeStyles: Record<MapStatus['status'], string> = {
   running: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
   stopped: 'border-slate-600 bg-slate-900/70 text-slate-300',
+  completed: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
   error: 'border-red-500/30 bg-red-500/10 text-red-300',
   starting: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
   stopping: 'border-amber-500/30 bg-amber-500/10 text-amber-200',

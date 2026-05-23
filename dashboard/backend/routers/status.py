@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request
 
 router = APIRouter(tags=["status"])
 
-_HEALTH_MAP = {"running": "healthy", "stopped": "stopped", "error": "offline"}
+_HEALTH_MAP = {"running": "healthy", "stopped": "stopped", "completed": "completed", "error": "offline"}
 
 
 def _service_to_frontend(svc) -> dict:
@@ -115,7 +115,7 @@ async def get_ready(request: Request) -> dict:
     for name, detail in raw.get("details", {}).items():
         if isinstance(detail, dict):
             label = name.replace("dune-awakening-", "").replace("-1", "")
-            check_status = "ok" if detail.get("status") == "running" else "fail"
+            check_status = "ok" if detail.get("status") in ("running", "completed") else "fail"
             if detail.get("health") == "unhealthy":
                 check_status = "warn"
             checks.append({
