@@ -47,6 +47,12 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     networks:
       default:
         ipv4_address: 192.168.80.10
@@ -102,6 +108,12 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     networks:
       default:
         ipv4_address: 192.168.80.11
