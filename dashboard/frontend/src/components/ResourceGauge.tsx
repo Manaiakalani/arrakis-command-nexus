@@ -1,7 +1,6 @@
 'use client';
 
 import { memo } from 'react';
-import { PolarAngleAxis, RadialBar, RadialBarChart, ResponsiveContainer } from 'recharts';
 
 interface ResourceGaugeProps {
   label: string;
@@ -32,31 +31,59 @@ function resolveGaugeColor(value: number, color?: string) {
   return '#22c55e';
 }
 
+const STROKE_WIDTH = 5;
+const VIEWBOX = 36;
+const RADIUS = (VIEWBOX - STROKE_WIDTH) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
 export const ResourceGauge = memo(function ResourceGauge({ label, value, color, size = 148 }: ResourceGaugeProps) {
   const normalizedValue = clamp(value);
   const gaugeColor = resolveGaugeColor(normalizedValue, color);
+  const offset = CIRCUMFERENCE - (normalizedValue / 100) * CIRCUMFERENCE;
 
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="flex flex-col items-center gap-1">
       <div className="relative" style={{ width: size, height: size }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadialBarChart
-            data={[{ value: normalizedValue, fill: gaugeColor }]}
-            innerRadius="72%"
-            outerRadius="100%"
-            startAngle={210}
-            endAngle={-30}
-            barSize={14}
-          >
-            <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-            <RadialBar dataKey="value" background={{ fill: 'rgba(148, 163, 184, 0.14)' }} cornerRadius={999} />
-          </RadialBarChart>
-        </ResponsiveContainer>
+        <svg
+          viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
+          className="h-full w-full -rotate-90"
+          aria-hidden="true"
+        >
+          {/* Track */}
+          <circle
+            cx={VIEWBOX / 2}
+            cy={VIEWBOX / 2}
+            r={RADIUS}
+            fill="none"
+            stroke="rgba(148,163,184,0.14)"
+            strokeWidth={STROKE_WIDTH}
+          />
+          {/* Value arc */}
+          <circle
+            cx={VIEWBOX / 2}
+            cy={VIEWBOX / 2}
+            r={RADIUS}
+            fill="none"
+            stroke={gaugeColor}
+            strokeWidth={STROKE_WIDTH}
+            strokeLinecap="round"
+            strokeDasharray={CIRCUMFERENCE}
+            strokeDashoffset={offset}
+            className="transition-[stroke-dashoffset,stroke] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          />
+        </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold tabular-nums text-slate-50">{normalizedValue.toFixed(0)}%</span>
-          <span className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-400">{label}</span>
+          <span
+            className="text-lg font-semibold tabular-nums leading-none"
+            style={{ color: gaugeColor }}
+          >
+            {normalizedValue.toFixed(0)}%
+          </span>
         </div>
       </div>
+      <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-slate-400">
+        {label}
+      </span>
     </div>
   );
 });
