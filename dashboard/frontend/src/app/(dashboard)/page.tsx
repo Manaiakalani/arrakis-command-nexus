@@ -100,7 +100,7 @@ export default function OverviewPage() {
                     <h3 className="font-semibold text-slate-100">{service.label ?? service.name}</h3>
                     <p className="mt-1 text-sm text-slate-400">{service.message ?? 'Monitoring in progress'}</p>
                   </div>
-                  <span className={cn('h-3 w-3 rounded-full', service.status === 'healthy' ? 'bg-emerald-400' : service.status === 'degraded' ? 'bg-amber-400' : 'bg-red-500')} />
+                  <span className={cn('h-3 w-3 rounded-full', service.status === 'healthy' ? 'bg-emerald-400' : service.status === 'completed' ? 'bg-sky-300' : service.status === 'degraded' ? 'bg-amber-400' : service.status === 'stopped' ? 'bg-slate-500' : 'bg-red-500')} />
                 </div>
                 <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
                   <span>Latency</span>
