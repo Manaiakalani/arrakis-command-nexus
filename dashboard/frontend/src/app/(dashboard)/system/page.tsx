@@ -1,6 +1,6 @@
 'use client';
 
-import { Cpu, HardDrive, Network, Waves } from 'lucide-react';
+import { Cpu, Download, HardDrive, Network, Waves } from 'lucide-react';
 import { useState } from 'react';
 
 import { MetricsChart } from '@/components/MetricsChart';
@@ -9,6 +9,7 @@ import { ResourceGauge } from '@/components/ResourceGauge';
 import { UptimeChart } from '@/components/UptimeChart';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 function formatPercent(value?: number) {
   return `${(value ?? 0).toFixed(1)}%`;
@@ -24,11 +25,61 @@ function formatMbps(value?: number) {
 
 export default function SystemPage() {
   const [range, setRange] = useState('1h');
+  const [exportWidget, setExportWidget] = useState('all');
+  const [exportFormat, setExportFormat] = useState('csv');
   const metrics = useApi(() => apiClient.getSystemMetrics(), { refreshInterval: 10000 });
   const history = useApi(() => apiClient.getSystemHistory(range), { refreshInterval: 15000, initialData: { range, points: [] } });
 
+  const exportUrl = `/api/system/export?range=${encodeURIComponent(range)}&format=${encodeURIComponent(exportFormat)}${exportWidget !== 'all' ? `&widget=${encodeURIComponent(exportWidget)}` : ''}`;
+
+  const widgetOptions = [
+    { value: 'all', label: 'All widgets' },
+    { value: 'cpu', label: 'CPU load' },
+    { value: 'memory', label: 'Memory pressure' },
+    { value: 'disk', label: 'Disk usage' },
+    { value: 'network', label: 'Network pulse' },
+  ];
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="section-title">System telemetry</p>
+          <h2 className="mt-1 text-xl font-semibold text-slate-50">Resource overview</h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={exportWidget}
+            onChange={(e) => setExportWidget(e.target.value)}
+            className="dune-input min-w-[160px]"
+            aria-label="Export widget filter"
+          >
+            {widgetOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <div className="inline-flex overflow-hidden rounded-lg border border-slate-700">
+            {(['csv', 'json'] as const).map((fmt) => (
+              <button
+                key={fmt}
+                type="button"
+                onClick={() => setExportFormat(fmt)}
+                className={cn(
+                  'px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
+                  exportFormat === fmt
+                    ? 'bg-amber-500/15 text-amber-200'
+                    : 'bg-slate-900/70 text-slate-400 hover:text-slate-200',
+                )}
+              >
+                {fmt}
+              </button>
+            ))}
+          </div>
+          <a href={exportUrl} download className="dune-button-muted">
+            <Download className="mr-2 h-4 w-4" /> Export metrics
+          </a>
+        </div>
+      </div>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="glass-panel p-5">
           <div className="flex items-start justify-between gap-4">
