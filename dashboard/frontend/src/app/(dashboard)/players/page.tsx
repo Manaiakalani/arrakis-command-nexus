@@ -71,7 +71,7 @@ export default function PlayersPage() {
             onClick={() => setActiveTab(tab)}
             className={cn(
               'rounded-full border px-4 py-2 text-sm font-medium capitalize transition-[color,background-color,border-color] dune-focus',
-              activeTab === tab ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/70 text-slate-400',
+              activeTab === tab ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-th-border bg-th-surface-s/70 text-th-text-m',
             )}
           >
             {tab}
@@ -96,11 +96,11 @@ export default function PlayersPage() {
         <>
           <PlayerTable players={players.data ?? []} onBan={setSelectedPlayer} onKick={(player) => void handleKick(player)} />
           <div className="glass-panel overflow-hidden">
-            <div className="flex flex-col gap-4 border-b border-slate-800/80 p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 border-b border-th-border-m/80 p-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="section-title">Spatial telemetry</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-50">Live Player Position Analysis</h2>
-                <p className="mt-2 text-sm text-slate-400">Expand to inspect the Hagga Basin tactical overlay and density heatmap without leaving the players roster.</p>
+                <h2 className="mt-1 text-xl font-semibold text-th-text">Live Player Position Analysis</h2>
+                <p className="mt-2 text-sm text-th-text-m">Expand to inspect the Hagga Basin tactical overlay and density heatmap without leaving the players roster.</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200">
@@ -128,24 +128,24 @@ export default function PlayersPage() {
 
       {activeTab === 'banned' ? (
         <div className="glass-panel overflow-hidden">
-          <div className="border-b border-slate-800/80 p-5">
+          <div className="border-b border-th-border-m/80 p-5">
             <p className="section-title">Enforcement</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Banned Players</h2>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Banned Players</h2>
           </div>
-          <div className="divide-y divide-slate-800/80">
+          <div className="divide-y divide-th-border-m/80">
             {(bans.data ?? []).map((entry) => (
               <div key={entry.steamId} className="flex flex-col gap-3 p-5 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="font-semibold text-slate-100">{entry.playerName ?? entry.steamId}</p>
-                  <p className="mt-1 text-sm text-slate-400">{entry.reason}</p>
-                  <p className="mt-1 text-xs text-slate-500">Expires: {entry.expiresAt ? new Date(entry.expiresAt).toLocaleString() : 'Never'}</p>
+                  <p className="font-semibold text-th-text">{entry.playerName ?? entry.steamId}</p>
+                  <p className="mt-1 text-sm text-th-text-m">{entry.reason}</p>
+                  <p className="mt-1 text-xs text-th-text0">Expires: {entry.expiresAt ? new Date(entry.expiresAt).toLocaleString() : 'Never'}</p>
                 </div>
                 <button type="button" onClick={() => void apiClient.unbanPlayer(entry.steamId).then(() => bans.refetch())} className="dune-button">
                   <UserCheck className="mr-2 h-4 w-4" /> Unban
                 </button>
               </div>
             ))}
-            {(bans.data ?? []).length === 0 ? <div className="p-10 text-center text-slate-400">No banned players. Discipline is holding.</div> : null}
+            {(bans.data ?? []).length === 0 ? <div className="p-10 text-center text-th-text-m">No banned players. Discipline is holding.</div> : null}
           </div>
         </div>
       ) : null}
@@ -154,29 +154,29 @@ export default function PlayersPage() {
         <div className="glass-panel flex min-h-[320px] flex-col items-center justify-center gap-4 p-8 text-center">
           <ShieldAlert className="h-10 w-10 text-amber-300" />
           <div>
-            <h2 className="text-xl font-semibold text-slate-50">Allowlist View</h2>
-            <p className="mt-2 max-w-xl text-slate-400">Allowlist management is reserved for the backend control plane. Once exposed, the dashboard is ready to surface it here.</p>
+            <h2 className="text-xl font-semibold text-th-text">Allowlist View</h2>
+            <p className="mt-2 max-w-xl text-th-text-m">Allowlist management is reserved for the backend control plane. Once exposed, the dashboard is ready to surface it here.</p>
           </div>
         </div>
       ) : null}
 
       {selectedPlayer ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="ban-dialog-title">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-th-bg/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="ban-dialog-title">
           <div className="glass-panel w-full max-w-lg p-6">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300"><Ban className="h-5 w-5" /></div>
               <div>
-                <h3 className="text-xl font-semibold text-slate-50" id="ban-dialog-title">Ban Player</h3>
-                <p className="text-sm text-slate-400">{selectedPlayer.name} • {selectedPlayer.steamId}</p>
+                <h3 className="text-xl font-semibold text-th-text" id="ban-dialog-title">Ban Player</h3>
+                <p className="text-sm text-th-text-m">{selectedPlayer.name} • {selectedPlayer.steamId}</p>
               </div>
             </div>
             <div className="mt-5 space-y-4">
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-100">Reason</span>
+                <span className="mb-2 block text-sm font-medium text-th-text">Reason</span>
                 <input className="dune-input" name="ban-reason" autoComplete="off" value={reason} onChange={(event) => setReason(event.target.value)} />
               </label>
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-100">Duration (hours)</span>
+                <span className="mb-2 block text-sm font-medium text-th-text">Duration (hours)</span>
                 <input className="dune-input" name="ban-duration" type="number" min="0" autoComplete="off" value={duration} onChange={(event) => setDuration(event.target.value)} />
               </label>
             </div>

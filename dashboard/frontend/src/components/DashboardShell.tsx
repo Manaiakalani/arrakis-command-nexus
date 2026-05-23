@@ -4,6 +4,7 @@ import { Menu, Signal } from 'lucide-react';
 import { ReactNode, useCallback, useState } from 'react';
 
 import { Sidebar } from '@/components/Sidebar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
@@ -39,7 +40,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           version={version}
         />
         <div className={cn('flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
-          <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 border-b border-th-border-m/80 bg-th-bg/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
@@ -53,22 +54,25 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <div>
                   <p className="section-title">Arrakis Command Nexus</p>
                   <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-semibold text-slate-50">{overview?.serverName ?? 'Loading\u2026'}</h1>
-                    <div className="hidden items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3 py-1 text-xs text-slate-300 sm:flex">
-                      <Signal className="h-3.5 w-3.5 text-amber-300" />
+                    <h1 className="text-2xl font-semibold text-th-text">{overview?.serverName ?? 'Loading\u2026'}</h1>
+                    <div className="hidden items-center gap-2 rounded-full border border-th-border/80 bg-th-surface-s/70 px-3 py-1 text-xs text-th-text-s sm:flex">
+                      <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" />
                       {overview?.region ?? 'Self-hosted cluster'}
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="glass-panel hidden min-w-[220px] items-center justify-between px-4 py-3 sm:flex">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Server pulse</p>
-                  <p className="mt-1 text-sm font-medium tabular-nums text-slate-100">{overview?.playersOnline ?? 0} players online</p>
-                </div>
-                <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.75)]" />
-                  {overview?.status ?? 'healthy'}
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <div className="glass-panel hidden min-w-[220px] items-center justify-between px-4 py-3 sm:flex">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Server pulse</p>
+                    <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{overview?.playersOnline ?? 0} players online</p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-300">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.75)]" />
+                    {overview?.status ?? 'healthy'}
+                  </div>
                 </div>
               </div>
             </div>

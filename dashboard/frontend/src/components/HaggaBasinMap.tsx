@@ -30,13 +30,13 @@ function PlayerPositionTooltip({ active, payload }: { active?: boolean; payload?
   const player = payload[0].payload;
 
   return (
-    <div className="rounded-2xl border border-amber-500/20 bg-slate-950/95 px-3 py-2 text-xs text-slate-200 shadow-2xl">
+    <div className="rounded-2xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-xs text-th-text-s shadow-2xl">
       <p className="font-semibold text-amber-200">{player.name}</p>
-      <p className="mt-1 text-slate-400">{player.mapLabel}</p>
-      <p className="mt-1 text-slate-500">
+      <p className="mt-1 text-th-text-m">{player.mapLabel}</p>
+      <p className="mt-1 text-th-text0">
         X {Math.round(player.x).toLocaleString()} • Y {Math.round(player.y).toLocaleString()}
       </p>
-      <p className="mt-1 text-slate-500">Session {formatSessionDuration(player.sessionSeconds)}</p>
+      <p className="mt-1 text-th-text0">Session {formatSessionDuration(player.sessionSeconds)}</p>
     </div>
   );
 }
@@ -67,21 +67,21 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
 
   return (
     <section className="glass-panel overflow-hidden">
-      <div className="border-b border-slate-800/80 p-5">
+      <div className="border-b border-th-border-m/80 p-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="section-title">Live map telemetry</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Hagga Basin Tactical Overlay</h2>
-            <p className="mt-2 max-w-3xl text-sm text-slate-400">
-              Placeholder desert backdrop in use. Add <code className="rounded bg-slate-900/80 px-1.5 py-0.5 text-xs text-amber-200">/public/maps/hagga-basin.webp</code> and swap the background once final art is available.
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Hagga Basin Tactical Overlay</h2>
+            <p className="mt-2 max-w-3xl text-sm text-th-text-m">
+              Placeholder desert backdrop in use. Add <code className="rounded bg-th-surface-s/80 px-1.5 py-0.5 text-xs text-amber-200">/public/maps/hagga-basin.webp</code> and swap the background once final art is available.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-th-text-m">
             <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-amber-200">
               <Users className="h-4 w-4" /> {plottedPlayers.length} tracked
             </span>
             {refreshIntervalMs > 0 ? <span>Refreshes every {Math.round(refreshIntervalMs / 1000)}s</span> : null}
-            <div className="inline-flex rounded-full border border-slate-700/80 bg-slate-950/80 p-1">
+            <div className="inline-flex rounded-full border border-th-border/80 bg-th-bg/80 p-1">
               {(['tactical', 'chart'] as ViewMode[]).map((mode) => (
                 <button
                   key={mode}
@@ -89,7 +89,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                   onClick={() => setViewMode(mode)}
                   className={cn(
                     'rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-colors',
-                    viewMode === mode ? 'bg-amber-500/15 text-amber-200' : 'text-slate-400 hover:text-slate-200',
+                    viewMode === mode ? 'bg-amber-500/15 text-amber-200' : 'text-th-text-m hover:text-th-text-s',
                   )}
                 >
                   {mode === 'tactical' ? 'Tactical' : 'Chart'}
@@ -103,7 +103,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       <div className="p-5">
         {viewMode === 'tactical' ? (
           <div
-            className="relative min-h-[420px] overflow-hidden rounded-3xl border border-amber-500/15 bg-slate-950 sand-glow"
+            className="relative min-h-[420px] overflow-hidden rounded-3xl border border-amber-500/15 bg-th-bg sand-glow"
             style={{
               backgroundImage: [
                 'radial-gradient(circle at 20% 18%, rgba(251, 191, 36, 0.14), transparent 22%)',
@@ -122,15 +122,15 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
               }}
             />
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-amber-300/10 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/80 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-th-bg/80 to-transparent" />
 
-            <div className="absolute left-4 top-4 rounded-full border border-amber-400/20 bg-slate-950/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-200/90">
+            <div className="absolute left-4 top-4 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-200/90">
               Hagga Basin
             </div>
-            <div className="absolute right-4 top-4 rounded-full border border-slate-700/80 bg-slate-950/70 px-3 py-1 text-xs text-slate-300">
+            <div className="absolute right-4 top-4 rounded-full border border-th-border/80 bg-th-bg/70 px-3 py-1 text-xs text-th-text-s">
               X {Math.round(bounds.minX).toLocaleString()} → {Math.round(bounds.maxX).toLocaleString()}
             </div>
-            <div className="absolute bottom-4 right-4 rounded-full border border-slate-700/80 bg-slate-950/70 px-3 py-1 text-xs text-slate-300">
+            <div className="absolute bottom-4 right-4 rounded-full border border-th-border/80 bg-th-bg/70 px-3 py-1 text-xs text-th-text-s">
               Y {Math.round(bounds.minY).toLocaleString()} → {Math.round(bounds.maxY).toLocaleString()}
             </div>
 
@@ -140,8 +140,8 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                   <LocateFixed className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-slate-100">{emptyMessage}</p>
-                  <p className="mt-2 max-w-md text-sm text-slate-400">
+                  <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
+                  <p className="mt-2 max-w-md text-sm text-th-text-m">
                     Player dots appear here as soon as the dashboard receives live position updates from the game services.
                   </p>
                 </div>
@@ -158,10 +158,10 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
               >
                 <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-md" />
                 <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition-transform duration-150 ease-[var(--ease-out-expo)] group-hover:scale-125" />
-                <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-slate-950/95 px-3 py-2 text-left text-xs text-slate-200 shadow-2xl group-hover:block">
+                <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
                   <span className="block font-semibold text-amber-200">{player.name}</span>
-                  <span className="mt-1 block text-slate-400">{player.mapLabel}</span>
-                  <span className="mt-1 block text-slate-500">
+                  <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
+                  <span className="mt-1 block text-th-text0">
                     X {Math.round(player.x).toLocaleString()} • Y {Math.round(player.y).toLocaleString()}
                   </span>
                 </span>
@@ -207,15 +207,15 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                   <LocateFixed className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-slate-100">{emptyMessage}</p>
-                  <p className="mt-2 max-w-md text-sm text-slate-400">Switch back to Tactical view once live coordinates begin flowing again.</p>
+                  <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
+                  <p className="mt-2 max-w-md text-sm text-th-text-m">Switch back to Tactical view once live coordinates begin flowing again.</p>
                 </div>
               </div>
             ) : (
-              <div className="pointer-events-none absolute bottom-4 left-4 flex flex-wrap gap-2 text-xs text-slate-200">
-                <span className="rounded-full border border-amber-500/20 bg-slate-950/70 px-3 py-1">Survival <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-[#f59e0b]" /></span>
-                <span className="rounded-full border border-amber-500/20 bg-slate-950/70 px-3 py-1">Overmap <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-[#60a5fa]" /></span>
-                <span className="rounded-full border border-amber-500/20 bg-slate-950/70 px-3 py-1">DeepDesert <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-[#fb923c]" /></span>
+              <div className="pointer-events-none absolute bottom-4 left-4 flex flex-wrap gap-2 text-xs text-th-text-s">
+                <span className="rounded-full border border-amber-500/20 bg-th-bg/70 px-3 py-1">Survival <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-[#f59e0b]" /></span>
+                <span className="rounded-full border border-amber-500/20 bg-th-bg/70 px-3 py-1">Overmap <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-[#60a5fa]" /></span>
+                <span className="rounded-full border border-amber-500/20 bg-th-bg/70 px-3 py-1">DeepDesert <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-[#fb923c]" /></span>
               </div>
             )}
           </div>

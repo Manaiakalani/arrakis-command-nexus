@@ -79,10 +79,10 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
 
     if (field.type === 'boolean') {
       return (
-        <label className="flex items-center justify-between rounded-2xl border border-slate-700/70 bg-slate-900/60 px-4 py-3">
+        <label className="flex items-center justify-between rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3">
           <div>
-            <p className="font-medium text-slate-100">{field.label}</p>
-            {field.description ? <p className="mt-1 text-sm text-slate-400">{field.description}</p> : null}
+            <p className="font-medium text-th-text">{field.label}</p>
+            {field.description ? <p className="mt-1 text-sm text-th-text-m">{field.description}</p> : null}
           </div>
           <input
             type="checkbox"
@@ -97,13 +97,13 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
     if (field.type === 'select') {
       return (
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-100" title={field.description}>{field.label}</label>
+          <label className="mb-2 block text-sm font-medium text-th-text" title={field.description}>{field.label}</label>
           <select className="dune-input" value={String(value)} onChange={(event) => updateField(field, event.target.value)}>
             {(field.options ?? []).map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
-          {field.description ? <p className="mt-2 text-sm text-slate-400">{field.description}</p> : null}
+          {field.description ? <p className="mt-2 text-sm text-th-text-m">{field.description}</p> : null}
         </div>
       );
     }
@@ -111,21 +111,21 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
     if (field.type === 'textarea') {
       return (
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-100" title={field.description}>{field.label}</label>
+          <label className="mb-2 block text-sm font-medium text-th-text" title={field.description}>{field.label}</label>
           <textarea
             className="dune-input min-h-[140px]"
             value={String(value)}
             placeholder={field.placeholder}
             onChange={(event) => updateField(field, event.target.value)}
           />
-          {field.description ? <p className="mt-2 text-sm text-slate-400">{field.description}</p> : null}
+          {field.description ? <p className="mt-2 text-sm text-th-text-m">{field.description}</p> : null}
         </div>
       );
     }
 
     return (
       <div>
-        <label className="mb-2 block text-sm font-medium text-slate-100" title={field.description}>{field.label}</label>
+        <label className="mb-2 block text-sm font-medium text-th-text" title={field.description}>{field.label}</label>
         <input
           className="dune-input"
           type={field.type === 'number' ? 'number' : 'text'}
@@ -133,7 +133,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
           placeholder={field.placeholder}
           onChange={(event) => updateField(field, field.type === 'number' ? Number(event.target.value) : event.target.value)}
         />
-        {field.description ? <p className="mt-2 text-sm text-slate-400">{field.description}</p> : null}
+        {field.description ? <p className="mt-2 text-sm text-th-text-m">{field.description}</p> : null}
       </div>
     );
   };
@@ -160,7 +160,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
 
   return (
     <div className="glass-panel overflow-hidden">
-      <div className="border-b border-slate-800/80 p-4 sm:p-5">
+      <div className="border-b border-th-border-m/80 p-4 sm:p-5">
         <div className="flex flex-wrap gap-2">
           {files.map((file) => {
             const drifted = file.drift?.drifted;
@@ -173,7 +173,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
                   'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-[color,background-color,border-color]',
                   selected === file.filename
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
-                    : 'border-slate-700 bg-slate-900/70 text-slate-400 hover:text-slate-200',
+                    : 'border-th-border bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',
                   drifted && 'border-amber-500/50 bg-amber-500/10 text-amber-100',
                 )}
               >
@@ -215,11 +215,11 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
       </div>
       <div className="space-y-6 p-4 sm:p-5">
         {sections.map(([section, fields]) => (
-          <div key={section} className="rounded-3xl border border-slate-800/80 bg-slate-900/40 p-5">
+          <div key={section} className="rounded-3xl border border-th-border-m/80 bg-th-bg-s/40 p-5">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <p className="section-title">Section</p>
-                <h3 className="mt-1 text-lg font-semibold text-slate-50">{section}</h3>
+                <h3 className="mt-1 text-lg font-semibold text-th-text">{section}</h3>
               </div>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
@@ -232,7 +232,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
           </div>
         ))}
       </div>
-      <div className="border-t border-slate-800/80 p-4 sm:p-5">
+      <div className="border-t border-th-border-m/80 p-4 sm:p-5">
         <button type="button" onClick={() => void handleSave()} className="dune-button">
           <Save className="mr-2 h-4 w-4" /> Save configuration
         </button>

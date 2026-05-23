@@ -2,6 +2,8 @@
 
 import { memo } from 'react';
 
+import { cn, GAUGE_TRACK_STROKE } from '@/lib/utils';
+
 interface ResourceGaugeProps {
   label: string;
   value: number;
@@ -55,7 +57,7 @@ export const ResourceGauge = memo(function ResourceGauge({ label, value, color, 
             cy={VIEWBOX / 2}
             r={RADIUS}
             fill="none"
-            stroke="rgba(148,163,184,0.14)"
+            stroke={GAUGE_TRACK_STROKE}
             strokeWidth={STROKE_WIDTH}
           />
           {/* Value arc */}
@@ -81,7 +83,7 @@ export const ResourceGauge = memo(function ResourceGauge({ label, value, color, 
           </span>
         </div>
       </div>
-      <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-slate-400">
+      <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-th-text-m">
         {label}
       </span>
     </div>

@@ -34,11 +34,11 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
       <div className="glass-panel p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
           <label className="flex-1">
-            <span className="mb-2 block text-sm font-medium text-slate-100">Webhook name</span>
+            <span className="mb-2 block text-sm font-medium text-th-text">Webhook name</span>
             <input className="dune-input" name="webhook-name" autoComplete="off" value={newWebhook.name} onChange={(event) => setNewWebhook((current) => ({ ...current, name: event.target.value }))} />
           </label>
           <label className="flex-[2]">
-            <span className="mb-2 block text-sm font-medium text-slate-100">Webhook URL</span>
+            <span className="mb-2 block text-sm font-medium text-th-text">Webhook URL</span>
             <input className="dune-input" name="webhook-url" type="url" autoComplete="off" spellCheck={false} value={newWebhook.url} onChange={(event) => setNewWebhook((current) => ({ ...current, url: event.target.value }))} placeholder="https://discord.com/api/webhooks/&#x2026;" />
           </label>
           <button
@@ -66,16 +66,16 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
                     <Webhook className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-50">{webhook.name}</h3>
-                    <p className="mt-1 text-sm text-slate-400 break-all">{webhook.url}</p>
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                    <h3 className="text-lg font-semibold text-th-text">{webhook.name}</h3>
+                    <p className="mt-1 text-sm text-th-text-m break-all">{webhook.url}</p>
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/70 px-3 py-1 text-xs text-th-text-s">
                       <span className={`h-2 w-2 rounded-full ${webhook.isHealthy ? 'bg-emerald-400' : 'bg-red-400'}`} />
                       {webhook.isHealthy ? 'Connected' : 'Attention needed'}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <label className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
+                  <label className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/70 px-3 py-2 text-xs text-th-text-s">
                     <input type="checkbox" checked={webhook.enabled} onChange={(event) => updateDraft(webhook.id, { enabled: event.target.checked })} className="accent-amber-400" />
                     Enabled
                   </label>
@@ -88,7 +88,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
                 {availableEvents.map((eventName) => {
                   const enabled = webhook.events.includes(eventName);
                   return (
-                    <label key={eventName} className="flex items-center justify-between rounded-2xl border border-slate-700/70 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">
+                    <label key={eventName} className="flex items-center justify-between rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
                       <span>{eventName}</span>
                       <input
                         type="checkbox"
@@ -119,7 +119,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
 
         <div className="glass-panel p-5">
           <p className="section-title">Manual broadcast</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-50">Send Announcement</h3>
+          <h3 className="mt-1 text-lg font-semibold text-th-text">Send Announcement</h3>
           <textarea className="dune-input mt-4 min-h-[200px]" value={announcement} onChange={(event) => setAnnouncement(event.target.value)} placeholder="Attention, sleepers. Maintenance begins at sunset\u2026" />
           <div className="mt-4 flex flex-wrap gap-3">
             <button

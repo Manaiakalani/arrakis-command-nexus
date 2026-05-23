@@ -28,7 +28,7 @@ const statusStyles = {
   online: { bg: 'bg-emerald-500', text: 'text-emerald-300', label: 'Online' },
   degraded: { bg: 'bg-amber-500', text: 'text-amber-300', label: 'Degraded' },
   offline: { bg: 'bg-red-500', text: 'text-red-300', label: 'Offline' },
-  unknown: { bg: 'bg-slate-500', text: 'text-slate-300', label: 'Unknown' },
+  unknown: { bg: 'bg-slate-500', text: 'text-th-text-s', label: 'Unknown' },
 };
 
 export default function PublicStatusPage() {
@@ -65,8 +65,8 @@ export default function PublicStatusPage() {
       <div className="relative mx-auto max-w-2xl px-4 py-16">
         <div className="text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-amber-200/70">Dune Awakening</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-50">{data?.serverName ?? 'Server Status'}</h1>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2">
+          <h1 className="mt-2 text-3xl font-bold text-th-text">{data?.serverName ?? 'Server Status'}</h1>
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-th-border/80 px-4 py-2">
             <span className={`h-3 w-3 rounded-full ${styles.bg} shadow-[0_0_12px_currentColor]`} />
             <span className={`font-semibold ${styles.text}`}>{styles.label}</span>
           </div>
@@ -76,57 +76,57 @@ export default function PublicStatusPage() {
         <div className="mt-10 grid gap-5 sm:grid-cols-2">
           <div className="glass-panel px-6 py-7 text-center">
             <Users className="mx-auto h-7 w-7 text-amber-300" />
-            <p className="mt-4 text-4xl font-bold tabular-nums text-slate-50">{data?.playersOnline ?? 0}</p>
-            <p className="mt-2 text-sm font-medium text-slate-300">Players Online</p>
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data?.playersOnline ?? 0}</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Players Online</p>
             {data?.maxPlayers != null && (
-              <p className="mt-1 text-xs tabular-nums text-slate-500">of {data.maxPlayers} max</p>
+              <p className="mt-1 text-xs tabular-nums text-th-text0">of {data.maxPlayers} max</p>
             )}
           </div>
           <div className="glass-panel px-6 py-7 text-center">
             <Activity className="mx-auto h-7 w-7 text-amber-300" />
-            <p className="mt-4 text-4xl font-bold tabular-nums text-slate-50">{data?.mapsActive ?? 0}</p>
-            <p className="mt-2 text-sm font-medium text-slate-300">Active Maps</p>
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data?.mapsActive ?? 0}</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Active Maps</p>
           </div>
           <div className="glass-panel px-6 py-7 text-center">
             <Clock3 className="mx-auto h-7 w-7 text-amber-300" />
-            <p className="mt-4 text-4xl font-bold tabular-nums text-slate-50">{data ? formatUptime(data.uptimeSeconds) : '--'}</p>
-            <p className="mt-2 text-sm font-medium text-slate-300">Uptime</p>
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data ? formatUptime(data.uptimeSeconds) : '--'}</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Uptime</p>
           </div>
           <div className="glass-panel px-6 py-7 text-center">
             <Shield className="mx-auto h-7 w-7 text-amber-300" />
-            <p className="mt-4 text-4xl font-bold tabular-nums text-slate-50">
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">
               {status === 'online' ? '100%' : status === 'degraded' ? 'Partial' : '--'}
             </p>
-            <p className="mt-2 text-sm font-medium text-slate-300">Availability</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Availability</p>
           </div>
         </div>
 
         <div className="mt-10 glass-panel p-6">
           <div className="flex items-center gap-3">
             <Server className="h-5 w-5 text-amber-300" />
-            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Server Details</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-th-text-m">Server Details</h2>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
-              <p className="text-xs text-slate-500">Server Name</p>
-              <p className="mt-1 text-sm font-medium text-slate-100">{data?.serverName ?? '--'}</p>
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text0">Server Name</p>
+              <p className="mt-1 text-sm font-medium text-th-text">{data?.serverName ?? '--'}</p>
             </div>
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
-              <p className="text-xs text-slate-500">Max Players</p>
-              <p className="mt-1 text-sm font-medium tabular-nums text-slate-100">{data?.maxPlayers ?? '--'}</p>
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text0">Max Players</p>
+              <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{data?.maxPlayers ?? '--'}</p>
             </div>
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
-              <p className="text-xs text-slate-500">Active Maps</p>
-              <p className="mt-1 text-sm font-medium tabular-nums text-slate-100">{data?.mapsActive ?? '--'}</p>
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text0">Active Maps</p>
+              <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{data?.mapsActive ?? '--'}</p>
             </div>
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
-              <p className="text-xs text-slate-500">Region</p>
-              <p className="mt-1 text-sm font-medium text-slate-100">{data?.region ?? '--'}</p>
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text0">Region</p>
+              <p className="mt-1 text-sm font-medium text-th-text">{data?.region ?? '--'}</p>
             </div>
           </div>
         </div>
 
-        <div className="mt-10 text-center text-xs text-slate-500">
+        <div className="mt-10 text-center text-xs text-th-text0">
           {data?.lastUpdated ? `Last updated: ${new Date(data.lastUpdated).toLocaleString()}` : ''}
           <p className="mt-2">Powered by Arrakis Command Nexus</p>
         </div>

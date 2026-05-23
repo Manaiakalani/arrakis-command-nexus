@@ -49,7 +49,7 @@ export default function MapsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="section-title">Map orchestration</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Shard Fleet</h2>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Shard Fleet</h2>
           </div>
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => void handleBulk('start')} className="dune-button">
@@ -61,11 +61,11 @@ export default function MapsPage() {
           </div>
         </div>
         <div className="mt-6">
-          <div className="flex items-center justify-between text-sm text-slate-400">
+          <div className="flex items-center justify-between text-sm text-th-text-m">
             <span>Overall memory usage</span>
             <span>{Math.round(totals.used)} MB / {Math.round(totals.limit)} MB</span>
           </div>
-          <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-900/80">
+          <div className="mt-2 h-3 overflow-hidden rounded-full bg-th-surface-s/80">
             <div className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-red-400" style={{ width: `${totals.percent}%` }} />
           </div>
         </div>
@@ -87,11 +87,11 @@ export default function MapsPage() {
         <div className="flex items-start gap-3">
           <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
           <div>
-            <h3 className="text-base font-semibold text-slate-50">Adding maps</h3>
-            <p className="mt-1 text-sm leading-relaxed text-slate-400">
-              To add a new map shard, define a new service in <code className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-amber-300">docker-compose.basic.yml</code> using
-              the game server image and set the <code className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-amber-300">PARTITION_MAP_NAME</code> environment variable
-              to the desired map name. Restart the stack with <code className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-amber-300">docker compose up -d</code> and
+            <h3 className="text-base font-semibold text-th-text">Adding maps</h3>
+            <p className="mt-1 text-sm leading-relaxed text-th-text-m">
+              To add a new map shard, define a new service in <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-300">docker-compose.basic.yml</code> using
+              the game server image and set the <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-300">PARTITION_MAP_NAME</code> environment variable
+              to the desired map name. Restart the stack with <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-300">docker compose up -d</code> and
               the new shard will appear here automatically. Use the Backups page to create a snapshot before making changes.
             </p>
           </div>

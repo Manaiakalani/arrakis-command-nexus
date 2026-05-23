@@ -12,7 +12,7 @@ const severityClasses: Record<Severity, string> = {
   ERROR: 'border-red-500/30 bg-red-500/10 text-red-300',
   WARN: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
   INFO: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
-  DEBUG: 'border-slate-600 bg-slate-800 text-slate-300',
+  DEBUG: 'border-th-border bg-th-surface text-th-text-s',
 };
 
 function parseLogEvent(raw: string): LogEvent {
@@ -122,7 +122,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
 
   return (
     <div className="glass-panel overflow-hidden">
-      <div className="border-b border-slate-800/80 p-4 sm:p-5">
+      <div className="border-b border-th-border-m/80 p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-2">
             {availableServices.map((service) => (
@@ -134,7 +134,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
                   'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-[color,background-color,border-color] dune-focus',
                   selectedService === service
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
-                    : 'border-slate-700 bg-slate-900/70 text-slate-400 hover:text-slate-200',
+                    : 'border-th-border bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',
                 )}
               >
                 {service}
@@ -143,21 +143,21 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-[260px] flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text0" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} className="dune-input pl-11" placeholder="Search logs&#x2026;" aria-label="Search logs" name="log-search" autoComplete="off" spellCheck={false} />
             </div>
-            <label className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
+            <label className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/70 px-3 py-2 text-xs text-th-text-s">
               <input type="checkbox" checked={autoScroll} onChange={(event) => setAutoScroll(event.target.checked)} className="accent-amber-400" />
               Auto-scroll
             </label>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-slate-300" role="status" aria-label={`Stream ${status}`}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/70 px-3 py-2 text-xs text-th-text-s" role="status" aria-label={`Stream ${status}`}>
               {status === 'open' ? <Wifi className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-red-400" />}
               {status}
             </div>
           </div>
         </div>
       </div>
-      <div ref={containerRef} className="max-h-[70vh] min-h-[400px] overflow-auto bg-slate-950/90 p-3 font-mono text-[13px] leading-relaxed">
+      <div ref={containerRef} className="max-h-[70vh] min-h-[400px] overflow-auto bg-th-bg/90 p-3 font-mono text-[13px] leading-relaxed">
         {visibleMessages.length > 0 ? (
           <table className="w-full border-collapse" aria-label="Service log entries">
             <thead className="sr-only">
@@ -170,24 +170,24 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
             </thead>
             <tbody>
               {visibleMessages.map((entry) => (
-                <tr key={entry.id} className="border-b border-slate-800/40 hover:bg-slate-900/60">
-                  <td className="whitespace-nowrap px-2 py-1.5 align-top tabular-nums text-slate-500">{new Date(entry.timestamp).toLocaleTimeString()}</td>
+                <tr key={entry.id} className="border-b border-th-border-m/40 hover:bg-th-surface-s/60">
+                  <td className="whitespace-nowrap px-2 py-1.5 align-top tabular-nums text-th-text0">{new Date(entry.timestamp).toLocaleTimeString()}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 align-top">
                     <span className={cn('inline-block w-[3.5rem] text-center rounded border px-1 py-0.5 text-[10px] font-bold uppercase', severityClasses[entry.level])}>{entry.level}</span>
                   </td>
-                  <td className="whitespace-nowrap px-2 py-1.5 align-top text-slate-400">{entry.service.replace('dune-awakening-', '').replace(/-1$/, '')}</td>
-                  <td className="w-full break-all px-2 py-1.5 align-top text-slate-200">{entry.message}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 align-top text-th-text-m">{entry.service.replace('dune-awakening-', '').replace(/-1$/, '')}</td>
+                  <td className="w-full break-all px-2 py-1.5 align-top text-th-text-s">{entry.message}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <div className="flex min-h-[320px] items-center justify-center text-slate-500">
+          <div className="flex min-h-[320px] items-center justify-center text-th-text0">
             {status === 'connecting' ? 'Connecting to log stream\u2026' : seedLogs.length === 0 ? 'Loading initial logs\u2026' : 'No matching log events.'}
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between border-t border-slate-800/80 px-4 py-2 text-xs text-slate-500">
+      <div className="flex items-center justify-between border-t border-th-border-m/80 px-4 py-2 text-xs text-th-text0">
         <span>{visibleMessages.length} entries</span>
         <span>{allMessages.length} total in buffer</span>
       </div>

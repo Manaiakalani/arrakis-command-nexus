@@ -72,7 +72,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
       {/* Mobile backdrop */}
       <div
         className={cn(
-          'fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-200 lg:hidden',
+          'fixed inset-0 z-40 bg-th-bg/70 backdrop-blur-sm transition-opacity duration-200 lg:hidden',
           mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
         )}
         onClick={onClose}
@@ -83,14 +83,14 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
       <aside
         data-testid="sidebar"
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-800/70 bg-slate-950/95 backdrop-blur-2xl',
+          'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-th-border-m/70 bg-th-bg/95 backdrop-blur-2xl',
           'transition-[width,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
           collapsed ? 'lg:w-[4.5rem]' : 'w-80',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
         {/* Header */}
-        <div className={cn('flex items-center border-b border-slate-800/50 px-3 py-4', collapsed ? 'justify-center' : 'justify-between')}>
+        <div className={cn('flex items-center border-b border-th-border-m/50 px-3 py-4', collapsed ? 'justify-center' : 'justify-between')}>
           <div className={cn(
             'flex items-center gap-3 overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent',
             collapsed ? 'p-2' : 'px-3 py-3',
@@ -106,7 +106,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
               collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
             )}>
               <p className="text-xs uppercase tracking-[0.26em] text-amber-200/70">Arrakis</p>
-              <h2 className="text-lg font-semibold leading-tight text-slate-50">Command Nexus</h2>
+              <h2 className="text-lg font-semibold leading-tight text-th-text">Command Nexus</h2>
             </div>
           </div>
 
@@ -116,9 +116,9 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             onClick={onToggle}
             data-testid="sidebar-toggle"
             className={cn(
-              'hidden lg:inline-flex items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/60 p-1.5 text-slate-400',
-              'transition-colors duration-150 hover:border-slate-600 hover:bg-slate-800 hover:text-slate-200',
-              collapsed && 'absolute -right-3 top-6 z-[60] rounded-full border-slate-700 bg-slate-900 shadow-lg shadow-slate-950/50',
+              'hidden lg:inline-flex items-center justify-center rounded-lg border border-th-border/60 bg-th-surface-s/60 p-1.5 text-th-text-m',
+              'transition-colors duration-150 hover:border-th-border hover:bg-th-surface hover:text-th-text-s',
+              collapsed && 'absolute -right-3 top-6 z-[60] rounded-full border-th-border bg-th-bg-s shadow-lg shadow-black/20 dark:shadow-black/50',
             )}
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
           >
@@ -130,7 +130,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             type="button"
             onClick={onClose}
             data-testid="sidebar-close"
-            className="inline-flex items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/60 p-1.5 text-slate-400 transition-colors duration-150 hover:border-slate-600 hover:bg-slate-800 hover:text-slate-200 lg:hidden"
+            className="inline-flex items-center justify-center rounded-lg border border-th-border/60 bg-th-surface-s/60 p-1.5 text-th-text-m transition-colors duration-150 hover:border-th-border hover:bg-th-surface hover:text-th-text-s lg:hidden"
             aria-label="Close navigation"
           >
             <X className="h-4 w-4" />
@@ -145,8 +145,8 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
               'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
               collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
             )}>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Cluster status</p>
-              <p className="text-sm font-medium capitalize text-slate-100">{status}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-th-text0">Cluster status</p>
+              <p className="text-sm font-medium capitalize text-th-text">{status}</p>
             </div>
           </div>
         </div>
@@ -168,10 +168,10 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
                   collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
                   active
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-200 shadow-dune'
-                    : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-900/70 hover:text-slate-50',
+                    : 'border-transparent text-th-text-s hover:border-th-border hover:bg-th-surface-s/70 hover:text-th-text',
                 )}
               >
-                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-300' : 'text-slate-500 group-hover:text-slate-200')} />
+                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-300' : 'text-th-text0 group-hover:text-th-text-s')} />
                 <span className={cn(
                   'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
                   collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
@@ -192,19 +192,19 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
           ) : (
             <>
               <p className="text-xs uppercase tracking-[0.24em] text-amber-200/70">Spice forecast</p>
-              <p className="mt-2 text-sm text-slate-300">Live map, player, and service intelligence.</p>
-              <div className="mt-3 space-y-2 border-t border-amber-500/10 pt-3 text-xs text-slate-400">
+              <p className="mt-2 text-sm text-th-text-s">Live map, player, and service intelligence.</p>
+              <div className="mt-3 space-y-2 border-t border-amber-500/10 pt-3 text-xs text-th-text-m">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-slate-500">Version</span>
-                  <span className="font-medium text-slate-100">{version?.version ?? 'unknown'}</span>
+                  <span className="uppercase tracking-[0.18em] text-th-text0">Version</span>
+                  <span className="font-medium text-th-text">{version?.version ?? 'unknown'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-slate-500">Profile</span>
-                  <span className="font-medium capitalize text-slate-100">{version?.profile ?? 'basic'}</span>
+                  <span className="uppercase tracking-[0.18em] text-th-text0">Profile</span>
+                  <span className="font-medium capitalize text-th-text">{version?.profile ?? 'basic'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-slate-500">Env</span>
-                  <span className="font-medium text-slate-100">{environmentLabel}</span>
+                  <span className="uppercase tracking-[0.18em] text-th-text0">Env</span>
+                  <span className="font-medium text-th-text">{environmentLabel}</span>
                 </div>
               </div>
             </>

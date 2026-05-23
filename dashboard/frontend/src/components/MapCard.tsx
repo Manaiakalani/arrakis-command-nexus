@@ -14,7 +14,7 @@ interface MapCardProps {
 
 const badgeStyles: Record<MapStatus['status'], string> = {
   running: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  stopped: 'border-slate-600 bg-slate-900/70 text-slate-300',
+  stopped: 'border-th-border bg-th-surface-s/70 text-th-text-s',
   completed: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
   error: 'border-red-500/30 bg-red-500/10 text-red-300',
   starting: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
@@ -43,12 +43,12 @@ export function MapCard({ map, onAction, onBackup }: MapCardProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-xl font-semibold text-slate-50">{map.name}</h3>
+            <h3 className="text-xl font-semibold text-th-text">{map.name}</h3>
             <span className={cn('rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]', badgeStyles[map.status])}>
               {map.status}
             </span>
           </div>
-          <p className="mt-2 text-sm text-slate-400">{map.players}{map.maxPlayers ? ` / ${map.maxPlayers}` : ''} players online</p>
+          <p className="mt-2 text-sm text-th-text-m">{map.players}{map.maxPlayers ? ` / ${map.maxPlayers}` : ''} players online</p>
         </div>
         <button type="button" onClick={() => setExpanded((current) => !current)} className="dune-button-muted" aria-label={expanded ? 'Collapse details' : 'Expand details'}>
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -56,22 +56,22 @@ export function MapCard({ map, onAction, onBackup }: MapCardProps) {
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 px-3 py-2">
-          <p className="text-xs uppercase tracking-[0.15em] text-slate-500">CPU</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">{map.cpuPercent != null ? `${map.cpuPercent}%` : '-'}</p>
+        <div className="rounded-xl border border-th-border/50 bg-th-bg-s/40 px-3 py-2">
+          <p className="text-xs uppercase tracking-[0.15em] text-th-text0">CPU</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-th-text">{map.cpuPercent != null ? `${map.cpuPercent}%` : '-'}</p>
         </div>
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 px-3 py-2">
-          <p className="text-xs uppercase tracking-[0.15em] text-slate-500">Uptime</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">{map.uptimeSeconds ? formatUptime(map.uptimeSeconds) : '-'}</p>
+        <div className="rounded-xl border border-th-border/50 bg-th-bg-s/40 px-3 py-2">
+          <p className="text-xs uppercase tracking-[0.15em] text-th-text0">Uptime</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-th-text">{map.uptimeSeconds ? formatUptime(map.uptimeSeconds) : '-'}</p>
         </div>
       </div>
 
       <div className="mt-4">
-        <div className="flex items-center justify-between text-sm text-slate-400">
+        <div className="flex items-center justify-between text-sm text-th-text-m">
           <span>Memory footprint</span>
           <span>{map.memoryUsedMb} MB / {map.memoryLimitMb} MB</span>
         </div>
-        <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-900/80">
+        <div className="mt-2 h-3 overflow-hidden rounded-full bg-th-surface-s/80">
           <div className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-red-400" style={{ width: `${memoryPercent}%` }} />
         </div>
       </div>
@@ -94,14 +94,14 @@ export function MapCard({ map, onAction, onBackup }: MapCardProps) {
       </div>
 
       {expanded ? (
-        <div className="mt-5 grid gap-3 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-4 text-sm text-slate-300 sm:grid-cols-2">
+        <div className="mt-5 grid gap-3 rounded-2xl border border-th-border/70 bg-th-surface-s/50 p-4 text-sm text-th-text-s sm:grid-cols-2">
           {Object.entries(map.settings ?? {}).map(([key, value]) => (
             <div key={key}>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{key}</p>
-              <p className="mt-1 text-base text-slate-100">{String(value)}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-th-text0">{key}</p>
+              <p className="mt-1 text-base text-th-text">{String(value)}</p>
             </div>
           ))}
-          {map.notes ? <p className="sm:col-span-2 text-slate-400">{map.notes}</p> : null}
+          {map.notes ? <p className="sm:col-span-2 text-th-text-m">{map.notes}</p> : null}
         </div>
       ) : null}
     </div>

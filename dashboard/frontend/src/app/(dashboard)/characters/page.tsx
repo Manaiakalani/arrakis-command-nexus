@@ -245,8 +245,8 @@ export default function CharactersPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Roster</p>
-              <h2 className="mt-1 text-3xl font-semibold text-slate-50">{characters.data?.length ?? 0}</h2>
-              <p className="mt-2 text-sm text-slate-400">Detected characters from the game DB or the safe mock fallback.</p>
+              <h2 className="mt-1 text-3xl font-semibold text-th-text">{characters.data?.length ?? 0}</h2>
+              <p className="mt-2 text-sm text-th-text-m">Detected characters from the game DB or the safe mock fallback.</p>
             </div>
             <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
               <UserCog className="h-6 w-6" />
@@ -257,8 +257,8 @@ export default function CharactersPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Editable stats</p>
-              <h2 className="mt-1 text-3xl font-semibold text-slate-50">{schema.data?.summary.editableStats ?? 0}</h2>
-              <p className="mt-2 text-sm text-slate-400">Organized into {availableCategories.length} category views.</p>
+              <h2 className="mt-1 text-3xl font-semibold text-th-text">{schema.data?.summary.editableStats ?? 0}</h2>
+              <p className="mt-2 text-sm text-th-text-m">Organized into {availableCategories.length} category views.</p>
             </div>
             <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
               <Swords className="h-6 w-6" />
@@ -269,8 +269,8 @@ export default function CharactersPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Mutation mode</p>
-              <h2 className="mt-1 text-3xl font-semibold text-slate-50">{mutationsEnabled ? 'Live' : 'Safe'}</h2>
-              <p className="mt-2 text-sm text-slate-400">Writes require DUNE_ADMIN_MUTATIONS_ENABLED=true.</p>
+              <h2 className="mt-1 text-3xl font-semibold text-th-text">{mutationsEnabled ? 'Live' : 'Safe'}</h2>
+              <p className="mt-2 text-sm text-th-text-m">Writes require DUNE_ADMIN_MUTATIONS_ENABLED=true.</p>
             </div>
             <div className={cn('rounded-2xl p-3', mutationsEnabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>
               <AlertTriangle className="h-6 w-6" />
@@ -281,10 +281,10 @@ export default function CharactersPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Selected source</p>
-              <h2 className="mt-1 text-3xl font-semibold text-slate-50 capitalize">{selectedSource}</h2>
-              <p className="mt-2 text-sm text-slate-400">Showing {selectedCharacter?.table ?? 'no active character yet'}.</p>
+              <h2 className="mt-1 text-3xl font-semibold text-th-text capitalize">{selectedSource}</h2>
+              <p className="mt-2 text-sm text-th-text-m">Showing {selectedCharacter?.table ?? 'no active character yet'}.</p>
             </div>
-            <div className="rounded-2xl bg-slate-900/70 p-3 text-slate-200">
+            <div className="rounded-2xl bg-th-surface-s/70 p-3 text-th-text-s">
               <Flame className="h-6 w-6" />
             </div>
           </div>
@@ -305,11 +305,11 @@ export default function CharactersPage() {
 
       <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="glass-panel overflow-hidden">
-          <div className="border-b border-slate-800/80 p-5">
+          <div className="border-b border-th-border-m/80 p-5">
             <p className="section-title">Character roster</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Search and Select</h2>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Search and Select</h2>
             <label className="relative mt-4 block">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text0" />
               <input
                 className="dune-input pl-11"
                 value={search}
@@ -323,23 +323,23 @@ export default function CharactersPage() {
 
           <div className="max-h-[720px] space-y-3 overflow-y-auto p-4">
             {characters.loading && (characters.data ?? []).length === 0 ? (
-              <div className="flex items-center justify-center gap-3 rounded-3xl border border-slate-800/80 bg-slate-950/30 px-4 py-12 text-slate-400">
+              <div className="flex items-center justify-center gap-3 rounded-3xl border border-th-border-m/80 bg-th-bg/30 px-4 py-12 text-th-text-m">
                 <Loader2 className="h-5 w-5 animate-spin" /> Loading characters\u2026
               </div>
             ) : null}
 
             {isEmpty ? (
-              <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-slate-800/80 bg-slate-950/30 p-8 text-center">
+              <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-8 text-center">
                 <UserCog className="h-10 w-10 text-amber-300" />
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-50">No Characters Discovered</h3>
-                  <p className="mt-2 max-w-sm text-sm text-slate-400">The dashboard could not read the game schema yet. Once character tables are exposed, this panel will automatically populate.</p>
+                  <h3 className="text-xl font-semibold text-th-text">No Characters Discovered</h3>
+                  <p className="mt-2 max-w-sm text-sm text-th-text-m">The dashboard could not read the game schema yet. Once character tables are exposed, this panel will automatically populate.</p>
                 </div>
               </div>
             ) : null}
 
             {!isEmpty && filteredCharacters.length === 0 ? (
-              <div className="rounded-3xl border border-slate-800/80 bg-slate-950/30 px-4 py-12 text-center text-slate-400">No characters matched your filter.</div>
+              <div className="rounded-3xl border border-th-border-m/80 bg-th-bg/30 px-4 py-12 text-center text-th-text-m">No characters matched your filter.</div>
             ) : null}
 
             {filteredCharacters.map((character) => {
@@ -357,22 +357,22 @@ export default function CharactersPage() {
                     'w-full rounded-3xl border p-4 text-left transition-[color,background-color,border-color,box-shadow] dune-focus',
                     active
                       ? 'border-amber-500/40 bg-amber-500/10 shadow-dune'
-                      : 'border-slate-800/80 bg-slate-950/30 hover:border-slate-700 hover:bg-slate-900/60',
+                      : 'border-th-border-m/80 bg-th-bg/30 hover:border-th-border hover:bg-th-surface-s/60',
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-base font-semibold text-slate-100">{character.name}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{character.id}</p>
+                      <p className="text-base font-semibold text-th-text">{character.name}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-th-text0">{character.id}</p>
                     </div>
                     <span className={cn('rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em]', character.source === 'mock' ? 'border-sky-500/20 bg-sky-500/10 text-sky-200' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200')}>
                       {character.source}
                     </span>
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                    <span className="rounded-full border border-slate-700 px-3 py-1">{statCount} mapped stats</span>
-                    {character.metadata?.house ? <span className="rounded-full border border-slate-700 px-3 py-1">{String(character.metadata.house)}</span> : null}
-                    {character.metadata?.clan ? <span className="rounded-full border border-slate-700 px-3 py-1">{String(character.metadata.clan)}</span> : null}
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-th-text-m">
+                    <span className="rounded-full border border-th-border px-3 py-1">{statCount} mapped stats</span>
+                    {character.metadata?.house ? <span className="rounded-full border border-th-border px-3 py-1">{String(character.metadata.house)}</span> : null}
+                    {character.metadata?.clan ? <span className="rounded-full border border-th-border px-3 py-1">{String(character.metadata.clan)}</span> : null}
                   </div>
                 </button>
               );
@@ -385,11 +385,11 @@ export default function CharactersPage() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="section-title">Character editor</p>
-                <h2 className="mt-1 text-2xl font-semibold text-slate-50">{selectedCharacter?.name ?? 'No character selected'}</h2>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                  {selectedCharacter?.id ? <span className="rounded-full border border-slate-700 px-3 py-1 uppercase tracking-[0.18em]">{selectedCharacter.id}</span> : null}
-                  {selectedCharacter?.table ? <span className="rounded-full border border-slate-700 px-3 py-1">{selectedCharacter.table}</span> : null}
-                  {selectedCharacter?.lastUpdated ? <span className="rounded-full border border-slate-700 px-3 py-1">Updated {new Date(selectedCharacter.lastUpdated).toLocaleString()}</span> : null}
+                <h2 className="mt-1 text-2xl font-semibold text-th-text">{selectedCharacter?.name ?? 'No character selected'}</h2>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-th-text-m">
+                  {selectedCharacter?.id ? <span className="rounded-full border border-th-border px-3 py-1 uppercase tracking-[0.18em]">{selectedCharacter.id}</span> : null}
+                  {selectedCharacter?.table ? <span className="rounded-full border border-th-border px-3 py-1">{selectedCharacter.table}</span> : null}
+                  {selectedCharacter?.lastUpdated ? <span className="rounded-full border border-th-border px-3 py-1">Updated {new Date(selectedCharacter.lastUpdated).toLocaleString()}</span> : null}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -410,11 +410,11 @@ export default function CharactersPage() {
             ) : null}
 
             {!selectedCharacter ? (
-              <div className="mt-6 flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-700/80 bg-slate-950/25 p-8 text-center text-slate-400">
+              <div className="mt-6 flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-th-border/80 bg-th-bg/25 p-8 text-center text-th-text-m">
                 <UserCog className="h-10 w-10 text-amber-300" />
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-50">Select a Character</h3>
-                  <p className="mt-2 max-w-md text-sm text-slate-400">Choose a roster entry to inspect the discovered stat mapping and prepare edits.</p>
+                  <h3 className="text-xl font-semibold text-th-text">Select a Character</h3>
+                  <p className="mt-2 max-w-md text-sm text-th-text-m">Choose a roster entry to inspect the discovered stat mapping and prepare edits.</p>
                 </div>
               </div>
             ) : (
@@ -431,39 +431,39 @@ export default function CharactersPage() {
                         onClick={() => setActiveCategory(category)}
                         className={cn(
                           'rounded-3xl border px-4 py-4 text-left transition-[color,background-color,border-color] dune-focus',
-                          isActive ? 'border-amber-500/40 bg-amber-500/10 text-amber-100' : 'border-slate-800/80 bg-slate-950/30 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60',
+                          isActive ? 'border-amber-500/40 bg-amber-500/10 text-amber-100' : 'border-th-border-m/80 bg-th-bg/30 text-th-text-s hover:border-th-border hover:bg-th-surface-s/60',
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold">{meta.label}</p>
-                            <p className="mt-1 text-xs text-slate-400">{fieldsByCategory[category]?.length ?? 0} fields</p>
+                            <p className="mt-1 text-xs text-th-text-m">{fieldsByCategory[category]?.length ?? 0} fields</p>
                           </div>
                           <Icon className="h-5 w-5" />
                         </div>
-                        <p className="mt-3 text-xs text-slate-400">{meta.description}</p>
+                        <p className="mt-3 text-xs text-th-text-m">{meta.description}</p>
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="mt-6 rounded-3xl border border-slate-800/80 bg-slate-950/30 p-5">
+                <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
                   <div className="flex items-center gap-3">
                     {(() => {
                       const Icon = categoryMeta[activeCategory].icon;
                       return <Icon className="h-5 w-5 text-amber-300" />;
                     })()}
                     <div>
-                      <h3 className="font-semibold text-slate-100">{categoryMeta[activeCategory].label}</h3>
-                      <p className="text-sm text-slate-400">{categoryMeta[activeCategory].description}</p>
+                      <h3 className="font-semibold text-th-text">{categoryMeta[activeCategory].label}</h3>
+                      <p className="text-sm text-th-text-m">{categoryMeta[activeCategory].description}</p>
                     </div>
                   </div>
 
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
                     {activeFields.map((field) => (
-                      <label key={field.key} className="block rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4">
-                        <span className="block text-sm font-medium text-slate-100">{field.label}</span>
-                        <span className="mt-1 block text-xs uppercase tracking-[0.18em] text-slate-500">{field.key}</span>
+                      <label key={field.key} className="block rounded-2xl border border-th-border-m/80 bg-th-surface-s/60 p-4">
+                        <span className="block text-sm font-medium text-th-text">{field.label}</span>
+                        <span className="mt-1 block text-xs uppercase tracking-[0.18em] text-th-text0">{field.key}</span>
                         <input
                           className="dune-input mt-3"
                           type={field.type === 'number' ? 'number' : 'text'}
@@ -481,25 +481,25 @@ export default function CharactersPage() {
 
           <div className="glass-panel p-5">
             <p className="section-title">Schema summary</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Editable Stat Layout</h2>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Editable Stat Layout</h2>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {availableCategories.map((category) => {
                 const meta = categoryMeta[category];
                 const Icon = meta.icon;
                 return (
-                  <div key={category} className="rounded-3xl border border-slate-800/80 bg-slate-950/30 p-4">
+                  <div key={category} className="rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-4">
                     <div className="flex items-center gap-3">
                       <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-100">{meta.label}</p>
-                        <p className="text-sm text-slate-400">{fieldsByCategory[category]?.length ?? 0} available inputs</p>
+                        <p className="font-semibold text-th-text">{meta.label}</p>
+                        <p className="text-sm text-th-text-m">{fieldsByCategory[category]?.length ?? 0} available inputs</p>
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {(fieldsByCategory[category] ?? []).map((field) => (
-                        <span key={field.key} className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
+                        <span key={field.key} className="rounded-full border border-th-border px-3 py-1 text-xs text-th-text-s">
                           {field.label}
                         </span>
                       ))}

@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { cn, getTooltipStyles, CHART_GRID_STROKE, CHART_AXIS_STROKE } from '@/lib/utils';
 import type { MetricsPoint } from '@/lib/types';
 
 interface MetricsChartProps {
@@ -89,14 +90,15 @@ export function MetricsChart({
     [history, selectedRange],
   );
   const primaryUnit = series[0]?.unit;
+  const tooltipStyles = getTooltipStyles();
 
   return (
     <div className="glass-panel p-5">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="section-title">Telemetry</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-50">{title}</h3>
-          {description ? <p className="mt-2 text-sm text-slate-400">{description}</p> : null}
+          <h3 className="mt-1 text-lg font-semibold text-th-text">{title}</h3>
+          {description ? <p className="mt-2 text-sm text-th-text-m">{description}</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {ranges.map((range) => (
@@ -115,10 +117,10 @@ export function MetricsChart({
         <ResponsiveContainer>
           {chartType === 'line' ? (
             <LineChart data={data}>
-              <CartesianGrid stroke="rgba(148,163,184,0.12)" strokeDasharray="4 4" />
-              <XAxis dataKey="time" stroke="#64748b" tickLine={false} axisLine={false} minTickGap={24} />
+              <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="4 4" />
+              <XAxis dataKey="time" stroke={CHART_AXIS_STROKE} tickLine={false} axisLine={false} minTickGap={24} />
               <YAxis
-                stroke="#64748b"
+                stroke={CHART_AXIS_STROKE}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value: number) => formatMetricValue(value, primaryUnit)}
@@ -131,14 +133,7 @@ export function MetricsChart({
                   const config = series.find((entry) => String(entry.key) === String(item.dataKey));
                   return [formatMetricValue(Number(value), config?.unit), config?.label ?? String(item.dataKey)];
                 }}
-                contentStyle={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.96)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  borderRadius: '16px',
-                  color: '#f8fafc',
-                }}
-                labelStyle={{ color: '#cbd5e1' }}
-                itemStyle={{ color: '#f8fafc' }}
+                {...tooltipStyles}
               />
               {series.map((line) => (
                 <Line
@@ -148,7 +143,7 @@ export function MetricsChart({
                   stroke={line.color}
                   strokeWidth={2.5}
                   dot={false}
-                  activeDot={{ r: 5, stroke: '#0f172a', strokeWidth: 2 }}
+                  activeDot={{ r: 5, strokeWidth: 2 }}
                 />
               ))}
             </LineChart>
@@ -162,10 +157,10 @@ export function MetricsChart({
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid stroke="rgba(148,163,184,0.12)" strokeDasharray="4 4" />
-              <XAxis dataKey="time" stroke="#64748b" tickLine={false} axisLine={false} minTickGap={24} />
+              <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="4 4" />
+              <XAxis dataKey="time" stroke={CHART_AXIS_STROKE} tickLine={false} axisLine={false} minTickGap={24} />
               <YAxis
-                stroke="#64748b"
+                stroke={CHART_AXIS_STROKE}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value: number) => formatMetricValue(value, primaryUnit)}
@@ -178,14 +173,7 @@ export function MetricsChart({
                   const config = series.find((entry) => String(entry.key) === String(item.dataKey));
                   return [formatMetricValue(Number(value), config?.unit), config?.label ?? String(item.dataKey)];
                 }}
-                contentStyle={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.96)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  borderRadius: '16px',
-                  color: '#f8fafc',
-                }}
-                labelStyle={{ color: '#cbd5e1' }}
-                itemStyle={{ color: '#f8fafc' }}
+                {...tooltipStyles}
               />
               {series.map((entry) => (
                 <Area
@@ -197,7 +185,7 @@ export function MetricsChart({
                   strokeWidth={2.5}
                   fillOpacity={1}
                   dot={false}
-                  activeDot={{ r: 5, stroke: '#0f172a', strokeWidth: 2 }}
+                  activeDot={{ r: 5, strokeWidth: 2 }}
                 />
               ))}
             </AreaChart>

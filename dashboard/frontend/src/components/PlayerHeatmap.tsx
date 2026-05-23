@@ -90,10 +90,10 @@ function HeatmapTooltip({ active, payload }: { active?: boolean; payload?: Array
   const cell = payload[0].payload;
 
   return (
-    <div className="rounded-2xl border border-amber-500/20 bg-slate-950/95 px-3 py-2 text-xs text-slate-200 shadow-2xl">
+    <div className="rounded-2xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-xs text-th-text-s shadow-2xl">
       <p className="font-semibold text-amber-200">{cell.count} active player{cell.count === 1 ? '' : 's'}</p>
-      <p className="mt-1 text-slate-400">Avg. session {formatSessionDuration(cell.averageSessionSeconds)}</p>
-      <p className="mt-1 text-slate-500">{cell.names.slice(0, 3).join(', ')}{cell.names.length > 3 ? ` +${cell.names.length - 3} more` : ''}</p>
+      <p className="mt-1 text-th-text-m">Avg. session {formatSessionDuration(cell.averageSessionSeconds)}</p>
+      <p className="mt-1 text-th-text0">{cell.names.slice(0, 3).join(', ')}{cell.names.length > 3 ? ` +${cell.names.length - 3} more` : ''}</p>
     </div>
   );
 }
@@ -132,14 +132,14 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
 
   return (
     <section className="glass-panel overflow-hidden">
-      <div className="border-b border-slate-800/80 p-5">
+      <div className="border-b border-th-border-m/80 p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="section-title">Density analysis</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Player Activity Heatmap</h2>
-            <p className="mt-2 text-sm text-slate-400">Grid cells brighten as more players cluster together, weighted by current session duration.</p>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Player Activity Heatmap</h2>
+            <p className="mt-2 text-sm text-th-text-m">Grid cells brighten as more players cluster together, weighted by current session duration.</p>
           </div>
-          <div className="flex items-center gap-3 text-sm text-slate-400">
+          <div className="flex items-center gap-3 text-sm text-th-text-m">
             <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-amber-200">
               <Users className="h-4 w-4" /> {normalizedPlayers.length} sampled
             </span>
@@ -148,7 +148,7 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
       </div>
 
       <div className="p-5">
-        <div className="relative h-[360px] overflow-hidden rounded-3xl border border-amber-500/15 bg-slate-950 sand-glow">
+        <div className="relative h-[360px] overflow-hidden rounded-3xl border border-amber-500/15 bg-th-bg sand-glow">
           {cells.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 24, right: 24, bottom: 24, left: 12 }}>
@@ -181,13 +181,13 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
                 <LocateFixed className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-lg font-semibold text-slate-100">{emptyMessage}</p>
-                <p className="mt-2 max-w-md text-sm text-slate-400">Heat bins appear once online players stream coordinate telemetry into the dashboard.</p>
+                <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
+                <p className="mt-2 max-w-md text-sm text-th-text-m">Heat bins appear once online players stream coordinate telemetry into the dashboard.</p>
               </div>
             </div>
           ) : null}
 
-          <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full border border-amber-400/20 bg-slate-950/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-200/90">
+          <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-200/90">
             <Flame className="h-3.5 w-3.5" /> Weighted density
           </div>
         </div>

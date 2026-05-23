@@ -55,9 +55,9 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
 
   return (
     <div className="glass-panel overflow-hidden">
-      <div className="border-b border-slate-800/80 p-4 sm:p-5">
+      <div className="border-b border-th-border-m/80 p-4 sm:p-5">
         <div className="relative max-w-md">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text0" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -71,8 +71,8 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
-          <thead className="bg-slate-900/50 text-xs uppercase tracking-[0.2em] text-slate-500">
+        <table className="min-w-full divide-y divide-th-border-m text-left text-sm">
+          <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text0">
             <tr>
               {[
                 ['name', 'Name'],
@@ -81,23 +81,23 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
                 ['sessionSeconds', 'Session Time'],
               ].map(([key, label]) => (
                 <th key={key} className="px-5 py-4 font-medium">
-                  <button type="button" onClick={() => toggleSort(key as SortKey)} className="inline-flex items-center gap-2 transition-colors hover:text-slate-300">
+                  <button type="button" onClick={() => toggleSort(key as SortKey)} className="inline-flex items-center gap-2 transition-colors hover:text-th-text-s">
                     {label}
-                    <span className={cn('text-[10px]', sortKey === key ? 'text-amber-300' : 'text-slate-700')}>{sortKey === key ? (ascending ? '▲' : '▼') : '•'}</span>
+                    <span className={cn('text-[10px]', sortKey === key ? 'text-amber-300' : 'text-th-border')}>{sortKey === key ? (ascending ? '▲' : '▼') : '•'}</span>
                   </button>
                 </th>
               ))}
               <th className="px-5 py-4 font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/80">
+          <tbody className="divide-y divide-th-border-m/80">
             {filtered.length > 0 ? (
               filtered.map((player) => (
-                <tr key={player.steamId} className="transition-colors hover:bg-slate-900/50">
-                  <td className="px-5 py-4 font-medium text-slate-100">{player.name}</td>
-                  <td className="px-5 py-4 text-slate-300">{player.steamId}</td>
-                  <td className="px-5 py-4 text-slate-300">{player.map}</td>
-                  <td className="px-5 py-4 tabular-nums text-slate-300">{formatSession(player.sessionSeconds)}</td>
+                <tr key={player.steamId} className="transition-colors hover:bg-th-surface-s/50">
+                  <td className="px-5 py-4 font-medium text-th-text">{player.name}</td>
+                  <td className="px-5 py-4 text-th-text-s">{player.steamId}</td>
+                  <td className="px-5 py-4 text-th-text-s">{player.map}</td>
+                  <td className="px-5 py-4 tabular-nums text-th-text-s">{formatSession(player.sessionSeconds)}</td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -117,7 +117,7 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-5 py-12 text-center text-slate-400">
+                <td colSpan={5} className="px-5 py-12 text-center text-th-text-m">
                   No players match the current search. The sands are quiet right now.
                 </td>
               </tr>
