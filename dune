@@ -35,6 +35,7 @@ usage() {
 Usage: dune <command> [options]
 
 Commands:
+  deploy                  Interactive deployment wizard (ASCII art!)
   init                    Run first-time setup wizard
   start                   Run preflight checks and start the stack
   stop                    Stop the stack
@@ -239,6 +240,9 @@ main() {
   case "$command" in
     init)
       exec "$PROJECT_ROOT/scripts/setup.sh" "$@"
+      ;;
+    deploy)
+      exec "$PROJECT_ROOT/scripts/deploy.sh" "$@"
       ;;
     start)
       cmd_start "$@"

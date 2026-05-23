@@ -1,0 +1,10 @@
+# Force LF line endings for shell scripts (critical for bash execution)
+*.sh text eol=lf
+dune text eol=lf
+
+# Keep Windows line endings for batch files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Auto-detect for everything else
+* text=auto
