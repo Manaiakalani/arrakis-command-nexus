@@ -77,8 +77,10 @@ export function UptimeChart() {
             <h3 className="text-3xl font-semibold text-slate-50 tabular-nums">{(uptime.data?.availabilityPercent ?? 0).toFixed(1)}% uptime</h3>
             <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-amber-200">{range}</span>
           </div>
-          <p className="mt-2 text-sm text-slate-400">
-            {formatDuration(uptime.data?.totalUpSeconds ?? 0)} available • {formatDuration(uptime.data?.totalDownSeconds ?? 0)} impacted
+          <p className="mt-2 text-sm">
+            <span className="text-emerald-300">{formatDuration(uptime.data?.totalUpSeconds ?? 0)} available</span>
+            <span className="text-slate-500"> • </span>
+            <span className="text-red-300">{formatDuration(uptime.data?.totalDownSeconds ?? 0)} impacted</span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

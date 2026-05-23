@@ -1,14 +1,17 @@
 'use client';
 
-import { Activity, Clock3, Users } from 'lucide-react';
+import { Activity, Clock3, Globe, Server, Shield, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface PublicStatus {
   serverName: string;
   status: 'online' | 'degraded' | 'offline' | 'unknown';
   playersOnline: number;
+  maxPlayers: number;
   mapsActive: number;
   uptimeSeconds: number;
+  version: string;
+  region: string;
   lastUpdated: string;
 }
 
@@ -63,6 +66,13 @@ export default function PublicStatusPage() {
         <div className="text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-amber-200/70">Dune Awakening</p>
           <h1 className="mt-2 text-3xl font-bold text-slate-50">{data?.serverName ?? 'Server Status'}</h1>
+          {data?.region && (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-slate-400">
+              <Globe className="h-3.5 w-3.5" /> {data.region}
+              {data?.version && <span className="text-slate-600">•</span>}
+              {data?.version && <span className="tabular-nums">v{data.version}</span>}
+            </p>
+          )}
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2">
             <span className={`h-3 w-3 rounded-full ${styles.bg} shadow-[0_0_12px_currentColor]`} />
             <span className={`font-semibold ${styles.text}`}>{styles.label}</span>
@@ -70,11 +80,14 @@ export default function PublicStatusPage() {
           {error && <p className="mt-3 text-sm text-red-300">Unable to reach the public status endpoint.</p>}
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="glass-panel p-5 text-center">
             <Users className="mx-auto h-6 w-6 text-amber-300" />
             <p className="mt-3 text-3xl font-bold tabular-nums text-slate-50">{data?.playersOnline ?? 0}</p>
             <p className="mt-1 text-sm text-slate-400">Players Online</p>
+            {data?.maxPlayers != null && (
+              <p className="mt-0.5 text-xs tabular-nums text-slate-500">of {data.maxPlayers} max</p>
+            )}
           </div>
           <div className="glass-panel p-5 text-center">
             <Activity className="mx-auto h-6 w-6 text-amber-300" />
@@ -85,6 +98,38 @@ export default function PublicStatusPage() {
             <Clock3 className="mx-auto h-6 w-6 text-amber-300" />
             <p className="mt-3 text-3xl font-bold tabular-nums text-slate-50">{data ? formatUptime(data.uptimeSeconds) : '--'}</p>
             <p className="mt-1 text-sm text-slate-400">Uptime</p>
+          </div>
+          <div className="glass-panel p-5 text-center">
+            <Shield className="mx-auto h-6 w-6 text-amber-300" />
+            <p className="mt-3 text-3xl font-bold tabular-nums text-slate-50">
+              {status === 'online' ? '100%' : status === 'degraded' ? 'Partial' : '--'}
+            </p>
+            <p className="mt-1 text-sm text-slate-400">Availability</p>
+          </div>
+        </div>
+
+        <div className="mt-10 glass-panel p-5">
+          <div className="flex items-center gap-3">
+            <Server className="h-5 w-5 text-amber-300" />
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Server Details</h2>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+              <p className="text-xs text-slate-500">Server Name</p>
+              <p className="mt-1 text-sm font-medium text-slate-100">{data?.serverName ?? '--'}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+              <p className="text-xs text-slate-500">Region</p>
+              <p className="mt-1 text-sm font-medium text-slate-100">{data?.region ?? '--'}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+              <p className="text-xs text-slate-500">Version</p>
+              <p className="mt-1 text-sm font-medium tabular-nums text-slate-100">{data?.version ?? '--'}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+              <p className="text-xs text-slate-500">Max Players</p>
+              <p className="mt-1 text-sm font-medium tabular-nums text-slate-100">{data?.maxPlayers ?? '--'}</p>
+            </div>
           </div>
         </div>
 

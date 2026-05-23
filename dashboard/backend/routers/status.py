@@ -110,8 +110,11 @@ async def get_public_status(request: Request) -> dict:
         "serverName": os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
         "status": status_map.get(readiness.get("status"), "unknown"),
         "playersOnline": player_count,
+        "maxPlayers": int(os.getenv("DUNE_MAX_PLAYERS", "70")),
         "mapsActive": maps_active,
         "uptimeSeconds": uptime or 0,
+        "version": os.getenv("DUNE_IMAGE_TAG", "unknown"),
+        "region": os.getenv("DUNE_SERVER_REGION", os.getenv("WORLD_REGION", "Self-Hosted")),
         "lastUpdated": datetime.now(timezone.utc).isoformat(),
     }
 
