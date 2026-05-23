@@ -308,6 +308,18 @@ export class ApiClient {
     return this.request<{ status: string; service: string; restarted: boolean }>(`/watchdog/restart/${encodeURIComponent(service)}`, { method: 'POST' });
   }
 
+  startService(name: string) {
+    return this.request<{ service: string; action: string }>(`/services/${encodeURIComponent(name)}/start`, { method: 'POST' });
+  }
+
+  stopService(name: string) {
+    return this.request<{ service: string; action: string }>(`/services/${encodeURIComponent(name)}/stop`, { method: 'POST' });
+  }
+
+  restartServiceDirect(name: string) {
+    return this.request<{ service: string; action: string }>(`/services/${encodeURIComponent(name)}/restart`, { method: 'POST' });
+  }
+
   getLogStreamUrl() {
     return `${this.baseUrl}/logs/stream`;
   }

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 router = APIRouter(tags=["status"])
 
@@ -128,3 +128,25 @@ async def get_ready(request: Request) -> dict:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
     }
+
+
+_ALLOWED_ACTIONS = {"start", "stop", "restart"}
+
+
+@router.post("/services/{name}/{action}")
+async def service_action(name: str, action: str, request: Request) -> dict:
+    """Start, stop, or restart an individual service container."""
+    if action not in _ALLOWED_ACTIONS:
+        raise HTTPException(status_code=400, detail=f"Invalid action '{action}'. Must be one of: {', '.join(sorted(_ALLOWED_ACTIONS))}")
+
+    docker_service = request.app.state.docker_service
+    handler = getattr(docker_service, f"{action}_container", None)
+    if handler is None:
+        raise HTTPException(status_code=500, detail=f"Docker service missing '{action}_container' method")
+
+    try:
+        result = await handler(name)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"service": name, "action": action, **result}
