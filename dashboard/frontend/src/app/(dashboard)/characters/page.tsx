@@ -307,14 +307,14 @@ export default function CharactersPage() {
         <div className="glass-panel overflow-hidden">
           <div className="border-b border-slate-800/80 p-5">
             <p className="section-title">Character roster</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Search and select</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Search and Select</h2>
             <label className="relative mt-4 block">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 className="dune-input pl-11"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Filter by name, clan, house, or id"
+                placeholder="Filter by name, clan, house, or ID"
               />
             </label>
           </div>
@@ -332,7 +332,7 @@ export default function CharactersPage() {
               <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-slate-800/80 bg-slate-950/30 p-8 text-center">
                 <UserCog className="h-10 w-10 text-amber-300" />
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-50">No characters discovered</h3>
+                  <h3 className="text-xl font-semibold text-slate-50">No Characters Discovered</h3>
                   <p className="mt-2 max-w-sm text-sm text-slate-400">The dashboard could not read the game schema yet. Once character tables are exposed, this panel will automatically populate.</p>
                 </div>
               </div>
@@ -413,7 +413,7 @@ export default function CharactersPage() {
               <div className="mt-6 flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-700/80 bg-slate-950/25 p-8 text-center text-slate-400">
                 <UserCog className="h-10 w-10 text-amber-300" />
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-50">Select a character</h3>
+                  <h3 className="text-xl font-semibold text-slate-50">Select a Character</h3>
                   <p className="mt-2 max-w-md text-sm text-slate-400">Choose a roster entry to inspect the discovered stat mapping and prepare edits.</p>
                 </div>
               </div>
@@ -481,7 +481,7 @@ export default function CharactersPage() {
 
           <div className="glass-panel p-5">
             <p className="section-title">Schema summary</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Editable stat layout</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Editable Stat Layout</h2>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {availableCategories.map((category) => {
                 const meta = categoryMeta[category];

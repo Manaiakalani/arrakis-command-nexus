@@ -66,7 +66,7 @@ export default function WatchdogPage() {
             </div>
             <div>
               <p className="section-title">Manual recovery</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-50">Restart monitored services</h2>
+              <h2 className="mt-1 text-xl font-semibold text-slate-50">Restart Monitored Services</h2>
             </div>
           </div>
           <div className="mt-5 space-y-3">
@@ -99,7 +99,7 @@ export default function WatchdogPage() {
               </div>
               <div>
                 <p className="section-title">Crash history</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-50">Last 100 watchdog events</h2>
+                <h2 className="mt-1 text-xl font-semibold text-slate-50">Last 100 Watchdog Events</h2>
               </div>
             </div>
           </div>

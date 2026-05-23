@@ -136,7 +136,7 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="section-title">Density analysis</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Player activity heatmap</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Player Activity Heatmap</h2>
             <p className="mt-2 text-sm text-slate-400">Grid cells brighten as more players cluster together, weighted by current session duration.</p>
           </div>
           <div className="flex items-center gap-3 text-sm text-slate-400">

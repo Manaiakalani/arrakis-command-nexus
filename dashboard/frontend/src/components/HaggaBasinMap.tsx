@@ -71,7 +71,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="section-title">Live map telemetry</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-50">Hagga Basin tactical overlay</h2>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">Hagga Basin Tactical Overlay</h2>
             <p className="mt-2 max-w-3xl text-sm text-slate-400">
               Placeholder desert backdrop in use. Add <code className="rounded bg-slate-900/80 px-1.5 py-0.5 text-xs text-amber-200">/public/maps/hagga-basin.webp</code> and swap the background once final art is available.
             </p>

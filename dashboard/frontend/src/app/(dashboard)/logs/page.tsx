@@ -14,7 +14,7 @@ export default function LogsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="section-title">Live telemetry</p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-50">Service logs</h2>
+          <h2 className="mt-1 text-xl font-semibold text-slate-50">Service Logs</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select value={service} onChange={(event) => setService(event.target.value)} className="dune-input min-w-[200px]" aria-label="Filter by service">

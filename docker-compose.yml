@@ -469,8 +469,6 @@ services:
   dashboard-frontend:
     build:
       context: ./dashboard/frontend
-      args:
-        NEXT_PUBLIC_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
     image: dune-awakening-dashboard-frontend
     restart: unless-stopped
     ports:
@@ -479,6 +477,7 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
+      DUNE_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
     depends_on:
       dashboard-api:
         condition: service_started

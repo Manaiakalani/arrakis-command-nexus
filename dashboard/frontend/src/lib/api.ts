@@ -39,11 +39,9 @@ function resolveBaseUrl() {
 
 export class ApiClient {
   private readonly baseUrl: string;
-  private readonly adminToken?: string;
 
-  constructor(baseUrl = resolveBaseUrl(), adminToken = process.env.NEXT_PUBLIC_ADMIN_TOKEN) {
+  constructor(baseUrl = resolveBaseUrl()) {
     this.baseUrl = baseUrl;
-    this.adminToken = adminToken;
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -51,9 +49,6 @@ export class ApiClient {
     headers.set('Accept', 'application/json');
     if (!(init?.body instanceof FormData)) {
       headers.set('Content-Type', 'application/json');
-    }
-    if (this.adminToken) {
-      headers.set('X-Admin-Token', this.adminToken);
     }
 
     const response = await fetch(`${this.baseUrl}${path}`, {

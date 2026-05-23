@@ -30,7 +30,7 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
       <div className="flex flex-col gap-4 border-b border-slate-800/80 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <p className="section-title">Recovery vault</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-50">Backup inventory</h3>
+          <h3 className="mt-1 text-lg font-semibold text-slate-50">Backup Inventory</h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select value={scope} onChange={(event) => setScope(event.target.value)} className="dune-input min-w-[180px]" aria-label="Backup scope">
