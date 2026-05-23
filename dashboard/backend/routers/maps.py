@@ -2,14 +2,25 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
-from models.server import MapStatus
-
 router = APIRouter(tags=["maps"])
 
 
-@router.get("/maps", response_model=list[MapStatus])
-async def list_maps(request: Request) -> list[MapStatus]:
-    return await request.app.state.docker_service.list_map_statuses()
+@router.get("/maps")
+async def list_maps(request: Request) -> list[dict]:
+    raw_maps = await request.app.state.docker_service.list_map_statuses()
+    return [
+        {
+            "name": m.name,
+            "status": m.status,
+            "players": m.player_count,
+            "maxPlayers": 70,
+            "memoryUsedMb": round(m.memory_usage_mb or 0, 1),
+            "memoryLimitMb": round(m.memory_limit_mb or 0, 1),
+            "cpuPercent": None,
+            "uptimeSeconds": None,
+        }
+        for m in raw_maps
+    ]
 
 
 @router.post("/maps/{name}/start")
