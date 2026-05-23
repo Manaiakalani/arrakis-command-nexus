@@ -57,7 +57,7 @@ test.describe('Sidebar navigation', () => {
     const links = sidebar.locator('nav a');
 
     const count = await links.count();
-    expect(count).toBe(14);
+    expect(count).toBe(15);
 
     // Click a few and verify navigation
     await links.filter({ hasText: 'Players' }).click();
@@ -170,6 +170,7 @@ test.describe('Dashboard pages load correctly', () => {
     { path: '/moderation', title: 'Moderation' },
     { path: '/economy', title: 'Economy' },
     { path: '/characters', title: 'Characters' },
+    { path: '/settings', title: 'Settings' },
   ];
 
   for (const pg of pages) {

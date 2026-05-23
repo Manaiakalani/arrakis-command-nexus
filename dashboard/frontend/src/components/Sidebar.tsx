@@ -16,6 +16,7 @@ import {
   Settings,
   Shield,
   ShieldAlert,
+  SlidersHorizontal,
   Terminal,
   UserCog,
   Users,
@@ -40,6 +41,7 @@ const navigation = [
   { href: '/discord', label: 'Discord', icon: MessageSquare },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
+  { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
   { href: '/public', label: 'Public Status', icon: Globe },
 ];
 
@@ -143,7 +145,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
               'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
               collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
             )}>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Cluster Status</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Cluster status</p>
               <p className="text-sm font-medium capitalize text-slate-100">{status}</p>
             </div>
           </div>
@@ -189,7 +191,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             </div>
           ) : (
             <>
-              <p className="text-xs uppercase tracking-[0.24em] text-amber-200/70">Spice Forecast</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-amber-200/70">Spice forecast</p>
               <p className="mt-2 text-sm text-slate-300">Live map, player, and service intelligence.</p>
               <div className="mt-3 space-y-2 border-t border-amber-500/10 pt-3 text-xs text-slate-400">
                 <div className="flex items-center justify-between gap-3">
