@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import re
 import threading
 from datetime import datetime, timezone
 from typing import AsyncGenerator
@@ -14,6 +15,65 @@ from models.log import LogEntry
 from services.docker_service import DockerService
 
 logger = logging.getLogger(__name__)
+
+# Matches Docker-style ISO timestamp at the start of a log line
+_DOCKER_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s+")
+
+# Matches ANSI escape sequences (colors, styles, resets)
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m|\[(?:\d+;)*\d*m")
+
+# Matches Unreal Engine severity markers: [severity] or LogXxx: Severity:
+_UE_SEVERITY_RE = re.compile(
+    r"\b(?:LogIgw\w*|LogIGW|LogNet\w*|LogLoad|LogSockets|Log\w+):\s*(Error|Warning|Fatal|Display|Log)\b"
+    r"|(?:\[(?:error|warning|warn|info|debug)\])",
+    re.IGNORECASE,
+)
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
+
+
+def _extract_timestamp(line: str) -> tuple[datetime, str]:
+    """Extract Docker timestamp from line start. Returns (timestamp, remainder)."""
+    match = _DOCKER_TS_RE.match(line)
+    if match:
+        raw_ts = match.group(1)
+        remainder = line[match.end():]
+        try:
+            # Handle nanosecond precision by truncating to microseconds
+            if "." in raw_ts:
+                parts = raw_ts.rstrip("Z").split(".")
+                frac = parts[1][:6].ljust(6, "0")
+                normalized = f"{parts[0]}.{frac}+00:00"
+            else:
+                normalized = raw_ts.rstrip("Z") + "+00:00"
+            return datetime.fromisoformat(normalized), remainder
+        except (ValueError, IndexError):
+            pass
+    return datetime.now(timezone.utc), line
+
+
+def _detect_severity(line: str) -> str:
+    """Detect severity from Unreal Engine or standard log markers."""
+    match = _UE_SEVERITY_RE.search(line)
+    if match:
+        # Get the first non-None group
+        marker = (match.group(1) or match.group(0)).strip("[]").lower()
+        if marker in ("error", "fatal"):
+            return "ERROR"
+        if marker in ("warning", "warn"):
+            return "WARN"
+        if marker in ("debug",):
+            return "DEBUG"
+        return "INFO"
+    # Fallback: bracket-style [ERROR], [WARN], etc.
+    lowered = line.lower()
+    if "[error]" in lowered or "fatal:" in lowered:
+        return "ERROR"
+    if "[warn" in lowered or "warning:" in lowered:
+        return "WARN"
+    return "INFO"
 
 
 class LogService:
@@ -88,15 +148,12 @@ class LogService:
                 loop.call_soon_threadsafe(queue.put_nowait, {"data": payload})
 
     def _make_entry(self, service: str, line: str) -> LogEntry:
-        severity = "INFO"
-        lowered = line.lower()
-        if any(token in lowered for token in ("error", "exception", "fatal", "traceback")):
-            severity = "ERROR"
-        elif any(token in lowered for token in ("warn", "warning")):
-            severity = "WARN"
+        timestamp, remainder = _extract_timestamp(line)
+        clean = _strip_ansi(remainder)
+        severity = _detect_severity(clean)
         return LogEntry(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=timestamp,
             service=service,
             severity=severity,
-            message=line,
+            message=clean,
         )
