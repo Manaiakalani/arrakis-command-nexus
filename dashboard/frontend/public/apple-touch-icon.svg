@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="url(#bg)"/>
+  <circle cx="90" cy="90" r="70" fill="none" stroke="url(#g)" stroke-width="3" opacity="0.3"/>
+  <!-- Sandworm -->
+  <path d="M45 125 C55 100, 65 65, 90 60 C115 55, 125 80, 125 100 C125 112, 115 125, 105 120"
+        fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="105" cy="120" r="5" fill="#f59e0b"/>
+  <circle cx="107" cy="118" r="2" fill="#0f172a"/>
+  <!-- Hexagon -->
+  <path d="M90 30 L110 41.5 L110 64.5 L90 76 L70 64.5 L70 41.5 Z"
+        fill="none" stroke="#fde68a" stroke-width="2.5" opacity="0.7"/>
+  <circle cx="90" cy="52" r="6" fill="#fbbf24" opacity="0.5"/>
+  <!-- Spice particles -->
+  <circle cx="55" cy="40" r="3" fill="#fde68a" opacity="0.5"/>
+  <circle cx="135" cy="38" r="2.5" fill="#fde68a" opacity="0.4"/>
+  <circle cx="40" cy="75" r="2" fill="#fde68a" opacity="0.3"/>
+  <circle cx="145" cy="78" r="2.5" fill="#fde68a" opacity="0.4"/>
+</svg>
