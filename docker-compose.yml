@@ -156,6 +156,12 @@ services:
     depends_on:
       text-router:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     networks:
       default:
         ipv4_address: 192.168.80.7
@@ -206,6 +212,14 @@ services:
     depends_on:
       db-init:
         condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import os; os.kill(1, 0)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     networks:
       default:
         ipv4_address: 192.168.80.43
@@ -256,6 +270,12 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       default:
         ipv4_address: 192.168.80.5
@@ -310,6 +330,12 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       default:
         ipv4_address: 192.168.80.6
@@ -366,6 +392,14 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import os, signal; os.kill(1, 0)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
     networks:
       default:
         ipv4_address: 192.168.80.40
@@ -449,6 +483,12 @@ services:
       dashboard-api:
         condition: service_started
     mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       default:
         ipv4_address: 192.168.80.51
