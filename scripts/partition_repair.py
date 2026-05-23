@@ -62,15 +62,20 @@ def wait_for_servers(log, min_servers=2):
 
 
 def repair_partitions(log):
-    """Ensure every alive server in farm_state has a world_partition row."""
+    """Ensure every alive server in farm_state has a world_partition row.
+
+    Strategy: delete stale partitions first (freeing labels for the DB trigger),
+    then claim or create partitions for alive servers.
+    """
     with get_connection() as conn:
-        conn.autocommit = True
+        conn.autocommit = False
         with conn.cursor() as cur:
             # Get all alive servers from farm_state
             cur.execute(
                 "SELECT server_id, map, igw_addr, igw_port FROM farm_state WHERE alive = true"
             )
             servers = cur.fetchall()
+            alive_ids = {s[0] for s in servers}
             log.info("Alive servers: %s", [(s[0][:8] + "...", s[1]) for s in servers])
 
             # Get existing world_partition entries
@@ -82,6 +87,70 @@ def repair_partitions(log):
                 [(p[0], (p[1] or "")[:8] + "...", p[2]) for p in existing],
             )
 
+            # --- Phase 1: Delete stale partitions FIRST ---
+            # Stale = server_id set but not in alive farm_state.
+            # We DELETE (not NULL) so the label unique constraint is freed,
+            # preventing crash loops when new servers try to INSERT.
+            stale = [
+                row for row in existing
+                if row[1] and row[1] not in alive_ids
+            ]
+            deleted = 0
+            for partition_id, server_id, map_name, _ in stale:
+                cur.execute(
+                    "DELETE FROM world_partition WHERE partition_id = %s",
+                    (partition_id,),
+                )
+                log.info(
+                    "Deleted stale partition %d (server=%s..., map=%s) to free label",
+                    partition_id, server_id[:8], map_name,
+                )
+                deleted += 1
+
+            # Also delete orphan partitions (NULL/empty server_id) that block
+            # label assignment. If alive servers already have their own partitions,
+            # orphans for the same map are stale leftovers whose labels block new inserts.
+            cur.execute("SELECT partition_id, server_id, map, dimension_index FROM world_partition")
+            post_delete = cur.fetchall()
+            alive_maps = {s[1] for s in servers}
+            alive_with_partition = set()
+            orphans_to_delete = []
+            for row in post_delete:
+                pid, sid, mname, _ = row
+                if sid and sid in alive_ids:
+                    alive_with_partition.add(mname)
+
+            for row in post_delete:
+                pid, sid, mname, _ = row
+                if (not sid or sid == '') and mname in alive_with_partition:
+                    orphans_to_delete.append(row)
+
+            for partition_id, server_id, map_name, _ in orphans_to_delete:
+                cur.execute(
+                    "DELETE FROM world_partition WHERE partition_id = %s",
+                    (partition_id,),
+                )
+                log.info(
+                    "Deleted orphan partition %d (map=%s) - alive server already has partition",
+                    partition_id, map_name,
+                )
+                deleted += 1
+
+            conn.commit()
+
+            # --- Phase 2: Refresh existing state after deletions ---
+            cur.execute("SELECT partition_id, server_id, map, dimension_index FROM world_partition")
+            existing = cur.fetchall()
+            existing_server_ids = {row[1] for row in existing if row[1]}
+            # Build map→partition lookup: for each map+dim, which partition exists
+            map_dim_partitions = {}
+            for pid, sid, mname, dim in existing:
+                key = (mname, dim)
+                if key not in map_dim_partitions:
+                    map_dim_partitions[key] = []
+                map_dim_partitions[key].append((pid, sid))
+
+            # --- Phase 3: Claim or create partitions for alive servers ---
             created = 0
             updated = 0
 
@@ -93,61 +162,68 @@ def repair_partitions(log):
                     )
                     continue
 
-                # Check if there's a partition with empty server_id for this map
-                cur.execute(
-                    "SELECT partition_id FROM world_partition "
-                    "WHERE (server_id IS NULL OR server_id = '') AND map = %s "
-                    "LIMIT 1",
-                    (map_name,),
-                )
-                orphan = cur.fetchone()
+                # The label trigger is deterministic per (map, dimension_index).
+                # Only one partition per map+dim can exist due to the unique label.
+                # Strategy: claim an existing partition instead of inserting.
+                key = (map_name, 0)
+                existing_for_map = map_dim_partitions.get(key, [])
 
-                if orphan:
-                    # Claim the orphan partition
-                    cur.execute(
-                        "UPDATE world_partition SET server_id = %s WHERE partition_id = %s",
-                        (server_id, orphan[0]),
-                    )
-                    log.info(
-                        "Claimed orphan partition %d for server %s... (map=%s)",
-                        orphan[0], server_id[:8], map_name,
-                    )
-                    updated += 1
-                else:
-                    # Create new partition entry
-                    cur.execute(
-                        "INSERT INTO world_partition (server_id, map, partition_definition, dimension_index) "
-                        "VALUES (%s, %s, %s::jsonb, 0)",
-                        (server_id, map_name, DEFAULT_PARTITION_DEF),
-                    )
-                    log.info(
-                        "Created partition for server %s... (map=%s)",
-                        server_id[:8], map_name,
-                    )
-                    created += 1
+                # Find a claimable partition (NULL server_id, or stale server_id)
+                claimed = False
+                for i, (pid, sid) in enumerate(existing_for_map):
+                    if not sid or sid == '' or sid not in alive_ids:
+                        cur.execute(
+                            "UPDATE world_partition SET server_id = %s WHERE partition_id = %s",
+                            (server_id, pid),
+                        )
+                        log.info(
+                            "Claimed partition %d for server %s... (map=%s, was=%s)",
+                            pid, server_id[:8], map_name, (sid or "<none>")[:8],
+                        )
+                        # Update local state so subsequent iterations see this as taken
+                        existing_for_map[i] = (pid, server_id)
+                        existing_server_ids.add(server_id)
+                        updated += 1
+                        claimed = True
+                        break
 
-            # Clean up stale partitions (server_id no longer in farm_state)
-            alive_ids = {s[0] for s in servers}
-            stale = [
-                row for row in existing
-                if row[1] and row[1] not in alive_ids
-            ]
-            cleared = 0
-            for partition_id, server_id, map_name, _ in stale:
-                cur.execute(
-                    "UPDATE world_partition SET server_id = NULL WHERE partition_id = %s",
-                    (partition_id,),
-                )
-                log.info(
-                    "Cleared stale server_id %s... from partition %d (map=%s)",
-                    server_id[:8], partition_id, map_name,
-                )
-                cleared += 1
+                if not claimed and not existing_for_map:
+                    # No partition exists at all for this map — safe to insert
+                    try:
+                        cur.execute("SAVEPOINT sp_insert")
+                        cur.execute(
+                            "INSERT INTO world_partition (server_id, map, partition_definition, dimension_index) "
+                            "VALUES (%s, %s, %s::jsonb, 0)",
+                            (server_id, map_name, DEFAULT_PARTITION_DEF),
+                        )
+                        cur.execute("RELEASE SAVEPOINT sp_insert")
+                        log.info(
+                            "Created partition for server %s... (map=%s)",
+                            server_id[:8], map_name,
+                        )
+                        created += 1
+                    except Exception as exc:
+                        cur.execute("ROLLBACK TO SAVEPOINT sp_insert")
+                        log.warning(
+                            "Failed to create partition for %s... (map=%s): %s",
+                            server_id[:8], map_name, exc,
+                        )
+                elif not claimed:
+                    # Partition exists but owned by another alive server.
+                    # Do NOT reassign — the owning server is actively using it.
+                    # Ghost server_ids from Docker restarts will eventually expire
+                    # from farm_state. The pre-start script handles legitimate
+                    # restarts by NULLing the partition's server_id first.
+                    log.info(
+                        "Partition for map=%s owned by alive server, skipping ghost %s...",
+                        map_name, server_id[:8],
+                    )
 
             log.info(
-                "Partition repair complete: %d created, %d claimed, %d stale cleared",
-                created, updated, cleared,
+                "Partition repair complete: %d created, %d claimed, %d stale deleted",
+                created, updated, deleted,
             )
+            conn.commit()
 
             # Show final state
             cur.execute(

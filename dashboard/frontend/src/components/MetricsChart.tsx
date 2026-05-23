@@ -23,6 +23,7 @@ interface MetricsChartProps {
   onRangeChange?: (range: string) => void;
   series: Array<{ key: keyof MetricsPoint; label: string; color: string; unit?: string }>;
   chartType?: 'line' | 'area';
+  yDomain?: [number, number];
 }
 
 const ranges = ['15m', '1h', '6h', '24h', '7d', '30d'];
@@ -76,6 +77,7 @@ export function MetricsChart({
   onRangeChange,
   series,
   chartType = 'area',
+  yDomain,
 }: MetricsChartProps) {
   const gradientPrefix = useId().replace(/:/g, '');
   const data = useMemo(
@@ -121,6 +123,7 @@ export function MetricsChart({
                 axisLine={false}
                 tickFormatter={(value: number) => formatMetricValue(value, primaryUnit)}
                 width={80}
+                domain={yDomain}
               />
               <Tooltip
                 labelFormatter={(label, payload) => formatTooltipLabel(String(payload?.[0]?.payload?.timestamp ?? label))}
@@ -134,6 +137,8 @@ export function MetricsChart({
                   borderRadius: '16px',
                   color: '#f8fafc',
                 }}
+                labelStyle={{ color: '#cbd5e1' }}
+                itemStyle={{ color: '#f8fafc' }}
               />
               {series.map((line) => (
                 <Line
@@ -165,6 +170,7 @@ export function MetricsChart({
                 axisLine={false}
                 tickFormatter={(value: number) => formatMetricValue(value, primaryUnit)}
                 width={80}
+                domain={yDomain}
               />
               <Tooltip
                 labelFormatter={(label, payload) => formatTooltipLabel(String(payload?.[0]?.payload?.timestamp ?? label))}
@@ -178,6 +184,8 @@ export function MetricsChart({
                   borderRadius: '16px',
                   color: '#f8fafc',
                 }}
+                labelStyle={{ color: '#cbd5e1' }}
+                itemStyle={{ color: '#f8fafc' }}
               />
               {series.map((entry) => (
                 <Area

@@ -112,6 +112,8 @@ export function UptimeChart() {
                 borderRadius: '16px',
                 color: '#f8fafc',
               }}
+              labelStyle={{ color: '#cbd5e1' }}
+              itemStyle={{ color: '#f8fafc' }}
             />
             <Bar dataKey="value" radius={[8, 8, 0, 0]}>
               {chartData.map((entry) => (
