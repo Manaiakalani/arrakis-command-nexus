@@ -404,7 +404,10 @@ services:
   # Dashboard Frontend (Next.js with API proxy)
   # -------------------------------------------------------------------------
   dashboard-frontend:
-    build: ./dashboard/frontend
+    build:
+      context: ./dashboard/frontend
+      args:
+        NEXT_PUBLIC_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
     image: dune-awakening-dashboard-frontend
     restart: unless-stopped
     ports:
