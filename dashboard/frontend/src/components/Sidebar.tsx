@@ -171,7 +171,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
                     : 'border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-900/70 hover:text-slate-50',
                 )}
               >
-                <Icon className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-300' : 'text-slate-500 group-hover:text-slate-200')} />
+                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-300' : 'text-slate-500 group-hover:text-slate-200')} />
                 <span className={cn(
                   'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
                   collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',

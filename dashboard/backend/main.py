@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -87,14 +88,20 @@ async def lifespan(app: FastAPI):
     app.state.chat_guard_service = chat_guard_service
     app.state.watchdog_service = watchdog_service
 
-    await docker_service.start()
-    await postgres_service.start()
-    await metrics_service.start()
-    await discord_service.start()
-    await backup_scheduler.start()
-    await watchdog_service.start()
-    await economy_service.start()
-    await chat_guard_service.start()
+    # Start independent services in parallel for faster boot
+    await asyncio.gather(
+        docker_service.start(),
+        postgres_service.start(),
+        discord_service.start(),
+    )
+    # These depend on docker/postgres being ready
+    await asyncio.gather(
+        metrics_service.start(),
+        backup_scheduler.start(),
+        watchdog_service.start(),
+        economy_service.start(),
+        chat_guard_service.start(),
+    )
     logger.info("Dune dashboard backend started")
     try:
         yield

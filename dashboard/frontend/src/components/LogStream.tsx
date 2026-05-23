@@ -102,7 +102,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-[260px] flex-1">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} className="dune-input pl-11" placeholder="Search logs\u2026" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} className="dune-input pl-11" placeholder="Search logs&#x2026;" aria-label="Search logs" name="log-search" autoComplete="off" spellCheck={false} />
             </div>
             <label className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
               <input type="checkbox" checked={autoScroll} onChange={(event) => setAutoScroll(event.target.checked)} className="accent-amber-400" />

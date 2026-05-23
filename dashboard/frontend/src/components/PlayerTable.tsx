@@ -62,7 +62,11 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="dune-input pl-11"
-            placeholder="Search players, Steam IDs, or maps\u2026"
+            placeholder="Search players, Steam IDs, or maps&#x2026;"
+            aria-label="Search players"
+            name="player-search"
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
       </div>

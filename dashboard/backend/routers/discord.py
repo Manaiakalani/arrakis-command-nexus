@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -11,6 +12,8 @@ from models.discord import (
     DiscordWebhookCreate,
     DiscordWebhookUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["discord"])
 
@@ -128,8 +131,11 @@ async def send_test(
 ) -> dict:
     try:
         count = await request.app.state.discord_service.send_test(session, None, "Dashboard connectivity test")
-    except (LookupError, Exception):
+    except LookupError:
         count = 0
+    except Exception:
+        logger.exception("Discord test send failed")
+        return {"success": False, "message": "Failed to send test notification"}
     return {"success": True, "message": f"Queued {count} test(s)"}
 
 
