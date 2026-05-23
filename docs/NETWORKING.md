@@ -71,7 +71,7 @@ Solutions:
 sudo ufw allow 31982/tcp
 sudo ufw allow 7777:7810/udp
 sudo ufw allow 7888:7921/udp
-sudo ufw allow from 192.168.1.0/24 to any port 18080 proto tcp
+sudo ufw allow from 192.168.0.0/16 to any port 18080 proto tcp
 ```
 
 ### iptables
@@ -80,7 +80,7 @@ sudo ufw allow from 192.168.1.0/24 to any port 18080 proto tcp
 sudo iptables -A INPUT -p tcp --dport 31982 -j ACCEPT
 sudo iptables -A INPUT -p udp --dport 7777:7810 -j ACCEPT
 sudo iptables -A INPUT -p udp --dport 7888:7921 -j ACCEPT
-sudo iptables -A INPUT -p tcp -s 192.168.1.0/24 --dport 18080 -j ACCEPT
+sudo iptables -A INPUT -p tcp -s 192.168.0.0/16 --dport 18080 -j ACCEPT
 ```
 
 Adjust the UDP ranges to match your active deployment profile instead of blindly opening the full range.

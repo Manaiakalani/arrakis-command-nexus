@@ -31,5 +31,7 @@ class MapStatus(BaseModel):
     player_count: int = 0
     memory_usage_mb: float | None = None
     memory_limit_mb: float | None = None
+    cpu_percent: float | None = None
+    uptime_seconds: float | None = None
     port: int | None = None
     partition: str | None = None

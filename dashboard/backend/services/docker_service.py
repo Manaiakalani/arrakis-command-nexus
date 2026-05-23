@@ -157,12 +157,24 @@ class DockerService:
                 stats = await self.get_container_stats(service.name)
             except Exception as exc:  # noqa: BLE001
                 logger.debug("Could not collect stats for %s: %s", service.name, exc)
+
+            # Per-container uptime from creation timestamp
+            uptime_s: float | None = None
+            if service.status == "running" and service.created:
+                try:
+                    created_dt = datetime.fromisoformat(service.created.replace("Z", "+00:00"))
+                    uptime_s = max(0.0, (datetime.now(timezone.utc) - created_dt).total_seconds())
+                except (ValueError, TypeError):
+                    pass
+
             return MapStatus(
                 name=service.name,
                 status=service.status,
                 player_count=0,
                 memory_usage_mb=stats.get("memory_usage_mb") if stats else None,
                 memory_limit_mb=stats.get("memory_limit_mb") if stats else None,
+                cpu_percent=stats.get("cpu_percent") if stats else None,
+                uptime_seconds=uptime_s,
                 port=self._extract_primary_port(service.ports),
                 partition=self._map_role(service.name),
             )
@@ -218,7 +230,15 @@ class DockerService:
             return None
         return max((datetime.now(timezone.utc) - min(starts)).total_seconds(), 0.0)
 
+    def _validate_container_name(self, name: str) -> None:
+        """Ensure the requested container belongs to this compose project."""
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.\-]*", name):
+            raise ValueError(f"Invalid container name: {name}")
+        if not name.startswith(f"{self.compose_project}-"):
+            raise ValueError(f"Container '{name}' is outside the managed project")
+
     async def _get_container(self, name: str):
+        self._validate_container_name(name)
         return await asyncio.to_thread(self._get_container_sync, name)
 
     def _get_container_sync(self, name: str):

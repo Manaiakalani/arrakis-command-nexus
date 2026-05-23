@@ -19,6 +19,7 @@ import {
   Player,
   ReadinessStatus,
   ServerOverview,
+  ServiceStatus,
   SystemMetrics,
   SystemVersion,
   UptimeData,
@@ -91,6 +92,10 @@ export class ApiClient {
 
   restartMap(name: string) {
     return this.request<MapStatus>(`/maps/${encodeURIComponent(name)}/restart`, { method: 'POST' });
+  }
+
+  backupMap(name: string) {
+    return this.request<{ status: string; map: string; backup_id: string }>(`/maps/${encodeURIComponent(name)}/backup`, { method: 'POST' });
   }
 
   getPlayers() {
@@ -317,6 +322,15 @@ export class ApiClient {
 
   getLogStreamUrl() {
     return `${this.baseUrl}/logs/stream`;
+  }
+
+  async getServices(): Promise<ServiceStatus[]> {
+    const overview = await this.getStatus();
+    return overview.services ?? [];
+  }
+
+  getServiceLogs(service: string, tail = 200) {
+    return this.request<{ service: string; entries: Array<Record<string, string>> }>(`/logs/${encodeURIComponent(service)}?tail=${tail}`);
   }
 
   // Settings
