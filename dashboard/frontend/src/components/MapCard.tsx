@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Play, RefreshCcw, Square } from 'lucide-react';
+import { Archive, ChevronDown, ChevronUp, Play, RefreshCcw, Square } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { MapStatus } from '@/lib/types';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 interface MapCardProps {
   map: MapStatus;
   onAction: (mapName: string, action: 'start' | 'stop' | 'restart') => Promise<void> | void;
+  onBackup?: (mapName: string) => Promise<void> | void;
 }
 
 const badgeStyles: Record<MapStatus['status'], string> = {
@@ -20,7 +21,15 @@ const badgeStyles: Record<MapStatus['status'], string> = {
   stopping: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
 };
 
-export function MapCard({ map, onAction }: MapCardProps) {
+function formatUptime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return `${Math.floor(seconds)}s`;
+}
+
+export function MapCard({ map, onAction, onBackup }: MapCardProps) {
   const [expanded, setExpanded] = useState(false);
   const memoryPercent = useMemo(() => {
     if (!map.memoryLimitMb) {
@@ -46,7 +55,18 @@ export function MapCard({ map, onAction }: MapCardProps) {
         </button>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 px-3 py-2">
+          <p className="text-xs uppercase tracking-[0.15em] text-slate-500">CPU</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">{map.cpuPercent != null ? `${map.cpuPercent}%` : '-'}</p>
+        </div>
+        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 px-3 py-2">
+          <p className="text-xs uppercase tracking-[0.15em] text-slate-500">Uptime</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">{map.uptimeSeconds ? formatUptime(map.uptimeSeconds) : '-'}</p>
+        </div>
+      </div>
+
+      <div className="mt-4">
         <div className="flex items-center justify-between text-sm text-slate-400">
           <span>Memory footprint</span>
           <span>{map.memoryUsedMb} MB / {map.memoryLimitMb} MB</span>
@@ -66,18 +86,15 @@ export function MapCard({ map, onAction }: MapCardProps) {
         <button type="button" onClick={() => void onAction(map.name, 'restart')} className="dune-button-muted">
           <RefreshCcw className="mr-2 h-4 w-4" /> Restart
         </button>
+        {onBackup ? (
+          <button type="button" onClick={() => void onBackup(map.name)} className="dune-button-muted">
+            <Archive className="mr-2 h-4 w-4" /> Backup
+          </button>
+        ) : null}
       </div>
 
       {expanded ? (
         <div className="mt-5 grid gap-3 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-4 text-sm text-slate-300 sm:grid-cols-2">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">CPU</p>
-            <p className="mt-1 text-base tabular-nums text-slate-100">{map.cpuPercent ?? 0}%</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Uptime</p>
-            <p className="mt-1 text-base tabular-nums text-slate-100">{map.uptimeSeconds ? `${Math.floor(map.uptimeSeconds / 3600)}h` : '-'}</p>
-          </div>
           {Object.entries(map.settings ?? {}).map(([key, value]) => (
             <div key={key}>
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{key}</p>

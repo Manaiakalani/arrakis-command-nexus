@@ -1,8 +1,9 @@
 'use client';
 
 import { Search, Wifi, WifiOff } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { apiClient } from '@/lib/api';
 import { useSSE } from '@/hooks/useSSE';
 import type { LogEvent, Severity } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -46,22 +47,63 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
   const [uncontrolledService, setUncontrolledService] = useState('all');
   const [query, setQuery] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
+  const [seedLogs, setSeedLogs] = useState<LogEvent[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const { messages, status } = useSSE<LogEvent>(endpoint, { parse: parseLogEvent });
   const selectedService = controlledService ?? uncontrolledService;
 
+  // Fetch initial log tail on mount
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current) return;
+    seeded.current = true;
+    const fetchInitial = async () => {
+      try {
+        const containers = await apiClient.getServices();
+        const running = containers.filter((s) => s.status === 'healthy' || s.status === 'starting').map((s) => s.name);
+        const results = await Promise.all(
+          running.slice(0, 10).map(async (svc) => {
+            try {
+              const data = await apiClient.getServiceLogs(svc, 50);
+              return (data.entries ?? []).map((e: Record<string, string>) => ({
+                id: `seed-${svc}-${Math.random()}`,
+                timestamp: e.timestamp ?? new Date().toISOString(),
+                service: svc,
+                level: (e.severity ?? 'INFO') as Severity,
+                message: e.message ?? '',
+              }));
+            } catch {
+              return [];
+            }
+          }),
+        );
+        const all = results.flat().sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+        setSeedLogs(all);
+      } catch {
+        // Silently fail — SSE will still provide live logs
+      }
+    };
+    void fetchInitial();
+  }, []);
+
+  const allMessages = useMemo(() => {
+    const sseIds = new Set(messages.map((m) => m.id));
+    const deduped = seedLogs.filter((s) => !sseIds.has(s.id));
+    return [...deduped, ...messages];
+  }, [seedLogs, messages]);
+
   const availableServices = useMemo(() => {
-    const fromStream = Array.from(new Set(messages.map((message) => message.service)));
+    const fromStream = Array.from(new Set(allMessages.map((message) => message.service)));
     return ['all', ...(services ?? fromStream)];
-  }, [messages, services]);
+  }, [allMessages, services]);
 
   const visibleMessages = useMemo(() => {
-    return messages.filter((message) => {
+    return allMessages.filter((message) => {
       const matchesService = selectedService === 'all' || message.service === selectedService;
       const matchesQuery = query.length === 0 || `${message.message} ${message.service}`.toLowerCase().includes(query.toLowerCase());
       return matchesService && matchesQuery;
     });
-  }, [messages, query, selectedService]);
+  }, [allMessages, query, selectedService]);
 
   useEffect(() => {
     if (!autoScroll || !containerRef.current) {
@@ -71,12 +113,12 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
     containerRef.current.scrollTop = containerRef.current.scrollHeight;
   }, [autoScroll, visibleMessages]);
 
-  const setService = (service: string) => {
+  const setService = useCallback((service: string) => {
     onServiceChange?.(service);
     if (!onServiceChange) {
       setUncontrolledService(service);
     }
-  };
+  }, [onServiceChange]);
 
   return (
     <div className="glass-panel overflow-hidden">
@@ -117,7 +159,15 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
       </div>
       <div ref={containerRef} className="max-h-[70vh] min-h-[400px] overflow-auto bg-slate-950/90 p-3 font-mono text-[13px] leading-relaxed">
         {visibleMessages.length > 0 ? (
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse" aria-label="Service log entries">
+            <thead className="sr-only">
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Level</th>
+                <th scope="col">Service</th>
+                <th scope="col">Message</th>
+              </tr>
+            </thead>
             <tbody>
               {visibleMessages.map((entry) => (
                 <tr key={entry.id} className="border-b border-slate-800/40 hover:bg-slate-900/60">
@@ -133,13 +183,13 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
           </table>
         ) : (
           <div className="flex min-h-[320px] items-center justify-center text-slate-500">
-            {status === 'connecting' ? 'Connecting to log stream\u2026' : 'No matching log events yet.'}
+            {status === 'connecting' ? 'Connecting to log stream\u2026' : seedLogs.length === 0 ? 'Loading initial logs\u2026' : 'No matching log events.'}
           </div>
         )}
       </div>
       <div className="flex items-center justify-between border-t border-slate-800/80 px-4 py-2 text-xs text-slate-500">
         <span>{visibleMessages.length} entries</span>
-        <span>{messages.length} total in buffer</span>
+        <span>{allMessages.length} total in buffer</span>
       </div>
     </div>
   );
