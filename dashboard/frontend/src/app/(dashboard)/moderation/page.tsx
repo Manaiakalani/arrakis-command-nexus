@@ -37,7 +37,7 @@ export default function ModerationPage() {
         <div className="border-b border-th-border-m/80 p-5">
           <p className="section-title">Moderation controls</p>
           <div className="mt-2 flex items-center gap-3">
-            <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
+            <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
               <Shield className="h-5 w-5" />
             </div>
             <div>
@@ -47,10 +47,10 @@ export default function ModerationPage() {
           </div>
         </div>
         <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard label="Protection" value={settings.data?.enabled ? 'Enabled' : 'Disabled'} accent={settings.data?.enabled ? 'text-emerald-300' : 'text-th-text-s'} />
+          <StatCard label="Protection" value={settings.data?.enabled ? 'Enabled' : 'Disabled'} accent={settings.data?.enabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-th-text-s'} />
           <StatCard label="Duplicate limit" value={settings.data ? `${settings.data.maxConsecutive} messages` : '—'} />
           <StatCard label="Rate limit" value={settings.data ? `${settings.data.rateMaxMessages}/${settings.data.rateWindowSeconds}s` : '—'} />
-          <StatCard label="Auto kick" value={settings.data?.autoKick ? 'On' : 'Off'} accent={settings.data?.autoKick ? 'text-amber-300' : 'text-th-text-s'} />
+          <StatCard label="Auto kick" value={settings.data?.autoKick ? 'On' : 'Off'} accent={settings.data?.autoKick ? 'text-amber-600 dark:text-amber-300' : 'text-th-text-s'} />
           <StatCard label="Violations" value={String(settings.data?.totalViolations ?? violations.data?.length ?? 0)} />
         </div>
       </div>
@@ -67,12 +67,12 @@ export default function ModerationPage() {
         </div>
 
         {violations.error ? (
-          <div className="p-5 text-sm text-red-300">Unable to load chat guard violations.</div>
+          <div className="p-5 text-sm text-red-700 dark:text-red-300">Unable to load chat guard violations.</div>
         ) : null}
 
         {(violations.data ?? []).length === 0 ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 p-8 text-center">
-            <ShieldAlert className="h-10 w-10 text-emerald-300" />
+            <ShieldAlert className="h-10 w-10 text-emerald-700 dark:text-emerald-300" />
             <div>
               <h3 className="text-lg font-semibold text-th-text">No spam violations</h3>
               <p className="mt-2 max-w-xl text-th-text-m">Chat guard is monitoring player messages. New warnings will appear here automatically.</p>
@@ -100,7 +100,7 @@ export default function ModerationPage() {
                     <td className="px-5 py-4 text-th-text-s">{violationLabels[violation.type] ?? violation.type}</td>
                     <td className="px-5 py-4 text-th-text-s">{violation.message}</td>
                     <td className="px-5 py-4">
-                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-200">
+                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-200">
                         {violation.action}
                       </span>
                     </td>

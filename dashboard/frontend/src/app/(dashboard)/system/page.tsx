@@ -74,7 +74,7 @@ export default function SystemPage() {
                 className={cn(
                   'px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors dune-focus',
                   exportFormat === fmt
-                    ? 'bg-amber-500/15 text-amber-200'
+                    ? 'bg-amber-500/15 text-amber-700 dark:text-amber-200'
                     : 'bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',
                 )}
               >
@@ -95,7 +95,7 @@ export default function SystemPage() {
               <h3 className="mt-1 text-lg font-semibold text-th-text">CPU load</h3>
               <p className="mt-2 text-sm text-th-text-m">Current processor saturation across the host.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-amber-300 shadow-dune">
+            <div className="rounded-2xl border border-th-border/30 dark:border-white/5 bg-th-bg/40 p-3 text-amber-600 dark:text-amber-300 shadow-dune">
               <Cpu className="h-6 w-6" />
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function SystemPage() {
               <h3 className="mt-1 text-lg font-semibold text-th-text">Memory pressure</h3>
               <p className="mt-2 text-sm text-th-text-m">Resident RAM usage on the dashboard host.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-orange-300 shadow-dune">
+            <div className="rounded-2xl border border-th-border/30 dark:border-white/5 bg-th-bg/40 p-3 text-orange-600 dark:text-orange-300 shadow-dune">
               <Waves className="h-6 w-6" />
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function SystemPage() {
               <h3 className="mt-1 text-lg font-semibold text-th-text">Disk usage</h3>
               <p className="mt-2 text-sm text-th-text-m">Persistent storage utilisation on the host volume.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-amber-200 shadow-dune">
+            <div className="rounded-2xl border border-th-border/30 dark:border-white/5 bg-th-bg/40 p-3 text-amber-700 dark:text-amber-200 shadow-dune">
               <HardDrive className="h-6 w-6" />
             </div>
           </div>
@@ -155,7 +155,7 @@ export default function SystemPage() {
               <h3 className="mt-1 text-lg font-semibold text-th-text">Network pulse</h3>
               <p className="mt-2 text-sm text-th-text-m">Live ingress and egress throughput over the selected window.</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-th-bg/40 p-3 text-amber-300 shadow-dune">
+            <div className="rounded-2xl border border-th-border/30 dark:border-white/5 bg-th-bg/40 p-3 text-amber-600 dark:text-amber-300 shadow-dune">
               <Network className="h-6 w-6" />
             </div>
           </div>

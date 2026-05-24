@@ -62,7 +62,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
             <div key={webhook.id} className="glass-panel p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-3">
-                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-amber-300">
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-amber-600 dark:text-amber-300">
                     <Webhook className="h-5 w-5" />
                   </div>
                   <div>
@@ -79,7 +79,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
                     <input type="checkbox" checked={webhook.enabled} onChange={(event) => updateDraft(webhook.id, { enabled: event.target.checked })} className="accent-amber-400" />
                     Enabled
                   </label>
-                  <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-300" onClick={() => window.confirm('Remove this webhook?') && void onDelete(webhook.id)}>
+                  <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-700 dark:text-red-300" onClick={() => window.confirm('Remove this webhook?') && void onDelete(webhook.id)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
                   </button>
                 </div>

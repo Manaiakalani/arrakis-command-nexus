@@ -96,7 +96,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-3',
           )}>
             <div className={cn(
-              'flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300 shadow-dune',
+              'flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-300 shadow-dune',
               collapsed ? 'h-9 w-9' : 'h-12 w-12',
             )}>
               <Worm className={cn(collapsed ? 'h-5 w-5' : 'h-6 w-6')} />
@@ -165,11 +165,11 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
                   'transition-[color,background-color,border-color,box-shadow,padding] duration-200',
                   collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
                   active
-                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-200 shadow-dune'
+                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200 shadow-dune'
                     : 'border-transparent text-th-text-s hover:border-th-border hover:bg-th-surface-s/70 hover:text-th-text',
                 )}
               >
-                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-300' : 'text-th-text-m group-hover:text-th-text-s')} />
+                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-600 dark:text-amber-300' : 'text-th-text-m group-hover:text-th-text-s')} />
                 <span className={cn(
                   'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
                   collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
@@ -184,12 +184,12 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
         {/* Footer info panel */}
         <div className={cn('mx-3 mb-4 mt-3 glass-panel overflow-hidden border-amber-500/10 bg-gradient-to-br from-amber-500/10 to-transparent', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
           {collapsed ? (
-            <div className="flex justify-center text-amber-200">
+            <div className="flex justify-center text-amber-700 dark:text-amber-200">
               <Worm className="h-5 w-5 animate-float" />
             </div>
           ) : (
             <>
-              <p className="text-xs uppercase tracking-[0.24em] text-amber-200/70">Spice forecast</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-amber-600/70 dark:text-amber-200/70">Spice forecast</p>
               <p className="mt-2 text-sm text-th-text-s">Live map, player, and service intelligence.</p>
               <div className="mt-3 space-y-2 border-t border-amber-500/10 pt-3 text-xs text-th-text-m">
                 <div className="flex items-center justify-between gap-3">

@@ -91,7 +91,7 @@ function HeatmapTooltip({ active, payload }: { active?: boolean; payload?: Array
 
   return (
     <div className="rounded-2xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-xs text-th-text-s shadow-2xl">
-      <p className="font-semibold text-amber-200">{cell.count} active player{cell.count === 1 ? '' : 's'}</p>
+      <p className="font-semibold text-amber-700 dark:text-amber-200">{cell.count} active player{cell.count === 1 ? '' : 's'}</p>
       <p className="mt-1 text-th-text-m">Avg. session {formatSessionDuration(cell.averageSessionSeconds)}</p>
       <p className="mt-1 text-th-text-m">{cell.names.slice(0, 3).join(', ')}{cell.names.length > 3 ? ` +${cell.names.length - 3} more` : ''}</p>
     </div>
@@ -140,7 +140,7 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
             <p className="mt-2 text-sm text-th-text-m">Grid cells brighten as more players cluster together, weighted by current session duration.</p>
           </div>
           <div className="flex items-center gap-3 text-sm text-th-text-m">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-amber-200">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-amber-700 dark:text-amber-200">
               <Users className="h-4 w-4" /> {normalizedPlayers.length} sampled
             </span>
           </div>
@@ -177,7 +177,7 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
 
           {cells.length === 0 ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-              <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-300">
+              <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
                 <LocateFixed className="h-6 w-6" />
               </div>
               <div>
@@ -187,7 +187,7 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
             </div>
           ) : null}
 
-          <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-200/90">
+          <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
             <Flame className="h-3.5 w-3.5" /> Weighted density
           </div>
         </div>

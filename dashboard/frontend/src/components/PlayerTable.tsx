@@ -83,7 +83,7 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
                 <th key={key} className="px-5 py-4 font-medium">
                   <button type="button" onClick={() => toggleSort(key as SortKey)} className="inline-flex items-center gap-2 transition-colors hover:text-th-text-s">
                     {label}
-                    <span className={cn('text-[10px]', sortKey === key ? 'text-amber-300' : 'text-th-border')}>{sortKey === key ? (ascending ? '▲' : '▼') : '•'}</span>
+                    <span className={cn('text-[10px]', sortKey === key ? 'text-amber-600 dark:text-amber-300' : 'text-th-border')}>{sortKey === key ? (ascending ? '▲' : '▼') : '•'}</span>
                   </button>
                 </th>
               ))}
