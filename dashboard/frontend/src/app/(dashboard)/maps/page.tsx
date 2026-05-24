@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, Info, Play, Square } from 'lucide-react';
+import { Archive, Info, RefreshCcw, Square } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -36,8 +36,8 @@ export default function MapsPage() {
     await refetch();
   }, [refetch]);
 
-  const handleBulk = useCallback(async (action: 'start' | 'stop') => {
-    await Promise.all(maps.map((map) => (action === 'start' ? apiClient.startMap(map.name) : apiClient.stopMap(map.name))));
+  const handleBulk = useCallback(async (action: 'restart' | 'stop') => {
+    await Promise.all(maps.map((map) => (action === 'restart' ? apiClient.restartMap(map.name) : apiClient.stopMap(map.name))));
     await refetch();
   }, [maps, refetch]);
 
@@ -62,8 +62,8 @@ export default function MapsPage() {
             <h2 className="mt-1 text-xl font-semibold text-th-text">Shard Fleet</h2>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => void handleBulk('start')} className="dune-button">
-              <Play className="mr-2 h-4 w-4" /> Start all
+            <button type="button" onClick={() => void handleBulk('restart')} className="dune-button">
+              <RefreshCcw className="mr-2 h-4 w-4" /> Restart all
             </button>
             <button type="button" onClick={() => void handleBulk('stop')} className="dune-button-muted">
               <Square className="mr-2 h-4 w-4" /> Stop all

@@ -77,15 +77,21 @@ export function MapCard({ map, onAction, onBackup }: MapCardProps) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <button type="button" onClick={() => void onAction(map.name, 'start')} className="dune-button">
-          <Play className="mr-2 h-4 w-4" /> Start
-        </button>
-        <button type="button" onClick={() => void onAction(map.name, 'stop')} className="dune-button-muted">
-          <Square className="mr-2 h-4 w-4" /> Stop
-        </button>
-        <button type="button" onClick={() => void onAction(map.name, 'restart')} className="dune-button-muted">
-          <RefreshCcw className="mr-2 h-4 w-4" /> Restart
-        </button>
+        {map.status === 'stopped' || map.status === 'error' ? (
+          <button type="button" onClick={() => void onAction(map.name, 'start')} className="dune-button">
+            <Play className="mr-2 h-4 w-4" /> Start
+          </button>
+        ) : null}
+        {map.status === 'running' ? (
+          <button type="button" onClick={() => void onAction(map.name, 'stop')} className="dune-button-muted">
+            <Square className="mr-2 h-4 w-4" /> Stop
+          </button>
+        ) : null}
+        {map.status === 'running' || map.status === 'error' ? (
+          <button type="button" onClick={() => void onAction(map.name, 'restart')} className="dune-button-muted">
+            <RefreshCcw className="mr-2 h-4 w-4" /> Restart
+          </button>
+        ) : null}
         {onBackup ? (
           <button type="button" onClick={() => void onBackup(map.name)} className="dune-button-muted">
             <Archive className="mr-2 h-4 w-4" /> Backup
