@@ -108,30 +108,47 @@ See [Quick Start](./docs/QUICKSTART.md) for the full Linux and WSL2 walkthrough.
 
 ## Architecture
 
-```text
-                    +--------------------------+
-                    | Arrakis Command Nexus    |
-                    | Next.js frontend         |
-                    +------------+-------------+
-                                 |
-                    +------------+-------------+
-                    | Dashboard API (FastAPI)  |
-                    +------------+-------------+
-                                 |
-         +-----------------------+------------------------+
-         |                       |                        |
-+--------+--------+   +----------+---------+   +---------+---------+
-| PostgreSQL       |   | RabbitMQ           |   | Docker socket     |
-| world state      |   | game/admin traffic |   | orchestration     |
-+--------+--------+   +----------+---------+   +---------+---------+
-         |                       |                        |
-         +-----------------------+------------------------+
-                                 |
-                    +------------+-------------+
-                    | Dune Awakening shards    |
-                    | Overmap, Survival, Deep  |
-                    | Desert, social, story    |
-                    +--------------------------+
+```mermaid
+flowchart TB
+    subgraph dashboard["Arrakis Command Nexus"]
+        FE["Next.js Frontend\n:18080"]
+        API["FastAPI Dashboard API"]
+    end
+
+    FE --> API
+
+    subgraph infra["Infrastructure"]
+        PG["PostgreSQL\nworld state"]
+        RMQ_G["RabbitMQ\ngame bus"]
+        RMQ_A["RabbitMQ\nadmin bus"]
+        DSP["Docker Socket\nProxy"]
+    end
+
+    API --> PG
+    API --> RMQ_A
+    API --> DSP
+
+    subgraph battlegroup["Battlegroup Services"]
+        GW["Gateway"]
+        DIR["Director"]
+        TR["Text Router"]
+        PR["Partition Repair"]
+    end
+
+    GW --> PG
+    GW --> RMQ_G
+    DIR --> RMQ_A
+    TR --> RMQ_G
+
+    subgraph shards["Game Shards"]
+        OV["Overmap"]
+        SV["Survival"]
+        DD["Deep Desert"]
+    end
+
+    DSP -.->|orchestrate| shards
+    shards --> PG
+    shards --> RMQ_G
 ```
 
 ## Documentation
@@ -179,10 +196,42 @@ See [Quick Start](./docs/QUICKSTART.md) for the full Linux and WSL2 walkthrough.
 
 ## Contributing
 
-1. Fork the repository.
-2. Create a feature branch.
-3. Validate your changes locally.
-4. Open a pull request with a clear summary.
+### Local setup
+
+```bash
+git clone https://github.com/manailab/dune-server-docker.git
+cd dune-server-docker
+
+# Backend
+cd dashboard/backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Frontend
+cd ../frontend
+npm ci
+```
+
+### Running tests
+
+```bash
+# Frontend build check
+cd dashboard/frontend && npm run build
+
+# Backend compile check
+cd dashboard/backend && python -m py_compile main.py
+
+# Playwright e2e (requires a running dashboard)
+cd dashboard/frontend && npx playwright test
+```
+
+### Pull request checklist
+
+1. Fork the repo and branch from `master` (`feature/your-change` or `fix/your-fix`).
+2. Run `./dune doctor` to verify your local environment.
+3. Confirm `npm run build` and `python -m py_compile main.py` pass.
+4. Add a changelog entry under `## [Unreleased]` in `CHANGELOG.md`.
+5. Open a PR with a clear summary of what changed and why.
 
 ## License
 

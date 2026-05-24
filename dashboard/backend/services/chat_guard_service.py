@@ -6,6 +6,7 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class SpamViolation:
 
 
 class ChatGuardService:
-    def __init__(self, docker_service=None):
+    def __init__(self, docker_service: Any | None = None) -> None:
         self.docker_service = docker_service
         self.enabled = os.getenv("DUNE_CHAT_GUARD_ENABLED", "true").lower() == "true"
         self.max_consecutive = int(os.getenv("DUNE_CHAT_MAX_CONSECUTIVE", "3"))
@@ -29,11 +30,11 @@ class ChatGuardService:
         self.rate_max_messages = int(os.getenv("DUNE_CHAT_RATE_MAX", "5"))
         self.auto_kick = os.getenv("DUNE_CHAT_AUTO_KICK", "false").lower() == "true"
 
-        self._message_history: dict[str, list[dict]] = defaultdict(list)
+        self._message_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.violations: list[SpamViolation] = []
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[Any] | None = None
 
-    async def start(self):
+    async def start(self) -> None:
         if self.enabled:
             logger.info(
                 "Chat guard started (consecutive=%s, rate=%s/%ss, auto_kick=%s)",
@@ -43,7 +44,7 @@ class ChatGuardService:
                 self.auto_kick,
             )
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self._task:
             self._task.cancel()
 
@@ -101,7 +102,7 @@ class ChatGuardService:
 
         return violation
 
-    def get_violations(self) -> list[dict]:
+    def get_violations(self) -> list[dict[str, str]]:
         return [
             {
                 "steamId": v.steam_id,
@@ -114,7 +115,7 @@ class ChatGuardService:
             for v in reversed(self.violations)
         ]
 
-    def get_settings(self) -> dict:
+    def get_settings(self) -> dict[str, Any]:
         return {
             "enabled": self.enabled,
             "maxConsecutive": self.max_consecutive,

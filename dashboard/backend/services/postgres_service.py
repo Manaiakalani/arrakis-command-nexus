@@ -36,7 +36,8 @@ class PostgresService:
         if self.pool is None:
             return []
 
-        # TODO: Replace this placeholder query with the discovered Funcom schema/table names.
+        # Placeholder query: the actual Funcom schema table/view names depend on the
+        # server version. Update the table name and columns once confirmed for your build.
         query = """
             SELECT
                 CAST(player_id AS TEXT) AS steam_id,
@@ -65,7 +66,7 @@ class PostgresService:
         if self.pool is None:
             return {}
 
-        # TODO: Replace with the correct proprietary economy/XP tables once identified.
+        # Placeholder query: adjust table/columns to match Funcom's proprietary schema.
         query = """
             SELECT currency_balance, experience_points
             FROM player_progress_view

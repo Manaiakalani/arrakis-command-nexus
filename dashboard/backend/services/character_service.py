@@ -41,14 +41,14 @@ class CharacterService:
     TIMESTAMP_COLUMNS = ("updated_at", "modified_at", "last_seen", "last_login", "created_at")
     METADATA_COLUMNS = ("guild", "clan", "house", "faction", "level", "world_name", "map_name")
 
-    def __init__(self, postgres_service=None):
+    def __init__(self, postgres_service: Any | None = None) -> None:
         self.postgres_service = postgres_service
         self.mutations_enabled = os.getenv("DUNE_ADMIN_MUTATIONS_ENABLED", "false").lower() == "true"
         self._editable_keys = {stat["key"] for stat in EDITABLE_STATS}
         self._mock_lock = asyncio.Lock()
         self._mock_characters = self._build_mock_characters()
 
-    async def list_characters(self) -> list[dict]:
+    async def list_characters(self) -> list[dict[str, Any]]:
         """List all characters. Returns mock data if game DB not accessible."""
         if self.postgres_service and getattr(self.postgres_service, "pool", None) is not None:
             try:
@@ -60,7 +60,7 @@ class CharacterService:
 
         return await self._get_mock_characters()
 
-    async def _query_game_characters(self) -> list[dict]:
+    async def _query_game_characters(self) -> list[dict[str, Any]]:
         """Query game database for character data using common table names and columns."""
         pool = getattr(self.postgres_service, "pool", None)
         if pool is None:
@@ -95,12 +95,12 @@ class CharacterService:
 
         raise LookupError("No readable character data found")
 
-    async def get_character(self, character_id: str) -> dict | None:
+    async def get_character(self, character_id: str) -> dict[str, Any] | None:
         """Get a specific character by ID."""
         chars = await self.list_characters()
         return next((c for c in chars if c.get("id") == character_id), None)
 
-    async def update_character(self, character_id: str, updates: dict) -> dict:
+    async def update_character(self, character_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         """Update character stats. Requires DUNE_ADMIN_MUTATIONS_ENABLED=true."""
         if not self.mutations_enabled:
             raise PermissionError("Character mutations are disabled. Set DUNE_ADMIN_MUTATIONS_ENABLED=true")
@@ -132,17 +132,17 @@ class CharacterService:
 
         raise NotImplementedError("Character mutations require game DB schema mapping")
 
-    def get_editable_stats(self) -> list[dict]:
+    def get_editable_stats(self) -> list[dict[str, str]]:
         return EDITABLE_STATS
 
-    def get_summary(self) -> dict:
+    def get_summary(self) -> dict[str, Any]:
         return {
             "mutationsEnabled": self.mutations_enabled,
             "editableStats": len(EDITABLE_STATS),
             "categories": ["stats", "economy", "specialization", "faction"],
         }
 
-    async def _query_table_characters(self, connection, schema: str, table: str) -> list[dict]:
+    async def _query_table_characters(self, connection: Any, schema: str, table: str) -> list[dict[str, Any]]:
         columns = await self._get_table_columns(connection, schema, table)
         normalized = {column.lower(): column for column in columns}
 
@@ -176,7 +176,7 @@ class CharacterService:
         rows = await connection.fetch(query)
         return [self._row_to_character(dict(row), schema, table, index + 1) for index, row in enumerate(rows)]
 
-    async def _update_game_character(self, character_id: str, updates: dict[str, Any]) -> dict | None:
+    async def _update_game_character(self, character_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
         if not updates:
             character = await self.get_character(character_id)
             if character is None:
@@ -228,11 +228,11 @@ class CharacterService:
 
         raise NotImplementedError("Character mutations require game DB schema mapping")
 
-    async def _get_mock_characters(self) -> list[dict]:
+    async def _get_mock_characters(self) -> list[dict[str, Any]]:
         async with self._mock_lock:
             return [self._clone_character(character) for character in self._mock_characters]
 
-    async def _get_table_columns(self, connection, schema: str, table: str) -> list[str]:
+    async def _get_table_columns(self, connection: Any, schema: str, table: str) -> list[str]:
         rows = await connection.fetch(
             """
             SELECT column_name
@@ -245,7 +245,7 @@ class CharacterService:
         )
         return [row["column_name"] for row in rows]
 
-    def _row_to_character(self, row: dict[str, Any], schema: str, table: str, index: int) -> dict:
+    def _row_to_character(self, row: dict[str, Any], schema: str, table: str, index: int) -> dict[str, Any]:
         raw_name = row.get("name")
         raw_id = row.get("id")
         stats = {
@@ -291,7 +291,7 @@ class CharacterService:
             sanitized[key] = value
         return sanitized
 
-    def _build_mock_characters(self) -> list[dict]:
+    def _build_mock_characters(self) -> list[dict[str, Any]]:
         timestamp = self._serialize_value(datetime.now(timezone.utc))
         return [
             {
@@ -358,7 +358,7 @@ class CharacterService:
             },
         ]
 
-    def _clone_character(self, character: dict[str, Any]) -> dict:
+    def _clone_character(self, character: dict[str, Any]) -> dict[str, Any]:
         return {
             **character,
             "stats": dict(character.get("stats") or {}),
