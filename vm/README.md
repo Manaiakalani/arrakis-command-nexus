@@ -42,7 +42,7 @@ sudo usermod -aG docker $USER
 4. Clone and run:
 
 ```bash
-git clone https://github.com/manailab/dune-server-docker.git /opt/dune-server
+git clone https://github.com/Manaiakalani/arrakis-command-nexus.git /opt/dune-server
 cd /opt/dune-server
 ./dune init
 ./dune start
