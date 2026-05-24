@@ -86,6 +86,8 @@ class BackupService:
 
     async def trigger_restore(self, backup_id: str) -> dict[str, str | int]:
         target = self._find_backup(backup_id)
+        if target.stat().st_size == 0:
+            raise ValueError(f"Backup file is empty and cannot be restored: {target.name}")
         if not self.restore_script.exists():
             raise FileNotFoundError(f"Restore script not found: {self.restore_script}")
         process = await asyncio.create_subprocess_exec(

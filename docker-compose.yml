@@ -185,6 +185,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    mem_limit: 128m
+    cpus: 0.5
     networks:
       default:
         ipv4_address: 10.80.0.7
@@ -208,6 +210,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    mem_limit: 256m
+    cpus: 1
     networks:
       default:
         ipv4_address: 10.80.0.42
