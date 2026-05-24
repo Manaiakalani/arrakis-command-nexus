@@ -1,17 +1,25 @@
-FROM python:3.12.10-slim-bookworm
-WORKDIR /app
+FROM python:3.12.10-slim-bookworm AS builder
+WORKDIR /build
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+FROM python:3.12.10-slim-bookworm
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
     curl \
     && groupadd --system app \
     && useradd --system --gid app --create-home --home-dir /home/app --shell /usr/sbin/nologin app \
     && rm -rf /var/lib/apt/lists/*
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=builder /install /usr/local
 COPY . .
 RUN chown -R app:app /app
 USER app
