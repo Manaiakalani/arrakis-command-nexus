@@ -13,12 +13,12 @@ services:
         max-file: "3"
     entrypoint: ["/bin/bash", "/workspace/scripts/survival-pre-start.sh"]
     command:
-      - -FarmRegion=${WORLD_REGION:-US}
+      - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
-      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-beta}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
       - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
       - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
-      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-US-West}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
@@ -80,12 +80,12 @@ services:
         max-file: "3"
     entrypoint: ["/bin/bash", "/workspace/scripts/survival-pre-start.sh"]
     command:
-      - -FarmRegion=${WORLD_REGION:-US}
+      - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
-      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-beta}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
       - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
       - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
-      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-US-West}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
