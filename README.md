@@ -132,6 +132,7 @@ See [Quick Start](./docs/QUICKSTART.md) for the full Linux and WSL2 walkthrough.
 | [Profiles](./docs/PROFILES.md) | Compare basic, standard, and full battlegroups |
 | [Networking](./docs/NETWORKING.md) | Ports, firewall planning, and NAT hairpin guidance |
 | [Troubleshooting](./docs/TROUBLESHOOTING.md) | Common startup, networking, dashboard, and WSL2 issues |
+| [VM Deployment](./vm/README.md) | Run as a standalone VM (Hyper-V, VirtualBox, Proxmox) |
 | [Deep Desert Knobs](./docs/DEEP_DESERT_KNOBS.md) | Focused Deep Desert tuning reference |
 | [Resource Respawn Knobs](./docs/RESOURCE_RESPAWN_KNOBS.md) | Resource pacing and respawn-related settings |
 

@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Rate-limited public status endpoint
 - GitHub Actions CI for build validation
 - Comprehensive documentation suite (quickstart, configuration, networking, profiles, troubleshooting)
+- VM image builder with VHD/VHDX/VMDK/QCOW2 output for Hyper-V, VirtualBox, and Proxmox
 
 ### Security
 - Admin token authentication on all API endpoints
