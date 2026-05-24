@@ -53,3 +53,21 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m py_compile main.py
       - run: python -c "import ast, pathlib; [ast.parse(f.read_text()) for f in pathlib.Path('.').rglob('*.py')]"
+
+  e2e-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard/frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@670825ae02d56b614d10c4b7e771cfbc7d0deb47 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dashboard/frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --list
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000

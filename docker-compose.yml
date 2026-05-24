@@ -478,6 +478,7 @@ services:
     build:
       context: ./dashboard/backend
     restart: unless-stopped
+    stop_grace_period: 30s
     cap_drop:
       - ALL
     environment:
@@ -548,6 +549,7 @@ services:
       context: ./dashboard/frontend
     image: dune-awakening-dashboard-frontend
     restart: unless-stopped
+    stop_grace_period: 30s
     cap_drop:
       - ALL
     ports:
