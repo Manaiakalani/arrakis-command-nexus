@@ -43,3 +43,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Path traversal protection on config and backup endpoints
 - SQL injection prevention in helper scripts
 - Symlink blocking in file operations
+- Docker socket proxy (tecnativa/docker-socket-proxy) replacing direct socket mount
+- Internal backend network isolating dashboard API from public traffic
+- Non-root container execution with no-new-privileges policy
+- Pinned Docker base images for reproducible builds
+- Request audit logging with client IP tracking
+- CI security scanning (pip-audit, npm audit)
+- SECURITY.md with responsible disclosure and hardening checklist

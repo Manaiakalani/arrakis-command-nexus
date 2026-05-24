@@ -135,6 +135,7 @@ See [Quick Start](./docs/QUICKSTART.md) for the full Linux and WSL2 walkthrough.
 | [VM Deployment](./vm/README.md) | Run as a standalone VM (Hyper-V, VirtualBox, Proxmox) |
 | [Deep Desert Knobs](./docs/DEEP_DESERT_KNOBS.md) | Focused Deep Desert tuning reference |
 | [Resource Respawn Knobs](./docs/RESOURCE_RESPAWN_KNOBS.md) | Resource pacing and respawn-related settings |
+| [Security Policy](./SECURITY.md) | Hardening checklist and responsible disclosure |
 
 ## Common CLI Commands
 
