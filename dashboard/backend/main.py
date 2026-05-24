@@ -17,6 +17,7 @@ from middleware.auth import AdminTokenMiddleware, verify_admin_token
 from middleware.rate_limit import RateLimitMiddleware
 from middleware.redaction import redact
 from middleware.request_logging import RequestLoggingMiddleware
+from middleware.security_headers import SecurityHeadersMiddleware
 from routers import announce, backups, characters, chat_guard, config, discord, economy, logs, maps, players, settings, status, system, watchdog
 from services.announce_service import AnnounceService
 from services.backup_scheduler import BackupScheduler
@@ -40,7 +41,10 @@ class RedactingFilter(logging.Filter):
         if isinstance(record.msg, str):
             record.msg = redact(record.msg)
         if record.args:
-            record.args = tuple(redact(str(arg)) for arg in record.args)
+            record.args = tuple(
+                redact(arg) if isinstance(arg, str) else arg
+                for arg in record.args
+            )
         return True
 
 
@@ -177,9 +181,15 @@ async def lifespan(app: FastAPI):
     # Security warnings for weak defaults
     admin_token = os.getenv("DUNE_ADMIN_TOKEN", "")
     if not admin_token:
-        logger.warning("SECURITY: DUNE_ADMIN_TOKEN is not set — authenticated API actions will be rejected")
+        logger.critical("SECURITY: DUNE_ADMIN_TOKEN is not set — authenticated API actions will be rejected")
     elif admin_token.startswith("change-me"):
-        logger.warning("SECURITY: DUNE_ADMIN_TOKEN is using a default value — change it for production")
+        if os.getenv("DUNE_ENV", "production").lower() in ("dev", "development"):
+            logger.warning("SECURITY: DUNE_ADMIN_TOKEN uses a default value (allowed in dev mode)")
+        else:
+            logger.critical(
+                "SECURITY: DUNE_ADMIN_TOKEN uses a default 'change-me' value. "
+                "Set a strong token or export DUNE_ENV=development to suppress this check."
+            )
     pg_pw = os.getenv("POSTGRES_DUNE_PASSWORD", "")
     if pg_pw.startswith("change-me"):
         logger.warning("SECURITY: POSTGRES_DUNE_PASSWORD is using a default value — change it for production")
@@ -211,6 +221,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Accept", "X-Admin-Token"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(AdminTokenMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(RequestLoggingMiddleware)

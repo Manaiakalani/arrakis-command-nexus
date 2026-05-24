@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] - 2026-05-24
+
+### Added
+- OOM (Out of Memory) crash detection in watchdog with remediation advice in Discord alerts
+- Host tuning script (`scripts/host-tuning.sh`) for VM memory and kernel parameter optimization
+- Snapshot collection script (`scripts/collect-snapshot.sh`) for diagnostics
+- Playwright end-to-end test suite (46 tests covering all dashboard pages)
+- Security response headers middleware (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy)
+- Secret rotation runbook, incident response playbook, and log retention policy in SECURITY.md
+
+### Changed
+- Upgraded admin token startup check from warning to critical log level; distinguishes dev vs production mode
+- Pinned all GitHub Actions to commit SHAs for supply-chain security
+- Frontend `depends_on` now uses `service_healthy` instead of `service_started` for reliable boot ordering
+- Discord webhook URLs are masked in API responses (shows only last 6 characters)
+- Container healthchecks use `kill -0 1` (detects zombies) instead of `/proc/1/status` file check
+- Generic error messages on 500 responses; full details logged server-side only
+
+### Removed
+- `EXEC` permission from Docker socket proxy (attack surface reduction)
+
+### Security
+- Security response headers on all HTTP responses
+- Default admin token blocked with critical warning in production mode
+- Docker socket proxy EXEC access removed
+- CI actions pinned to commit SHAs to prevent tag-swap supply-chain attacks
+- Webhook URL masking prevents credential exposure via API
+- Exception details no longer leak to HTTP clients
+
 ## [1.0.0] - 2026-05-24
 
 ### Added
