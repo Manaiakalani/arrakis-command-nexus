@@ -25,7 +25,7 @@ services:
       - -MultiHome=$POD_IP
       - -PartitionIndex=1
     environment:
-      POD_IP: 192.168.80.10
+      POD_IP: 10.80.0.10
       NODE_NAME: dune-node
       PARTITION_MAP_NAME: Survival_1
       POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
@@ -57,7 +57,7 @@ services:
       start_period: 120s
     networks:
       default:
-        ipv4_address: 192.168.80.10
+        ipv4_address: 10.80.0.10
 
   overmap:
     image: funcom/self-hosting/seabass-server:${DUNE_IMAGE_TAG}
@@ -88,7 +88,7 @@ services:
       - -IGWPort=7889
       - -PartitionIndex=2
     environment:
-      POD_IP: 192.168.80.11
+      POD_IP: 10.80.0.11
       NODE_NAME: dune-node
       PARTITION_MAP_NAME: Overmap
       POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
@@ -120,5 +120,5 @@ services:
       start_period: 120s
     networks:
       default:
-        ipv4_address: 192.168.80.11
+        ipv4_address: 10.80.0.11
 

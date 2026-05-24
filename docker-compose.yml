@@ -74,7 +74,7 @@ services:
       - ./data/postgres:/var/lib/postgresql/data
     networks:
       default:
-        ipv4_address: 192.168.80.2
+        ipv4_address: 10.80.0.2
 
   # -------------------------------------------------------------------------
   # Admin RabbitMQ - internal coordination
@@ -103,7 +103,7 @@ services:
       - ./data/rabbitmq/admin:/var/lib/rabbitmq
     networks:
       default:
-        ipv4_address: 192.168.80.3
+        ipv4_address: 10.80.0.3
 
   # -------------------------------------------------------------------------
   # Game RabbitMQ - client login and game traffic
@@ -135,7 +135,7 @@ services:
       - ./data/rabbitmq/game:/var/lib/rabbitmq
     networks:
       default:
-        ipv4_address: 192.168.80.4
+        ipv4_address: 10.80.0.4
 
   # -------------------------------------------------------------------------
   # RMQ Auth Shim - HTTP auth backend for RabbitMQ
@@ -164,7 +164,7 @@ services:
       start_period: 15s
     networks:
       default:
-        ipv4_address: 192.168.80.7
+        ipv4_address: 10.80.0.7
 
   # -------------------------------------------------------------------------
   # Database Init - one-shot schema bootstrap
@@ -185,7 +185,7 @@ services:
         condition: service_healthy
     networks:
       default:
-        ipv4_address: 192.168.80.42
+        ipv4_address: 10.80.0.42
 
   # -------------------------------------------------------------------------
   # Partition Repair - fixes world_partition after server restarts
@@ -222,7 +222,7 @@ services:
       start_period: 15s
     networks:
       default:
-        ipv4_address: 192.168.80.43
+        ipv4_address: 10.80.0.43
 
   # -------------------------------------------------------------------------
   # Director - battlegroup state and travel management
@@ -278,7 +278,7 @@ services:
       start_period: 30s
     networks:
       default:
-        ipv4_address: 192.168.80.5
+        ipv4_address: 10.80.0.5
 
   # -------------------------------------------------------------------------
   # Text Router - chat routing
@@ -338,7 +338,7 @@ services:
       start_period: 30s
     networks:
       default:
-        ipv4_address: 192.168.80.6
+        ipv4_address: 10.80.0.6
 
   # -------------------------------------------------------------------------
   # Gateway - FLS farm registration
@@ -402,7 +402,7 @@ services:
       start_period: 45s
     networks:
       default:
-        ipv4_address: 192.168.80.40
+        ipv4_address: 10.80.0.40
 
   # -------------------------------------------------------------------------
   # Dashboard API
@@ -463,7 +463,7 @@ services:
       start_period: 20s
     networks:
       default:
-        ipv4_address: 192.168.80.50
+        ipv4_address: 10.80.0.50
 
   # -------------------------------------------------------------------------
   # Dashboard Frontend (Next.js with API proxy)
@@ -492,15 +492,17 @@ services:
       start_period: 30s
     networks:
       default:
-        ipv4_address: 192.168.80.51
+        ipv4_address: 10.80.0.51
 
 # ===========================================================================
-# Custom bridge network with fixed subnet
+# Internal Docker bridge network (not exposed to your LAN)
+# These IPs are only used for container-to-container communication.
+# Change the subnet if it conflicts with your host network.
 # ===========================================================================
 networks:
   default:
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.80.0/20
+        - subnet: ${DUNE_DOCKER_SUBNET:-10.80.0.0/20}
 
