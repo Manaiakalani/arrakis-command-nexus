@@ -188,7 +188,7 @@ def repair_partitions(log):
                         break
 
                 if not claimed and not existing_for_map:
-                    # No partition exists at all for this map — safe to insert
+                    # No partition exists at all for this map -- safe to insert
                     try:
                         cur.execute("SAVEPOINT sp_insert")
                         cur.execute(
@@ -210,7 +210,7 @@ def repair_partitions(log):
                         )
                 elif not claimed:
                     # Partition exists but owned by another alive server.
-                    # Do NOT reassign — the owning server is actively using it.
+                    # Do NOT reassign -- the owning server is actively using it.
                     # Ghost server_ids from Docker restarts will eventually expire
                     # from farm_state. The pre-start script handles legitimate
                     # restarts by NULLing the partition's server_id first.

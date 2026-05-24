@@ -67,9 +67,10 @@ redact_stream() {
 
   for secret in \
     "${FLS_SECRET:-}" \
-    "${POSTGRES_PASSWORD:-}" \
+    "${POSTGRES_SUPER_PASSWORD:-}" \
+    "${POSTGRES_DUNE_PASSWORD:-}" \
     "${RABBITMQ_DEFAULT_PASS:-}" \
-    "${DASHBOARD_ADMIN_TOKEN:-}"; do
+    "${DUNE_ADMIN_TOKEN:-}"; do
     [[ -n "$secret" ]] && secrets+=("$secret")
   done
 
