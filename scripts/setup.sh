@@ -15,15 +15,14 @@ WORLD_NAME='Dune Awakening Server'
 WORLD_UNIQUE_NAME='sh-my-dune-server'
 EXTERNAL_ADDRESS='auto'
 DUNE_IMAGE_TAG='latest'
-POSTGRES_DB='dune'
-POSTGRES_USER='postgres'
-POSTGRES_SUPER_PASSWORD='change-me'
-POSTGRES_DUNE_PASSWORD='change-me'
-RABBITMQ_DEFAULT_USER='dune'
-RABBITMQ_DEFAULT_PASS='change-me'
+POSTGRES_SUPER_PASSWORD='change-me-postgres-super'
+POSTGRES_DUNE_PASSWORD='change-me-dune-db'
+DUNE_RMQ_MANAGEMENT_USER='dune-admin'
+DUNE_RMQ_MANAGEMENT_PASSWORD='change-me-rmq-management-password'
+RMQ_HTTP_TOKEN_AUTH_SECRET='change-me-rmq-http-token'
 DUNE_ADMIN_BIND_ADDRESS='127.0.0.1'
 DUNE_ADMIN_HOST_PORT='18080'
-DUNE_ADMIN_TOKEN=''
+DUNE_ADMIN_TOKEN='change-me-admin-token'
 EOF
 }
 
@@ -107,28 +106,28 @@ set_env_value DEPLOYMENT_PROFILE "$profile"
 export DEPLOYMENT_PROFILE="$profile"
 
 postgres_password="$(strip_wrapping_quotes "${POSTGRES_SUPER_PASSWORD:-}")"
-if [[ -z "$postgres_password" || "$postgres_password" == 'change-me' ]]; then
+if [[ -z "$postgres_password" || "$postgres_password" == 'change-me'* ]]; then
   postgres_password="$(random_password)"
   set_env_value POSTGRES_SUPER_PASSWORD "$postgres_password"
   log_success 'Generated a secure Postgres super password.'
 fi
 
 dune_db_password="$(strip_wrapping_quotes "${POSTGRES_DUNE_PASSWORD:-}")"
-if [[ -z "$dune_db_password" || "$dune_db_password" == 'change-me' ]]; then
+if [[ -z "$dune_db_password" || "$dune_db_password" == 'change-me'* ]]; then
   dune_db_password="$(random_password)"
   set_env_value POSTGRES_DUNE_PASSWORD "$dune_db_password"
   log_success 'Generated a secure Postgres dune password.'
 fi
 
-rabbitmq_password="$(strip_wrapping_quotes "${RABBITMQ_DEFAULT_PASS:-}")"
-if [[ -z "$rabbitmq_password" || "$rabbitmq_password" == 'change-me' ]]; then
+rabbitmq_password="$(strip_wrapping_quotes "${DUNE_RMQ_MANAGEMENT_PASSWORD:-}")"
+if [[ -z "$rabbitmq_password" || "$rabbitmq_password" == 'change-me'* ]]; then
   rabbitmq_password="$(random_password)"
-  set_env_value RABBITMQ_DEFAULT_PASS "$rabbitmq_password"
-  log_success 'Generated a secure RabbitMQ password.'
+  set_env_value DUNE_RMQ_MANAGEMENT_PASSWORD "$rabbitmq_password"
+  log_success 'Generated a secure RabbitMQ management password.'
 fi
 
 dashboard_token="$(strip_wrapping_quotes "${DUNE_ADMIN_TOKEN:-}")"
-if [[ -z "$dashboard_token" || "$dashboard_token" == 'change-me' ]]; then
+if [[ -z "$dashboard_token" || "$dashboard_token" == 'change-me'* ]]; then
   dashboard_token="$(random_token 24)"
   set_env_value DUNE_ADMIN_TOKEN "$dashboard_token"
   log_success 'Generated a dashboard admin token.'

@@ -122,11 +122,15 @@ flowchart TB
         RMQ_G["RabbitMQ\ngame bus"]
         RMQ_A["RabbitMQ\nadmin bus"]
         DSP["Docker Socket\nProxy"]
+        SHIM["RMQ Auth Shim"]
+        DBINIT["DB Init\n(one-shot)"]
     end
 
     API --> PG
     API --> RMQ_A
     API --> DSP
+    SHIM --> PG
+    DBINIT --> PG
 
     subgraph battlegroup["Battlegroup Services"]
         GW["Gateway"]
@@ -143,7 +147,6 @@ flowchart TB
     subgraph shards["Game Shards"]
         OV["Overmap"]
         SV["Survival"]
-        DD["Deep Desert"]
     end
 
     DSP -.->|orchestrate| shards
