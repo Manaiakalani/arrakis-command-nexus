@@ -168,7 +168,12 @@ class ConfigService:
         path = self.config_dir / filename
         if not path.exists():
             raise FileNotFoundError(f"Config file not found: {filename}")
-        return path
+        resolved_path = path.resolve()
+        try:
+            resolved_path.relative_to(self.config_dir.resolve())
+        except ValueError as exc:
+            raise FileNotFoundError(f"Config file not found: {filename}") from exc
+        return resolved_path
 
     def _load_parser(self, path: Path) -> configparser.ConfigParser:
         parser = configparser.ConfigParser()

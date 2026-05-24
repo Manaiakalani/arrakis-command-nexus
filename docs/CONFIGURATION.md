@@ -57,9 +57,9 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | --- | --- | --- |
 | `DUNE_ADMIN_TOKEN` | `change-me-admin-token` | Required admin token for authenticated dashboard API requests. |
 | `DUNE_ADMIN_MUTATIONS_ENABLED` | `false` | Enables dangerous admin write actions when set to `true`. |
-| `DUNE_ADMIN_BIND_ADDRESS` | `127.0.0.1` | Host bind address for dashboard Nginx. Keep localhost unless you need LAN/WAN access. |
+| `DUNE_ADMIN_BIND_ADDRESS` | `127.0.0.1` | Host bind address for the dashboard frontend. Keep it local-only unless you need LAN or WAN access. |
 | `DUNE_ADMIN_HOST_PORT` | `18080` | Host port for the dashboard UI and API. |
-| `DUNE_ADMIN_ALLOWED_HOSTS` | `127.0.0.1:18080,localhost:18080` | Allowed origins for dashboard CORS. |
+| `DUNE_ADMIN_ALLOWED_HOSTS` | `127.0.0.1:18080,localhost:18080` | Allowed dashboard origins for CORS, such as `your-server-ip:18080` or `dashboard.your-domain.com`. |
 
 ### Discord Notifications
 

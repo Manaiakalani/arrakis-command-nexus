@@ -78,12 +78,13 @@ The wizard walks through:
 
 This runs preflight checks, then starts the compose stack for the selected deployment profile plus the dashboard.
 
-## 6. Open the dashboard
+## 6. Open Arrakis Command Nexus
 
 Visit:
 
-- http://localhost:18080 on the server itself
-- http://SERVER_IP:18080 only if you intentionally change `DUNE_ADMIN_BIND_ADDRESS` from `127.0.0.1`
+- `http://your-server-ip:18080` if you expose the dashboard on your LAN
+- `https://dashboard.your-domain.com` if you place the dashboard behind a reverse proxy
+- If you keep the default local-only bind, open the dashboard from the host itself
 
 ## 7. Forward ports for external players
 

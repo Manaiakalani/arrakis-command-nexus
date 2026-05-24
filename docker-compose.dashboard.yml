@@ -6,7 +6,7 @@ services:
       file: docker-compose.yml
       service: dashboard-api
 
-  dashboard-nginx:
+  dashboard-frontend:
     extends:
       file: docker-compose.yml
-      service: dashboard-nginx
+      service: dashboard-frontend

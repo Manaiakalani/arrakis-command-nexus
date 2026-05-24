@@ -35,8 +35,13 @@ class BackupService:
             return []
 
         entries: list[BackupEntry] = []
-        for path in sorted(self.backup_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
-            if path.name.endswith(".meta"):
+        for candidate in sorted(self.backup_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
+            if candidate.name.endswith(".meta"):
+                continue
+            try:
+                path = self._resolve_backup_path(candidate)
+            except FileNotFoundError:
+                logger.warning("Skipping backup outside backup directory: %s", candidate)
                 continue
             meta = self._read_metadata(path)
             stat = path.stat()
@@ -120,7 +125,11 @@ class BackupService:
 
         deleted_count = 0
         for target in stale_backups:
-            await self._delete_backup_artifact(target)
+            try:
+                await self._delete_backup_artifact(target)
+            except FileNotFoundError:
+                logger.warning("Skipping prune for backup outside backup directory: %s", target)
+                continue
             deleted_count += 1
             logger.info("Pruned expired backup %s", target.name)
 
@@ -151,8 +160,17 @@ class BackupService:
             if entry.name.endswith(".meta"):
                 continue
             if entry.stem == backup_id or entry.name == backup_id:
-                return entry
+                return self._resolve_backup_path(entry)
         raise FileNotFoundError(f"Backup not found: {backup_id}")
+
+    def _resolve_backup_path(self, path: Path) -> Path:
+        resolved_dir = self.backup_dir.resolve()
+        resolved_path = path.resolve()
+        try:
+            resolved_path.relative_to(resolved_dir)
+        except ValueError as exc:
+            raise FileNotFoundError(f"Backup not found: {path.name}") from exc
+        return resolved_path
 
     def _read_metadata(self, backup_path: Path) -> dict[str, str]:
         for meta_path in self._metadata_candidates(backup_path):
@@ -192,6 +210,7 @@ class BackupService:
         }
 
     async def _delete_backup_artifact(self, target: Path) -> list[Path]:
+        target = self._resolve_backup_path(target)
         metadata_paths = self._metadata_candidates(target)
         if target.is_dir():
             await asyncio.to_thread(shutil.rmtree, target)

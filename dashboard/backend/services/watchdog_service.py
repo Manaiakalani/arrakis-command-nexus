@@ -76,6 +76,7 @@ class WatchdogService:
         return [self._to_crash_dict(event) for event in reversed(self._crash_history)]
 
     async def restart_service(self, service: str) -> dict[str, Any]:
+        self.docker_service.validate_container_name(service)
         snapshot = await self._inspect_container(service)
         if snapshot is None or not self._is_monitored_service(service):
             raise LookupError(f"Monitored service '{service}' not found")
@@ -175,15 +176,20 @@ class WatchdogService:
         return snapshot.status in {"exited", "dead"} and snapshot.exit_code not in {None, 0}
 
     def _is_monitored_service(self, service_name: str) -> bool:
+        try:
+            self.docker_service.validate_container_name(service_name)
+        except ValueError:
+            return False
         return self.docker_service._map_role(service_name) in {"overmap", "survival"}
 
     async def _restart_container(self, service: str, *, expected_restart_count: int) -> bool:
         try:
+            self.docker_service.validate_container_name(service)
             self._suppressed_restart_counts[service] = expected_restart_count + 1
             container = await asyncio.to_thread(self.docker_service.client.containers.get, service)
             await asyncio.to_thread(container.restart)
             return True
-        except (AttributeError, DockerException, NotFound) as exc:
+        except (AttributeError, DockerException, NotFound, ValueError) as exc:
             logger.warning("Watchdog could not restart %s: %s", service, exc)
             self._suppressed_restart_counts.pop(service, None)
             return False
@@ -191,6 +197,7 @@ class WatchdogService:
     async def _inspect_container(self, service: str) -> ContainerSnapshot | None:
         if not self.docker_service.client:
             return None
+        self.docker_service.validate_container_name(service)
 
         def _load() -> ContainerSnapshot | None:
             try:
