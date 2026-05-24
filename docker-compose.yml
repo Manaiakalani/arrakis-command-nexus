@@ -78,6 +78,7 @@ services:
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_POSTGRES}
+    cpus: 2
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     networks:
@@ -107,6 +108,7 @@ services:
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
+    cpus: 1
     volumes:
       - ./config/rabbitmq-admin.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
       - ./config/rabbitmq-enabled-plugins:/etc/rabbitmq/enabled_plugins:ro
@@ -138,6 +140,7 @@ services:
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
+    cpus: 1
     volumes:
       - ./config/rabbitmq-game.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
       - ./config/rabbitmq-enabled-plugins:/etc/rabbitmq/enabled_plugins:ro
@@ -227,6 +230,7 @@ services:
     volumes:
       - .:/workspace:ro
     mem_limit: 128m
+    cpus: 0.5
     depends_on:
       db-init:
         condition: service_completed_successfully
@@ -279,6 +283,7 @@ services:
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
       FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
     mem_limit: ${MEM_LIMIT_DIRECTOR}
+    cpus: 1
     volumes:
       - ./config/director.ini:/etc/app/conf.d/director.ini:ro
     depends_on:
@@ -343,6 +348,7 @@ services:
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
       FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
     mem_limit: ${MEM_LIMIT_TEXT_ROUTER}
+    cpus: 1
     depends_on:
       postgres:
         condition: service_healthy
@@ -409,6 +415,7 @@ services:
       GAME_RMQ_PUBLIC_PORT: "${GAME_RMQ_PUBLIC_PORT:-31982}"
       GAME_RMQ_PUBLIC_HTTP_PORT: "${GAME_RMQ_PUBLIC_HTTP_PORT:-31983}"
     mem_limit: ${MEM_LIMIT_GATEWAY}
+    cpus: 1
     depends_on:
       postgres:
         condition: service_healthy
@@ -449,6 +456,8 @@ services:
     tmpfs:
       - /run
       - /tmp
+    cpus: 0.5
+    mem_limit: 64m
     networks:
       backend: {}
 
@@ -516,6 +525,8 @@ services:
       default:
         ipv4_address: 10.80.0.50
       backend: {}
+    mem_limit: 512m
+    cpus: 2
 
   # -------------------------------------------------------------------------
   # Dashboard Frontend (Next.js with API proxy)
@@ -537,6 +548,7 @@ services:
       dashboard-api:
         condition: service_started
     mem_limit: 512m
+    cpus: 1
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000"]
       interval: 30s

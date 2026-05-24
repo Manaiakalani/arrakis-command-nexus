@@ -125,7 +125,7 @@ class DockerService:
             return [redact(line) for line in raw_logs.decode("utf-8", errors="replace").splitlines() if line.strip()]
         return []
 
-    def open_log_stream(self, name: str, tail: int = 100):
+    def open_log_stream(self, name: str, tail: int = 100) -> Any:
         if not self.client:
             raise RuntimeError("Docker client unavailable")
         container = self._get_container_sync(name)
@@ -254,11 +254,11 @@ class DockerService:
         if not name.startswith(f"{self.compose_project}-"):
             raise ValueError(f"Container '{name}' is outside the managed project")
 
-    async def _get_container(self, name: str):
+    async def _get_container(self, name: str) -> Any:
         self._validate_container_name(name)
         return await asyncio.to_thread(self._get_container_sync, name)
 
-    def _get_container_sync(self, name: str):
+    def _get_container_sync(self, name: str) -> Any:
         if not self.client:
             raise RuntimeError("Docker client unavailable")
         try:
@@ -269,7 +269,7 @@ class DockerService:
                 return candidates[0]
             raise
 
-    def _to_service_status(self, container) -> ServiceStatus:
+    def _to_service_status(self, container: Any) -> ServiceStatus:
         attrs = container.attrs or {}
         state = attrs.get("State", {})
         health_data = state.get("Health") or {}
