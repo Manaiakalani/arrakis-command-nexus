@@ -56,6 +56,47 @@ cd /opt/dune-server
 | Standard (+ Deep Desert, social, story) | 32 GB | 6 cores | 100 GB |
 | Full (all maps) | 48+ GB | 8+ cores | 150 GB |
 
+### Per-Map Memory Breakdown
+
+| Map | Container Limit | Typical Usage | Notes |
+| --- | --- | --- | --- |
+| Survival (Hagga Basin) | 12 GB | 8-15 GB | Largest shard, scales with player count |
+| Deep Desert | 10 GB | 5-8 GB | Large open world area |
+| Overmap | 2 GB | 0.5-1 GB | Lightweight travel/transition layer |
+| Story/Social | 1-2 GB each | 0.3-1 GB | Instanced zones, low steady-state |
+| PostgreSQL | 1 GB | 200-500 MB | Database, grows with world state |
+| RabbitMQ (x2) | 512 MB each | 100-200 MB | Message brokers |
+| Director/Gateway/TextRouter | 256-512 MB each | 50-150 MB | Coordination services |
+| Dashboard (API + Frontend) | 512 MB each | 100-200 MB | Admin panel |
+
+Reserve 2 GB for the host OS. If total RAM is tight, add swap:
+
+```bash
+sudo ./scripts/host-tuning.sh --swap 8
+```
+
+### Host Tuning (Recommended)
+
+After setting up the VM, run the host tuning script to optimize kernel parameters:
+
+```bash
+# Review what would be changed (no modifications)
+sudo ./scripts/host-tuning.sh --dry-run
+
+# Apply all tuning (sysctl + Docker daemon + THP disabled)
+sudo ./scripts/host-tuning.sh
+
+# Also create swap (for hosts under 32 GB RAM)
+sudo ./scripts/host-tuning.sh --swap 8
+```
+
+This configures:
+- `vm.swappiness=10` (prefer RAM over swap for game pages)
+- `vm.overcommit_memory=1` (allow container memory flexibility)
+- UDP receive/send buffers increased to 25 MB (game traffic)
+- Transparent hugepages disabled (reduces latency spikes)
+- Docker log rotation and ulimits
+
 ## Hyper-V Import
 
 ```powershell

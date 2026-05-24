@@ -36,6 +36,7 @@ class ContainerSnapshot:
     status: str
     exit_code: int | None
     restart_count: int
+    oom_killed: bool = False
 
 
 class WatchdogService:
@@ -178,6 +179,8 @@ class WatchdogService:
         include_restart_delta: bool,
     ) -> str:
         parts = [f"Crash detected for {snapshot.service}."]
+        if snapshot.oom_killed:
+            parts.append("Container was OOM-killed (out of memory). Consider increasing MEM_LIMIT in .env or running host-tuning.sh --swap.")
         if snapshot.exit_code is not None:
             parts.append(f"Exit code: {snapshot.exit_code}.")
         if include_restart_delta:
@@ -256,11 +259,13 @@ class WatchdogService:
         except (TypeError, ValueError):
             exit_code = None
         status = str(state.get("Status") or container.status or "unknown")
+        oom_killed = bool(state.get("OOMKilled", False))
         return ContainerSnapshot(
             service=container.name,
             status=status,
             exit_code=exit_code,
             restart_count=restart_count,
+            oom_killed=oom_killed,
         )
 
     def _to_crash_dict(self, event: CrashEvent) -> dict[str, Any]:

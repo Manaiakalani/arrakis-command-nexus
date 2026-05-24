@@ -185,6 +185,19 @@ flowchart TB
 ./dune preflight   # Run pre-start validation
 ```
 
+### Host Optimization
+
+```bash
+# Apply Linux kernel tuning (sysctl, THP, Docker daemon)
+sudo ./scripts/host-tuning.sh
+
+# Add swap for low-memory hosts
+sudo ./scripts/host-tuning.sh --swap 8
+
+# Collect diagnostic snapshot for support
+./scripts/collect-snapshot.sh
+```
+
 ## Who Is This For?
 
 - Players who want a private Dune Awakening Docker server at home
