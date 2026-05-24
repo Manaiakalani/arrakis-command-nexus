@@ -25,6 +25,27 @@ PASSWORD = os.environ.get("POSTGRES_DUNE_PASSWORD", "change-me-dune-db")
 SCHEMA = "dune"
 SCHEMA_PATH = pathlib.Path("/root/DuneSandbox/Database")
 
+# Canonical partition definitions seeded from Funcom's world-template.yaml.
+# The "type": "box2d_array" wrapper is required -- without it the game server
+# binary raises: Ensure condition failed: Object->HasTypedField<EJson::String>(u"type")
+# and never transitions to ready.
+PARTITION_DEF = '{"type":"box2d_array","box":{"min_x":0,"min_y":0,"max_x":1,"max_y":1}}'
+WORLD_PARTITIONS = [
+    (1, "Survival_1"),
+    (2, "Overmap"),
+    (3, "SH_Arrakeen"),
+    (4, "SH_HarkoVillage"),
+    (5, "CB_Story_Hephaestus"),
+    (6, "CB_Story_Ecolab_Carthag"),
+    (7, "CB_Story_WaterFatManor"),
+    (8, "DeepDesert_1"),
+    (9, "Story_ProcesVerbal"),
+    (10, "DLC_Story_LostHarvest_EcolabA"),
+    (11, "DLC_Story_LostHarvest_EcolabB"),
+    (12, "DLC_Story_LostHarvest_ForgottenLab"),
+    (13, "Story_ArtOfKanly"),
+]
+
 
 def database_exists() -> bool:
     conn = psycopg2.connect(
@@ -61,6 +82,34 @@ def schema_initialized() -> bool:
                 (SCHEMA,),
             )
             return cur.fetchone() is not None
+
+
+def seed_world_partitions(log: logging.Logger) -> None:
+    """Insert canonical world_partition rows if the table is empty."""
+    with psycopg2.connect(
+        host=HOST, port=PORT, database=DATABASE, user=USER, password=PASSWORD,
+        options=f"-c search_path={SCHEMA},public",
+    ) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM world_partition")
+            count = cur.fetchone()[0]
+            if count > 0:
+                log.info("world_partition already has %d rows, skipping seed", count)
+                return
+
+            for pid, map_name in WORLD_PARTITIONS:
+                cur.execute(
+                    "INSERT INTO world_partition "
+                    "(partition_id, server_id, map, partition_definition, dimension_index, blocked, label) "
+                    "VALUES (%s, NULL, %s, %s::jsonb, 0, false, NULL)",
+                    (pid, map_name, PARTITION_DEF),
+                )
+            cur.execute(
+                "SELECT setval('world_partition_partition_id_seq', "
+                "(SELECT max(partition_id) FROM world_partition))"
+            )
+            conn.commit()
+            log.info("Seeded %d world_partition rows", len(WORLD_PARTITIONS))
 
 
 def main() -> int:
@@ -107,6 +156,8 @@ def main() -> int:
             cur.execute(
                 f'ALTER DATABASE "{DATABASE}" SET search_path TO {SCHEMA}, public'
             )
+
+    seed_world_partitions(log)
 
     log.info("Database bootstrap complete")
     return 0

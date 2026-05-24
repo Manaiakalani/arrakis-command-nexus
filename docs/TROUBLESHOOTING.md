@@ -186,6 +186,70 @@ ON CONFLICT (server_id, map) DO NOTHING;
 **Prevention:** Keep the `partition-repair` service in your compose configuration. It waits
 for servers to register in `farm_state`, then ensures matching `world_partition` rows exist.
 
+## Server Not Appearing in Game Browser
+
+**Symptoms:** All containers are healthy, FLS heartbeats succeed, but the server does not
+appear under the Experimental tab in the game's server browser.
+
+**Root causes (check in order):**
+
+1. **Database version mismatch.** If the Funcom images were upgraded but the database was
+   not recreated, the game server logs `Database version mismatch` and the persistence
+   layer never loads. The server stays in `S2S_Starting` state and never becomes `ready`.
+
+   ```bash
+   # Check for the error
+   docker compose logs survival_1 2>&1 | grep "Database version mismatch"
+   ```
+
+   **Fix:** Drop and recreate the database, then re-run db-init:
+
+   ```bash
+   docker compose stop survival_1 director gateway text-router
+   docker exec dune-awakening-postgres-1 psql -U dune -d postgres \
+     -c "DROP DATABASE IF EXISTS dune_sb_1_4_0_0;"
+   docker exec dune-awakening-postgres-1 psql -U dune -d postgres \
+     -c "CREATE DATABASE dune_sb_1_4_0_0 OWNER dune;"
+   docker compose rm -f db-init
+   docker compose up db-init --force-recreate
+   docker compose up -d
+   ```
+
+   **Warning:** This destroys all world data. Take a backup first if you have player progress.
+
+2. **Wrong partition_definition format.** The `world_partition` table must use the
+   `box2d_array` JSON format. Without the `"type"` field, the game server fails with:
+
+   ```
+   Ensure condition failed: Object->HasTypedField<EJson::String>(u"type")
+   ```
+
+   **Fix:** The correct format is:
+   ```json
+   {"type":"box2d_array","box":{"min_x":0,"min_y":0,"max_x":1,"max_y":1}}
+   ```
+
+   The `db-init` service seeds this automatically on fresh databases. To fix an existing
+   database:
+
+   ```sql
+   UPDATE world_partition
+   SET partition_definition = '{"type":"box2d_array","box":{"min_x":0,"min_y":0,"max_x":1,"max_y":1}}'::jsonb;
+   ```
+
+3. **`BattlegroupMaxPlayerCapacity` is 0.** The director reports 0 capacity to FLS, so the
+   server is hidden. Check that `farm_state` shows `ready = true`:
+
+   ```sql
+   SELECT server_id, map, ready, alive FROM farm_state;
+   ```
+
+   If `ready` is `false`, the game server has not finished loading. Check its logs for errors.
+
+4. **Port forwarding incomplete.** Players need:
+   - `7777-7810 UDP` for game traffic
+   - `31982 TCP` for RabbitMQ (login/auth)
+
 ## Performance Tuning
 
 If your server feels sluggish, has high latency, or containers are being OOM-killed:
