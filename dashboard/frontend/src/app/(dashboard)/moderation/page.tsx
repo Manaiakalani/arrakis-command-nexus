@@ -74,7 +74,7 @@ export default function ModerationPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-th-border-m/80 text-sm">
-              <thead className="bg-th-bg/50 text-left text-xs uppercase tracking-[0.18em] text-th-text0">
+              <thead className="bg-th-bg/50 text-left text-xs uppercase tracking-[0.18em] text-th-text-m">
                 <tr>
                   <th className="px-5 py-3 font-medium">Player</th>
                   <th className="px-5 py-3 font-medium">Type</th>
@@ -88,7 +88,7 @@ export default function ModerationPage() {
                   <tr key={`${violation.steamId}-${violation.timestamp}-${violation.type}`}>
                     <td className="px-5 py-4">
                       <div className="font-medium text-th-text">{violation.playerName || violation.steamId}</div>
-                      <div className="mt-1 text-xs text-th-text0">{violation.steamId}</div>
+                      <div className="mt-1 text-xs text-th-text-m">{violation.steamId}</div>
                     </td>
                     <td className="px-5 py-4 text-th-text-s">{violationLabels[violation.type] ?? violation.type}</td>
                     <td className="px-5 py-4 text-th-text-s">{violation.message}</td>
@@ -112,7 +112,7 @@ export default function ModerationPage() {
 function StatCard({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="rounded-3xl border border-th-border-m/80 bg-th-bg/60 p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-th-text0">{label}</p>
+      <p className="text-xs uppercase tracking-[0.18em] text-th-text-m">{label}</p>
       <p className={`mt-3 text-xl font-semibold text-th-text ${accent ?? ''}`}>{value}</p>
     </div>
   );

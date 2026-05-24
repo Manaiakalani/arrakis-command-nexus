@@ -138,7 +138,7 @@ export default function PlayersPage() {
                 <div>
                   <p className="font-semibold text-th-text">{entry.playerName ?? entry.steamId}</p>
                   <p className="mt-1 text-sm text-th-text-m">{entry.reason}</p>
-                  <p className="mt-1 text-xs text-th-text0">Expires: {entry.expiresAt ? new Date(entry.expiresAt).toLocaleString() : 'Never'}</p>
+                  <p className="mt-1 text-xs text-th-text-m">Expires: {entry.expiresAt ? new Date(entry.expiresAt).toLocaleString() : 'Never'}</p>
                 </div>
                 <button type="button" onClick={() => void apiClient.unbanPlayer(entry.steamId).then(() => bans.refetch())} className="dune-button">
                   <UserCheck className="mr-2 h-4 w-4" /> Unban

@@ -57,11 +57,11 @@ export function MapCard({ map, onAction, onBackup }: MapCardProps) {
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-th-border/50 bg-th-bg-s/40 px-3 py-2">
-          <p className="text-xs uppercase tracking-[0.15em] text-th-text0">CPU</p>
+          <p className="text-xs uppercase tracking-[0.15em] text-th-text-m">CPU</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-th-text">{map.cpuPercent != null ? `${map.cpuPercent}%` : '-'}</p>
         </div>
         <div className="rounded-xl border border-th-border/50 bg-th-bg-s/40 px-3 py-2">
-          <p className="text-xs uppercase tracking-[0.15em] text-th-text0">Uptime</p>
+          <p className="text-xs uppercase tracking-[0.15em] text-th-text-m">Uptime</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-th-text">{map.uptimeSeconds ? formatUptime(map.uptimeSeconds) : '-'}</p>
         </div>
       </div>
@@ -97,7 +97,7 @@ export function MapCard({ map, onAction, onBackup }: MapCardProps) {
         <div className="mt-5 grid gap-3 rounded-2xl border border-th-border/70 bg-th-surface-s/50 p-4 text-sm text-th-text-s sm:grid-cols-2">
           {Object.entries(map.settings ?? {}).map(([key, value]) => (
             <div key={key}>
-              <p className="text-xs uppercase tracking-[0.2em] text-th-text0">{key}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">{key}</p>
               <p className="mt-1 text-base text-th-text">{String(value)}</p>
             </div>
           ))}

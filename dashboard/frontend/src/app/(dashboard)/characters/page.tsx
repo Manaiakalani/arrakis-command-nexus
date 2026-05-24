@@ -309,7 +309,7 @@ export default function CharactersPage() {
             <p className="section-title">Character roster</p>
             <h2 className="mt-1 text-xl font-semibold text-th-text">Search and Select</h2>
             <label className="relative mt-4 block">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text0" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text-m" />
               <input
                 className="dune-input pl-11"
                 value={search}
@@ -363,7 +363,7 @@ export default function CharactersPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-base font-semibold text-th-text">{character.name}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-th-text0">{character.id}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-th-text-m">{character.id}</p>
                     </div>
                     <span className={cn('rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em]', character.source === 'mock' ? 'border-sky-500/20 bg-sky-500/10 text-sky-200' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200')}>
                       {character.source}
@@ -463,7 +463,7 @@ export default function CharactersPage() {
                     {activeFields.map((field) => (
                       <label key={field.key} className="block rounded-2xl border border-th-border-m/80 bg-th-surface-s/60 p-4">
                         <span className="block text-sm font-medium text-th-text">{field.label}</span>
-                        <span className="mt-1 block text-xs uppercase tracking-[0.18em] text-th-text0">{field.key}</span>
+                        <span className="mt-1 block text-xs uppercase tracking-[0.18em] text-th-text-m">{field.key}</span>
                         <input
                           className="dune-input mt-3"
                           type={field.type === 'number' ? 'number' : 'text'}

@@ -231,7 +231,7 @@ export default function SettingsPage() {
                <div>
                  <label htmlFor="uptimeKumaPushToken" className="block text-sm font-medium text-th-text-s">Push monitor token</label>
                  <input id="uptimeKumaPushToken" name="uptimeKumaPushToken" className="dune-input mt-1 w-full" placeholder="abc123..." defaultValue={integrations.uptimeKumaPushToken as string ?? ''} key={`ukt-${integrations.uptimeKumaPushToken}`} />
-                 <p className="mt-1 text-xs text-th-text0">Found in your Push monitor&apos;s URL: /api/push/[token]</p>
+                 <p className="mt-1 text-xs text-th-text-m">Found in your Push monitor&apos;s URL: /api/push/[token]</p>
                </div>
              </div>
            </div>

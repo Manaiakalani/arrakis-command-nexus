@@ -93,7 +93,7 @@ function HeatmapTooltip({ active, payload }: { active?: boolean; payload?: Array
     <div className="rounded-2xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-xs text-th-text-s shadow-2xl">
       <p className="font-semibold text-amber-200">{cell.count} active player{cell.count === 1 ? '' : 's'}</p>
       <p className="mt-1 text-th-text-m">Avg. session {formatSessionDuration(cell.averageSessionSeconds)}</p>
-      <p className="mt-1 text-th-text0">{cell.names.slice(0, 3).join(', ')}{cell.names.length > 3 ? ` +${cell.names.length - 3} more` : ''}</p>
+      <p className="mt-1 text-th-text-m">{cell.names.slice(0, 3).join(', ')}{cell.names.length > 3 ? ` +${cell.names.length - 3} more` : ''}</p>
     </div>
   );
 }

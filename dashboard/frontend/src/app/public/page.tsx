@@ -79,7 +79,7 @@ export default function PublicStatusPage() {
             <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data?.playersOnline ?? 0}</p>
             <p className="mt-2 text-sm font-medium text-th-text-s">Players Online</p>
             {data?.maxPlayers != null && (
-              <p className="mt-1 text-xs tabular-nums text-th-text0">of {data.maxPlayers} max</p>
+              <p className="mt-1 text-xs tabular-nums text-th-text-m">of {data.maxPlayers} max</p>
             )}
           </div>
           <div className="glass-panel px-6 py-7 text-center">
@@ -108,25 +108,25 @@ export default function PublicStatusPage() {
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
-              <p className="text-xs text-th-text0">Server Name</p>
+              <p className="text-xs text-th-text-m">Server Name</p>
               <p className="mt-1 text-sm font-medium text-th-text">{data?.serverName ?? '--'}</p>
             </div>
             <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
-              <p className="text-xs text-th-text0">Max Players</p>
+              <p className="text-xs text-th-text-m">Max Players</p>
               <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{data?.maxPlayers ?? '--'}</p>
             </div>
             <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
-              <p className="text-xs text-th-text0">Active Maps</p>
+              <p className="text-xs text-th-text-m">Active Maps</p>
               <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{data?.mapsActive ?? '--'}</p>
             </div>
             <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
-              <p className="text-xs text-th-text0">Region</p>
+              <p className="text-xs text-th-text-m">Region</p>
               <p className="mt-1 text-sm font-medium text-th-text">{data?.region ?? '--'}</p>
             </div>
           </div>
         </div>
 
-        <div className="mt-10 text-center text-xs text-th-text0">
+        <div className="mt-10 text-center text-xs text-th-text-m">
           {data?.lastUpdated ? `Last updated: ${new Date(data.lastUpdated).toLocaleString()}` : ''}
           <p className="mt-2">Powered by Arrakis Command Nexus</p>
         </div>
