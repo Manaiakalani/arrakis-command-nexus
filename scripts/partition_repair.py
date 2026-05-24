@@ -61,6 +61,46 @@ def wait_for_servers(log, min_servers=2):
     return False
 
 
+def fix_gateway_function(log):
+    """Patch get_active_servers_for_gateway() to use INNER JOIN on world_partition.
+
+    The stock function uses a LEFT JOIN, which returns NULL partition_id for
+    servers (like the overmap) that have no world_partition row.  The gateway
+    then logs hundreds of 'Got invalid partition index (None)' warnings.
+    Switching to INNER JOIN silences them without affecting gameplay.
+    """
+    with get_connection() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT prosrc FROM pg_proc WHERE proname = 'get_active_servers_for_gateway'"
+            )
+            row = cur.fetchone()
+            if row and "left join world_partition" in (row[0] or "").lower():
+                cur.execute("DROP FUNCTION IF EXISTS dune.get_active_servers_for_gateway()")
+                cur.execute("""
+                    CREATE FUNCTION dune.get_active_servers_for_gateway()
+                    RETURNS TABLE(server_id text, map text, partition_id bigint,
+                                  dimension_index integer, game_addr inet,
+                                  game_port integer, revision integer)
+                    LANGUAGE plpgsql AS $$
+                    DECLARE
+                    BEGIN
+                        RETURN QUERY
+                            SELECT fs.server_id, fs.map, wp.partition_id,
+                                   coalesce(wp.dimension_index, 0),
+                                   fs.game_addr, fs.game_port, fs.revision
+                            FROM active_server_ids AS asi
+                            JOIN world_partition AS wp ON asi.server_id = wp.server_id
+                            JOIN farm_state AS fs ON fs.server_id = asi.server_id;
+                    END
+                    $$;
+                """)
+                log.info("Patched get_active_servers_for_gateway: LEFT JOIN -> INNER JOIN")
+            else:
+                log.info("Gateway function already patched or not found, skipping")
+
+
 def repair_partitions(log):
     """Ensure every alive server in farm_state has a world_partition row.
 
@@ -252,6 +292,7 @@ def main():
 
     log.info("Starting partition repair (target: %s:%d/%s)", HOST, PORT, DATABASE)
     wait_for_servers(log, min_servers=1)
+    fix_gateway_function(log)
     changes = repair_partitions(log)
 
     if changes == 0:
