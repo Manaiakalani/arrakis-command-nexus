@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import time
 from collections import defaultdict
@@ -9,6 +10,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 
 from middleware.request_utils import get_client_ip
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["status"])
 
@@ -202,6 +205,7 @@ async def service_action(name: str, action: str, request: Request) -> dict:
     try:
         result = await handler(name)
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.error("Service action failed service=%s action=%s: %s", name, action, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Service action failed. Check server logs for details.") from exc
 
     return {"service": name, "action": action, **result}

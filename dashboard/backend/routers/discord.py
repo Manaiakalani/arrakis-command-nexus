@@ -25,6 +25,13 @@ _EVENT_FIELDS = {
 }
 
 
+def _mask_url(url: str) -> str:
+    """Mask a Discord webhook URL, keeping only the last 6 chars for identification."""
+    if not url or len(url) < 10:
+        return "****"
+    return f"...{url[-6:]}"
+
+
 def _webhook_to_frontend(entry) -> dict:
     """Convert backend DiscordWebhookEntry to frontend expected shape."""
     events = []
@@ -34,7 +41,7 @@ def _webhook_to_frontend(entry) -> dict:
     return {
         "id": str(getattr(entry, "id", "")),
         "name": f"Webhook #{getattr(entry, 'id', '')}",
-        "url": str(getattr(entry, "url", "")),
+        "url": _mask_url(str(getattr(entry, "url", ""))),
         "enabled": True,
         "events": events,
         "isHealthy": True,

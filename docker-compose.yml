@@ -180,7 +180,7 @@ services:
       text-router:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      test: ["CMD-SHELL", "kill -0 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -306,7 +306,7 @@ services:
       db-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      test: ["CMD-SHELL", "kill -0 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -369,7 +369,7 @@ services:
       db-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "test -f /proc/1/status"]
+      test: ["CMD-SHELL", "kill -0 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -560,7 +560,7 @@ services:
       DUNE_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
     depends_on:
       dashboard-api:
-        condition: service_started
+        condition: service_healthy
     mem_limit: 512m
     cpus: 1
     healthcheck:
