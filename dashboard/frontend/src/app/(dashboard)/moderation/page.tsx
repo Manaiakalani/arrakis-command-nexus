@@ -2,6 +2,7 @@
 
 import { Shield, ShieldAlert, Trash2 } from 'lucide-react';
 
+import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import type { ChatGuardViolation } from '@/lib/types';
@@ -23,6 +24,12 @@ export default function ModerationPage() {
     await apiClient.clearChatGuardViolations();
     await Promise.all([settings.refetch(), violations.refetch()]);
   };
+
+  const isLoading = settings.loading && !settings.data;
+
+  if (isLoading) {
+    return <ModerationPageSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -105,6 +112,34 @@ export default function ModerationPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ModerationPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="glass-panel overflow-hidden">
+        <div className="border-b border-th-border-m/80 p-5">
+          <Skeleton className="h-3 w-28" />
+          <div className="mt-2 flex items-center gap-3">
+            <Skeleton className="h-11 w-11 rounded-2xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="rounded-3xl border border-th-border-m/80 bg-th-bg/60 p-4 space-y-3">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-8 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <TableSkeleton rows={6} />
     </div>
   );
 }

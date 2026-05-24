@@ -59,6 +59,24 @@ export default function PublicStatusPage() {
   const status = data?.status ?? 'unknown';
   const styles = statusStyles[status];
 
+  if (!data && !error) {
+    return (
+      <div className="min-h-screen bg-dune-radial">
+        <div className="absolute inset-0 bg-dune-grid bg-[size:42px_42px] opacity-[0.08]" />
+        <div className="relative mx-auto max-w-2xl px-4 py-16">
+          <div className="flex flex-col items-center gap-4 animate-pulse">
+            <div className="h-4 w-32 rounded bg-th-surface" />
+            <div className="h-9 w-64 rounded-lg bg-th-surface" />
+            <div className="h-8 w-28 rounded-full bg-th-surface" />
+            <div className="mt-6 grid w-full gap-5 sm:grid-cols-2">
+              {[1,2,3,4].map(i => <div key={i} className="h-36 rounded-xl bg-th-surface" />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-dune-radial">
       <div className="absolute inset-0 bg-dune-grid bg-[size:42px_42px] opacity-[0.08]" />

@@ -3,6 +3,7 @@
 import { Activity, RefreshCcw, ShieldAlert, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
@@ -17,6 +18,8 @@ export default function WatchdogPage() {
 
   const services = useMemo(() => [...new Set((maps.data ?? []).map((map) => map.name))].sort(), [maps.data]);
 
+  const isLoading = status.loading || crashes.loading || maps.loading;
+
   const handleRestart = async (service: string) => {
     setRestarting(service);
     try {
@@ -26,6 +29,10 @@ export default function WatchdogPage() {
       setRestarting(null);
     }
   };
+
+  if (isLoading) {
+    return <WatchdogPageSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -144,6 +151,46 @@ export default function WatchdogPage() {
             {(crashes.data ?? []).length === 0 ? <div className="p-10 text-center text-th-text-m">No crash events recorded.</div> : null}
           </div>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function WatchdogPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="glass-panel p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-12 w-12 rounded-2xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-7 w-24" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-40" />
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="glass-panel p-5 space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-8 w-56" />
+          </div>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="flex items-center justify-between rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+              <Skeleton className="h-9 w-24 rounded-xl" />
+            </div>
+          ))}
+        </div>
+        <TableSkeleton rows={5} />
       </section>
     </div>
   );
