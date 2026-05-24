@@ -5,6 +5,11 @@ services:
       - 1.1.1.1
       - 8.8.8.8
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     entrypoint: ["/bin/bash", "/workspace/scripts/survival-pre-start.sh"]
     command:
       - -FarmRegion=${WORLD_REGION:-US}
@@ -66,6 +71,11 @@ services:
       - 1.1.1.1
       - 8.8.8.8
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     entrypoint: ["/bin/bash", "/workspace/scripts/survival-pre-start.sh"]
     command:
       - -FarmRegion=${WORLD_REGION:-US}

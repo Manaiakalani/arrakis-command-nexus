@@ -37,6 +37,7 @@ jobs:
           cache: npm
           cache-dependency-path: dashboard/frontend/package-lock.json
       - run: npm ci
+      - run: npx tsc --noEmit
       - run: npm run build
 
   lint-backend:
@@ -51,3 +52,4 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python -m py_compile main.py
+      - run: python -c "import ast, pathlib; [ast.parse(f.read_text()) for f in pathlib.Path('.').rglob('*.py')]"

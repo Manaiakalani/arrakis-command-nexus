@@ -27,6 +27,11 @@ x-game-server-command:
 x-container-security: &container-security
   security_opt:
     - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 # ---------------------------------------------------------------------------
 # Base template for game server containers
