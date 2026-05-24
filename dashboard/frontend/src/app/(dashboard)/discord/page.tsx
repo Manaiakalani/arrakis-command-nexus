@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 
+import { ApiError } from '@/components/ApiError';
 import { DiscordSettings } from '@/components/DiscordSettings';
 import { Skeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
@@ -16,6 +17,10 @@ export default function DiscordPage() {
       .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
       .slice(0, 10);
   }, [webhooks.data]);
+
+  if (webhooks.error) {
+    return <ApiError error={webhooks.error} onRetry={() => void webhooks.refetch()} />;
+  }
 
   if (webhooks.loading) {
     return <DiscordPageSkeleton />;

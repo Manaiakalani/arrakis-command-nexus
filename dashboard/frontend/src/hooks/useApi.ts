@@ -30,7 +30,7 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     isMountedRef.current = false;
   }, []);
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (rethrow = true) => {
     if (!enabledRef.current) {
       return undefined;
     }
@@ -54,7 +54,8 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
       if (isMountedRef.current) {
         setError(nextError);
       }
-      throw nextError;
+      if (rethrow) throw nextError;
+      return undefined;
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -68,7 +69,7 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
       return;
     }
 
-    void run();
+    void run(false);
   }, [enabled, run]);
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     }
 
     const intervalId = window.setInterval(() => {
-      void run();
+      void run(false);
     }, refreshInterval);
 
     return () => window.clearInterval(intervalId);

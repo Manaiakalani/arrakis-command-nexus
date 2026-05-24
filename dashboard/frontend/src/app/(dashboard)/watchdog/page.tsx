@@ -3,6 +3,7 @@
 import { Activity, RefreshCcw, ShieldAlert, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { ApiError } from '@/components/ApiError';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
@@ -30,8 +31,14 @@ export default function WatchdogPage() {
     }
   };
 
+  const loadError = status.error || crashes.error || maps.error;
+
   if (isLoading) {
     return <WatchdogPageSkeleton />;
+  }
+
+  if (loadError) {
+    return <ApiError error={loadError} onRetry={() => { void status.refetch(); void crashes.refetch(); void maps.refetch(); }} />;
   }
 
   return (
