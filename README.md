@@ -2,6 +2,7 @@
 
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/docker%20compose-v2-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![CI](https://github.com/manailab/dune-server-docker/actions/workflows/ci.yml/badge.svg)](https://github.com/manailab/dune-server-docker/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/license/mit)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20WSL2-lightgrey)](./docs/QUICKSTART.md)
 
@@ -78,7 +79,7 @@ See [docs/PROFILES.md](./docs/PROFILES.md) for the exact shard layouts.
 steamcmd +login anonymous +app_update 3104830 validate +quit
 
 # 2. Clone and configure
-git clone https://github.com/your-username/dune-server-docker.git
+git clone https://github.com/manailab/dune-server-docker.git
 cd dune-server-docker
 ./dune init
 

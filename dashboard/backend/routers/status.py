@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
@@ -12,6 +14,10 @@ _HEALTH_MAP = {"running": "healthy", "stopped": "stopped", "completed": "complet
 
 # Containers that are one-shot init tasks — exited 0 is expected and healthy
 _INIT_CONTAINERS = {"db-init", "db_init", "dbinit"}
+_PUBLIC_STATUS_RATE_LIMIT = 60
+_PUBLIC_STATUS_WINDOW_SECONDS = 60
+_public_status_requests: dict[str, list[float]] = defaultdict(list)
+_public_status_lock = asyncio.Lock()
 
 
 def _is_init_container(name: str) -> bool:
@@ -43,6 +49,31 @@ def _service_to_frontend(svc) -> dict:
         "message": message,
         "isInit": is_init,
     }
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip() or "unknown"
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+async def _enforce_public_status_rate_limit(request: Request) -> None:
+    client_ip = _get_client_ip(request)
+    now = time.monotonic()
+    cutoff = now - _PUBLIC_STATUS_WINDOW_SECONDS
+    async with _public_status_lock:
+        recent_requests = [ts for ts in _public_status_requests.get(client_ip, []) if ts > cutoff]
+        if len(recent_requests) >= _PUBLIC_STATUS_RATE_LIMIT:
+            _public_status_requests[client_ip] = recent_requests
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded for the public status endpoint. Limit is 60 requests per minute per IP.",
+            )
+        recent_requests.append(now)
+        _public_status_requests[client_ip] = recent_requests
 
 
 @router.get("/status")
@@ -80,6 +111,8 @@ async def get_status(request: Request) -> dict:
 @router.get("/public/status")
 async def get_public_status(request: Request) -> dict:
     """Public-facing status endpoint with no auth and limited data."""
+    await _enforce_public_status_rate_limit(request)
+
     docker_service = request.app.state.docker_service
     services, players_result = await asyncio.gather(
         docker_service.list_containers(),

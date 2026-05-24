@@ -7,12 +7,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import PlainTextResponse, Response
+
+from middleware.auth import verify_admin_token
 
 router = APIRouter(tags=["system"])
 
 _BOOT_TIME: float | None = None
+_PROCESS_START_TIME = time.monotonic()
 _RANGE_TO_DURATION = {
     "15m": timedelta(minutes=15),
     "1h": timedelta(hours=1),
@@ -173,6 +176,26 @@ def _build_uptime_payload(snapshots: list[Any], duration: timedelta, interval_se
     }
 
 
+def _format_prometheus_payload(raw: dict[str, Any]) -> str:
+    metrics = {
+        "dune_cpu_percent": raw.get("cpu_percent", 0),
+        "dune_memory_percent": raw.get("memory_percent", 0),
+        "dune_memory_used_bytes": raw.get("memory_used_mb", 0) * 1024 * 1024,
+        "dune_memory_total_bytes": raw.get("memory_total_mb", 0) * 1024 * 1024,
+        "dune_disk_percent": raw.get("disk_percent", 0),
+        "dune_disk_used_bytes": raw.get("disk_used_gb", 0) * 1024 * 1024 * 1024,
+        "dune_disk_total_bytes": raw.get("disk_total_gb", 0) * 1024 * 1024 * 1024,
+        "dune_network_sent_bytes_per_second": raw.get("network_sent_bps", 0),
+        "dune_network_recv_bytes_per_second": raw.get("network_recv_bps", 0),
+        "dune_uptime_seconds": max(0.0, time.monotonic() - _PROCESS_START_TIME),
+    }
+    lines: list[str] = []
+    for name, value in metrics.items():
+        lines.append(f"# TYPE {name} gauge")
+        lines.append(f"{name} {float(value)}")
+    return "\n".join(lines) + "\n"
+
+
 @router.get("/system")
 @router.get("/system/metrics")
 async def get_system_metrics(request: Request) -> dict[str, object]:
@@ -240,6 +263,19 @@ async def export_system_metrics(
         content=buf.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="nexus-system{widget_suffix}-{stamp}.csv"'},
+    )
+
+
+@router.get(
+    "/system/prometheus",
+    response_class=PlainTextResponse,
+    dependencies=[Depends(verify_admin_token)],
+)
+async def get_prometheus_metrics(request: Request) -> Response:
+    raw = await request.app.state.metrics_service.get_current_metrics()
+    return Response(
+        content=_format_prometheus_payload(raw),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
     )
 
 
