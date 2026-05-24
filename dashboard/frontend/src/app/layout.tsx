@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 
 import '@/app/globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { ToastProvider } from '@/components/ToastProvider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -35,7 +36,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

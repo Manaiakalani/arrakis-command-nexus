@@ -74,6 +74,10 @@ case "$backup_file" in
     done < "$backup_file"
 
     for listed_file in "${listed_files[@]:-}"; do
+      # Resolve bare filenames relative to BACKUP_DIR
+      if [[ "$listed_file" != /* ]] && [[ -f "$BACKUP_DIR/$listed_file" ]]; then
+        listed_file="$BACKUP_DIR/$listed_file"
+      fi
       [[ -f "$listed_file" ]] || continue
       case "$listed_file" in
         *.dump)

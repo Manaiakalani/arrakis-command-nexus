@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
 import { MapCardSkeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
@@ -19,6 +20,7 @@ const MapCard = dynamic(() => import('@/components/MapCard').then((mod) => mod.M
 });
 
 export default function MapsPage() {
+  const { toast } = useToast();
   const { data: maps = [], loading, refetch } = useApi(() => apiClient.getMaps(), { refreshInterval: 15000, initialData: [] });
   const { data: players = [] } = useApi(() => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
@@ -30,16 +32,26 @@ export default function MapsPage() {
   }, [maps]);
 
   const handleAction = useCallback(async (name: string, action: 'start' | 'stop' | 'restart') => {
-    if (action === 'start') await apiClient.startMap(name);
-    if (action === 'stop') await apiClient.stopMap(name);
-    if (action === 'restart') await apiClient.restartMap(name);
-    await refetch();
-  }, [refetch]);
+    try {
+      if (action === 'start') await apiClient.startMap(name);
+      if (action === 'stop') await apiClient.stopMap(name);
+      if (action === 'restart') await apiClient.restartMap(name);
+      await refetch();
+      toast(`${name}: ${action} successful`, 'success');
+    } catch (err) {
+      toast(`${name}: ${action} failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
+    }
+  }, [refetch, toast]);
 
   const handleBulk = useCallback(async (action: 'restart' | 'stop') => {
-    await Promise.all(maps.map((map) => (action === 'restart' ? apiClient.restartMap(map.name) : apiClient.stopMap(map.name))));
-    await refetch();
-  }, [maps, refetch]);
+    try {
+      await Promise.all(maps.map((map) => (action === 'restart' ? apiClient.restartMap(map.name) : apiClient.stopMap(map.name))));
+      await refetch();
+      toast(`${action === 'restart' ? 'Restart' : 'Stop'} all completed`, 'success');
+    } catch (err) {
+      toast(`Bulk ${action} failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
+    }
+  }, [maps, refetch, toast]);
 
   const handleBackup = useCallback(async (name: string) => {
     try {

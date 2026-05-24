@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { ResourceGauge } from '@/components/ResourceGauge';
 import { StatusCard } from '@/components/StatusCard';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ function formatUptime(seconds = 0) {
 }
 
 export default function OverviewPage() {
+  const { toast } = useToast();
   const status = useApi(() => apiClient.getStatus(), { refreshInterval: 15000 });
   const readiness = useApi(() => apiClient.getReady(), { refreshInterval: 20000 });
   const maps = useApi(() => apiClient.getMaps(), { refreshInterval: 20000 });
@@ -52,20 +54,33 @@ export default function OverviewPage() {
       else if (action === 'stop') await apiClient.stopService(name);
       else await apiClient.restartServiceDirect(name);
       await status.refetch();
+      toast(`${name}: ${action} successful`, 'success');
+    } catch (err) {
+      toast(`${name}: ${action} failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
     } finally {
       setBusyService(null);
     }
-  }, [status]);
+  }, [status, toast]);
 
   const handleRestartAll = useCallback(async () => {
-    const currentMaps = maps.data ?? [];
-    await Promise.all(currentMaps.filter((map) => map.status === 'running').map((map) => apiClient.restartMap(map.name)));
-    await maps.refetch();
-  }, [maps]);
+    try {
+      const currentMaps = maps.data ?? [];
+      await Promise.all(currentMaps.filter((map) => map.status === 'running').map((map) => apiClient.restartMap(map.name)));
+      await maps.refetch();
+      toast('All shards restarting', 'success');
+    } catch (err) {
+      toast(`Restart all failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
+    }
+  }, [maps, toast]);
 
   const handleBackupNow = useCallback(async () => {
-    await apiClient.createBackup('full');
-  }, []);
+    try {
+      await apiClient.createBackup('full');
+      toast('Backup started', 'success');
+    } catch (err) {
+      toast(`Backup failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
+    }
+  }, [toast]);
 
   return (
     <div className="space-y-6">
