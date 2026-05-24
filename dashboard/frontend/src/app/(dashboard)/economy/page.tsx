@@ -12,8 +12,8 @@ import { cn } from '@/lib/utils';
 
 const severityClasses: Record<EconomyAlert['severity'], string> = {
   info: 'border-sky-500/20 bg-sky-500/10 text-sky-200',
-  warning: 'border-amber-500/20 bg-amber-500/10 text-amber-200',
-  critical: 'border-red-500/20 bg-red-500/10 text-red-200',
+  warning: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-200',
+  critical: 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-200',
 };
 
 export default function EconomyPage() {
@@ -108,7 +108,7 @@ export default function EconomyPage() {
               <textarea className="dune-input min-h-[160px]" name="alert-details" autoComplete="off" spellCheck={false} value={detailsText} onChange={(event) => setDetailsText(event.target.value)} />
             </label>
           </div>
-          {formError ? <p className="mt-4 text-sm text-red-300">{formError}</p> : null}
+          {formError ? <p className="mt-4 text-sm text-red-700 dark:text-red-300">{formError}</p> : null}
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-th-text-m">
             <span>Thresholds: {summary.data?.solariThreshold?.toLocaleString() ?? 0} Solari • {summary.data?.baseClaimThreshold ?? 0} claims</span>
             <button type="button" className="dune-button" onClick={() => void handleCreateAlert()} disabled={submitting}>
@@ -133,7 +133,7 @@ export default function EconomyPage() {
                     <span className="rounded-full border border-th-border px-3 py-1 text-xs uppercase tracking-[0.18em] text-th-text-s">
                       {alert.type}
                     </span>
-                    {alert.acknowledged ? <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-200">Acknowledged</span> : null}
+                    {alert.acknowledged ? <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-200">Acknowledged</span> : null}
                   </div>
                   <div>
                     <p className="font-semibold text-th-text">{alert.message}</p>
@@ -155,7 +155,7 @@ export default function EconomyPage() {
             ))}
             {(alerts.data ?? []).length === 0 ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 p-8 text-center">
-                <Coins className="h-10 w-10 text-amber-300" />
+                <Coins className="h-10 w-10 text-amber-600 dark:text-amber-300" />
                 <div>
                   <h3 className="text-xl font-semibold text-th-text">No Economy Alerts</h3>
                   <p className="mt-2 max-w-xl text-th-text-m">Monitoring is active, but no anomalies have been recorded yet.</p>

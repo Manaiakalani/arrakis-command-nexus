@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class MetricsService:
-    def __init__(self, interval_seconds: int = 60, retention: int = 43200) -> None:
+    def __init__(self, interval_seconds: int = 15, retention: int = 43200) -> None:
         self.interval_seconds = max(interval_seconds, 5)
         self.root_path = os.getenv("DUNE_METRICS_DISK_PATH", "/")
         self.snapshots: deque[SystemMetricSnapshot] = deque(maxlen=max(retention, 1))
@@ -26,6 +26,8 @@ class MetricsService:
         self._previous_time: datetime | None = None
 
     async def start(self) -> None:
+        # Blocking seed: measure real CPU over 1 second so the first snapshot is accurate
+        await asyncio.to_thread(psutil.cpu_percent, 1)
         await self.collect_snapshot()
         self._task = asyncio.create_task(self._run(), name="metrics-service")
 
@@ -55,6 +57,10 @@ class MetricsService:
     async def get_current_metrics(self) -> dict[str, Any]:
         if not self.snapshots:
             await self.collect_snapshot()
+        else:
+            age = (datetime.now(timezone.utc) - self.snapshots[-1].timestamp).total_seconds()
+            if age > self.interval_seconds * 2:
+                await self.collect_snapshot()
         return self.snapshots[-1].model_dump(mode="json")
 
     async def get_snapshots(self, duration: timedelta = timedelta(hours=24)) -> list[SystemMetricSnapshot]:

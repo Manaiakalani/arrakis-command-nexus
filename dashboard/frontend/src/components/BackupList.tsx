@@ -67,7 +67,7 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
                     <button type="button" className="dune-button-muted px-3 py-2 text-xs" onClick={() => window.confirm('Restore this backup?') && void onRestore(backup.id)}>
                       <ArchiveRestore className="mr-1.5 h-3.5 w-3.5" /> Restore
                     </button>
-                    <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-300" onClick={() => window.confirm('Delete this backup?') && void onDelete(backup.id)}>
+                    <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-700 dark:text-red-300" onClick={() => window.confirm('Delete this backup?') && void onDelete(backup.id)}>
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
                     </button>
                   </div>

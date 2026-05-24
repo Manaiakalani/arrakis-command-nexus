@@ -248,7 +248,7 @@ export default function CharactersPage() {
               <h2 className="mt-1 text-3xl font-semibold text-th-text">{characters.data?.length ?? 0}</h2>
               <p className="mt-2 text-sm text-th-text-m">Detected characters from the game DB or the safe mock fallback.</p>
             </div>
-            <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
+            <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
               <UserCog className="h-6 w-6" />
             </div>
           </div>
@@ -260,7 +260,7 @@ export default function CharactersPage() {
               <h2 className="mt-1 text-3xl font-semibold text-th-text">{schema.data?.summary.editableStats ?? 0}</h2>
               <p className="mt-2 text-sm text-th-text-m">Organized into {availableCategories.length} category views.</p>
             </div>
-            <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
+            <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
               <Swords className="h-6 w-6" />
             </div>
           </div>
@@ -272,7 +272,7 @@ export default function CharactersPage() {
               <h2 className="mt-1 text-3xl font-semibold text-th-text">{mutationsEnabled ? 'Live' : 'Safe'}</h2>
               <p className="mt-2 text-sm text-th-text-m">Writes require DUNE_ADMIN_MUTATIONS_ENABLED=true.</p>
             </div>
-            <div className={cn('rounded-2xl p-3', mutationsEnabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>
+            <div className={cn('rounded-2xl p-3', mutationsEnabled ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/15 text-amber-600 dark:text-amber-300')}>
               <AlertTriangle className="h-6 w-6" />
             </div>
           </div>
@@ -292,12 +292,12 @@ export default function CharactersPage() {
       </section>
 
       {!mutationsEnabled ? (
-        <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+        <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-800 dark:text-amber-100">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-300" />
             <div>
-              <p className="font-semibold text-amber-200">Character editing is in safe preview mode.</p>
-              <p className="mt-1 text-amber-100/80">Fields, schema, and DB discovery are live, but saving remains disabled until DUNE_ADMIN_MUTATIONS_ENABLED is set to true.</p>
+              <p className="font-semibold text-amber-700 dark:text-amber-200">Character editing is in safe preview mode.</p>
+              <p className="mt-1 text-amber-800/80 dark:text-amber-100/80">Fields, schema, and DB discovery are live, but saving remains disabled until DUNE_ADMIN_MUTATIONS_ENABLED is set to true.</p>
             </div>
           </div>
         </div>
@@ -319,7 +319,7 @@ export default function CharactersPage() {
             </label>
           </div>
 
-          {characters.error ? <p className="px-5 pt-5 text-sm text-red-300">{characters.error.message}</p> : null}
+          {characters.error ? <p className="px-5 pt-5 text-sm text-red-700 dark:text-red-300">{characters.error.message}</p> : null}
 
           <div className="max-h-[720px] space-y-3 overflow-y-auto p-4">
             {characters.loading && (characters.data ?? []).length === 0 ? (
@@ -330,7 +330,7 @@ export default function CharactersPage() {
 
             {isEmpty ? (
               <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-8 text-center">
-                <UserCog className="h-10 w-10 text-amber-300" />
+                <UserCog className="h-10 w-10 text-amber-600 dark:text-amber-300" />
                 <div>
                   <h3 className="text-xl font-semibold text-th-text">No Characters Discovered</h3>
                   <p className="mt-2 max-w-sm text-sm text-th-text-m">The dashboard could not read the game schema yet. Once character tables are exposed, this panel will automatically populate.</p>
@@ -365,7 +365,7 @@ export default function CharactersPage() {
                       <p className="text-base font-semibold text-th-text">{character.name}</p>
                       <p className="mt-1 text-xs uppercase tracking-[0.2em] text-th-text-m">{character.id}</p>
                     </div>
-                    <span className={cn('rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em]', character.source === 'mock' ? 'border-sky-500/20 bg-sky-500/10 text-sky-200' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200')}>
+                    <span className={cn('rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em]', character.source === 'mock' ? 'border-sky-500/20 bg-sky-500/10 text-sky-200' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200')}>
                       {character.source}
                     </span>
                   </div>
@@ -402,16 +402,16 @@ export default function CharactersPage() {
               </div>
             </div>
 
-            {characterError ? <p className="mt-4 text-sm text-red-300">{characterError}</p> : null}
+            {characterError ? <p className="mt-4 text-sm text-red-700 dark:text-red-300">{characterError}</p> : null}
             {saveState ? (
-              <div className={cn('mt-4 rounded-2xl border px-4 py-3 text-sm', saveState.tone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200')}>
+              <div className={cn('mt-4 rounded-2xl border px-4 py-3 text-sm', saveState.tone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200')}>
                 {saveState.message}
               </div>
             ) : null}
 
             {!selectedCharacter ? (
               <div className="mt-6 flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-th-border/80 bg-th-bg/25 p-8 text-center text-th-text-m">
-                <UserCog className="h-10 w-10 text-amber-300" />
+                <UserCog className="h-10 w-10 text-amber-600 dark:text-amber-300" />
                 <div>
                   <h3 className="text-xl font-semibold text-th-text">Select a Character</h3>
                   <p className="mt-2 max-w-md text-sm text-th-text-m">Choose a roster entry to inspect the discovered stat mapping and prepare edits.</p>
@@ -431,7 +431,7 @@ export default function CharactersPage() {
                         onClick={() => setActiveCategory(category)}
                         className={cn(
                           'rounded-3xl border px-4 py-4 text-left transition-[color,background-color,border-color] dune-focus',
-                          isActive ? 'border-amber-500/40 bg-amber-500/10 text-amber-100' : 'border-th-border-m/80 bg-th-bg/30 text-th-text-s hover:border-th-border hover:bg-th-surface-s/60',
+                          isActive ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-100' : 'border-th-border-m/80 bg-th-bg/30 text-th-text-s hover:border-th-border hover:bg-th-surface-s/60',
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -451,7 +451,7 @@ export default function CharactersPage() {
                   <div className="flex items-center gap-3">
                     {(() => {
                       const Icon = categoryMeta[activeCategory].icon;
-                      return <Icon className="h-5 w-5 text-amber-300" />;
+                      return <Icon className="h-5 w-5 text-amber-600 dark:text-amber-300" />;
                     })()}
                     <div>
                       <h3 className="font-semibold text-th-text">{categoryMeta[activeCategory].label}</h3>
@@ -489,7 +489,7 @@ export default function CharactersPage() {
                 return (
                   <div key={category} className="rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-4">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
+                      <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>

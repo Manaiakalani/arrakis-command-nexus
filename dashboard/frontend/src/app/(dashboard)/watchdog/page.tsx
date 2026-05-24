@@ -39,7 +39,7 @@ export default function WatchdogPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="glass-panel p-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-amber-500/10 p-3 text-amber-300">
+            <div className="rounded-2xl bg-amber-500/10 p-3 text-amber-600 dark:text-amber-300">
               <ShieldAlert className="h-6 w-6" />
             </div>
             <div>
@@ -101,7 +101,7 @@ export default function WatchdogPage() {
         <div className="glass-panel overflow-hidden">
           <div className="border-b border-th-border-m/80 p-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-red-500/10 p-3 text-red-300">
+              <div className="rounded-2xl bg-red-500/10 p-3 text-red-700 dark:text-red-300">
                 <TriangleAlert className="h-6 w-6" />
               </div>
               <div>
@@ -129,7 +129,7 @@ export default function WatchdogPage() {
                     <td className="px-4 py-4 font-medium text-th-text">{event.service}</td>
                     <td className="px-4 py-4 text-th-text-s">{event.exitCode ?? '—'}</td>
                     <td className="px-4 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${event.restarted ? 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border border-th-border bg-th-surface-s/60 text-th-text-s'}`}>
+                      <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${event.restarted ? 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border border-th-border bg-th-surface-s/60 text-th-text-s'}`}>
                         {event.restarted ? 'Yes' : 'No'}
                       </span>
                     </td>

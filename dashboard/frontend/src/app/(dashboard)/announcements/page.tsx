@@ -66,7 +66,7 @@ export default function AnnouncementsPage() {
     <div className="space-y-6">
       <div className="glass-panel p-6">
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300">
+          <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
             <Megaphone className="h-5 w-5" />
           </div>
           <div>
@@ -112,7 +112,7 @@ export default function AnnouncementsPage() {
         </div>
 
         {feedback ? (
-          <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${feedback.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}>
+          <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${feedback.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200'}`}>
             {feedback.text}
           </div>
         ) : null}
@@ -145,14 +145,14 @@ export default function AnnouncementsPage() {
                   <td className="px-5 py-4">
                     <div className="max-w-2xl">
                       <p>{entry.message}</p>
-                      {entry.error ? <p className="mt-1 text-xs text-red-300">{entry.error}</p> : null}
+                      {entry.error ? <p className="mt-1 text-xs text-red-700 dark:text-red-300">{entry.error}</p> : null}
                     </div>
                   </td>
                   <td className="px-5 py-4 text-th-text-s">{entry.sender}</td>
                   <td className="px-5 py-4 text-th-text-m">{new Date(entry.timestamp).toLocaleString()}</td>
                   <td className="px-5 py-4">
                     <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${entry.status === 'sent' ? 'bg-emerald-500/15 text-emerald-200' : entry.status === 'failed' ? 'bg-red-500/15 text-red-200' : 'bg-amber-500/15 text-amber-200'}`}
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${entry.status === 'sent' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-200' : entry.status === 'failed' ? 'bg-red-500/15 text-red-700 dark:text-red-200' : 'bg-amber-500/15 text-amber-700 dark:text-amber-200'}`}
                     >
                       {entry.status}
                     </span>

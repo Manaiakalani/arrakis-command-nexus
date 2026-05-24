@@ -77,12 +77,12 @@ export function UptimeChart() {
           <p className="section-title">Availability</p>
           <div className="mt-2 flex flex-wrap items-end gap-3">
             <h3 className="text-3xl font-semibold text-th-text tabular-nums">{(uptime.data?.availabilityPercent ?? 0).toFixed(1)}% uptime</h3>
-            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-amber-200">{range}</span>
+            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-amber-700 dark:text-amber-200">{range}</span>
           </div>
           <p className="mt-2 text-sm">
-            <span className="text-emerald-300">{formatDuration(uptime.data?.totalUpSeconds ?? 0)} available</span>
+            <span className="text-emerald-700 dark:text-emerald-300">{formatDuration(uptime.data?.totalUpSeconds ?? 0)} available</span>
             <span className="text-th-text-m"> • </span>
-            <span className="text-red-300">{formatDuration(uptime.data?.totalDownSeconds ?? 0)} impacted</span>
+            <span className="text-red-700 dark:text-red-300">{formatDuration(uptime.data?.totalDownSeconds ?? 0)} impacted</span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -121,8 +121,8 @@ export function UptimeChart() {
 
       <div className="mt-6 grid gap-3 md:grid-cols-3">
         {[
-          { label: 'Available', value: formatDuration(uptime.data?.totalUpSeconds ?? 0), tone: 'text-amber-200' },
-          { label: 'Impacted', value: formatDuration(uptime.data?.totalDownSeconds ?? 0), tone: 'text-red-300' },
+          { label: 'Available', value: formatDuration(uptime.data?.totalUpSeconds ?? 0), tone: 'text-amber-700 dark:text-amber-200' },
+          { label: 'Impacted', value: formatDuration(uptime.data?.totalDownSeconds ?? 0), tone: 'text-red-700 dark:text-red-300' },
           { label: 'Incidents', value: incidents.length, tone: 'text-th-text' },
         ].map((item) => (
           <div key={item.label} className="rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3">
@@ -149,7 +149,7 @@ export function UptimeChart() {
                   <p className="font-medium text-th-text">{statusMeta[event.status].label} event</p>
                   <p className="mt-1 text-th-text-m">{new Date(event.timestamp).toLocaleString()}</p>
                 </div>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-th-text-s">{formatDuration(event.durationSeconds)}</span>
+                <span className="rounded-full border border-th-border/40 dark:border-white/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-th-text-s">{formatDuration(event.durationSeconds)}</span>
               </div>
             ))
           ) : (

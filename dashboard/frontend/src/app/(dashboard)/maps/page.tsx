@@ -97,9 +97,9 @@ export default function MapsPage() {
           <div>
             <h3 className="text-base font-semibold text-th-text">Adding maps</h3>
             <p className="mt-1 text-sm leading-relaxed text-th-text-m">
-              To add a new map shard, define a new service in <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-300">docker-compose.basic.yml</code> using
-              the game server image and set the <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-300">PARTITION_MAP_NAME</code> environment variable
-              to the desired map name. Restart the stack with <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-300">docker compose up -d</code> and
+              To add a new map shard, define a new service in <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-300">docker-compose.basic.yml</code> using
+              the game server image and set the <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-300">PARTITION_MAP_NAME</code> environment variable
+              to the desired map name. Restart the stack with <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-300">docker compose up -d</code> and
               the new shard will appear here automatically. Use the Backups page to create a snapshot before making changes.
             </p>
           </div>

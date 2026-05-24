@@ -25,9 +25,9 @@ function formatUptime(seconds: number) {
 }
 
 const statusStyles = {
-  online: { bg: 'bg-emerald-500', text: 'text-emerald-300', label: 'Online' },
-  degraded: { bg: 'bg-amber-500', text: 'text-amber-300', label: 'Degraded' },
-  offline: { bg: 'bg-red-500', text: 'text-red-300', label: 'Offline' },
+  online: { bg: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-300', label: 'Online' },
+  degraded: { bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-300', label: 'Degraded' },
+  offline: { bg: 'bg-red-500', text: 'text-red-700 dark:text-red-300', label: 'Offline' },
   unknown: { bg: 'bg-slate-500', text: 'text-th-text-s', label: 'Unknown' },
 };
 
@@ -82,18 +82,18 @@ export default function PublicStatusPage() {
       <div className="absolute inset-0 bg-dune-grid bg-[size:42px_42px] opacity-[0.08]" />
       <div className="relative mx-auto max-w-2xl px-4 py-16">
         <div className="text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-amber-200/70">Dune Awakening</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-amber-600/70 dark:text-amber-200/70">Dune Awakening</p>
           <h1 className="mt-2 text-3xl font-bold text-th-text">{data?.serverName ?? 'Server Status'}</h1>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-th-border/80 px-4 py-2">
             <span className={`h-3 w-3 rounded-full ${styles.bg} shadow-[0_0_12px_currentColor]`} />
             <span className={`font-semibold ${styles.text}`}>{styles.label}</span>
           </div>
-          {error && <p className="mt-3 text-sm text-red-300">Unable to reach the public status endpoint.</p>}
+          {error && <p className="mt-3 text-sm text-red-700 dark:text-red-300">Unable to reach the public status endpoint.</p>}
         </div>
 
         <div className="mt-10 grid gap-5 sm:grid-cols-2">
           <div className="glass-panel px-6 py-7 text-center">
-            <Users className="mx-auto h-7 w-7 text-amber-300" />
+            <Users className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
             <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data?.playersOnline ?? 0}</p>
             <p className="mt-2 text-sm font-medium text-th-text-s">Players Online</p>
             {data?.maxPlayers != null && (
@@ -101,17 +101,17 @@ export default function PublicStatusPage() {
             )}
           </div>
           <div className="glass-panel px-6 py-7 text-center">
-            <Activity className="mx-auto h-7 w-7 text-amber-300" />
+            <Activity className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
             <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data?.mapsActive ?? 0}</p>
             <p className="mt-2 text-sm font-medium text-th-text-s">Active Maps</p>
           </div>
           <div className="glass-panel px-6 py-7 text-center">
-            <Clock3 className="mx-auto h-7 w-7 text-amber-300" />
+            <Clock3 className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
             <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data ? formatUptime(data.uptimeSeconds) : '--'}</p>
             <p className="mt-2 text-sm font-medium text-th-text-s">Uptime</p>
           </div>
           <div className="glass-panel px-6 py-7 text-center">
-            <Shield className="mx-auto h-7 w-7 text-amber-300" />
+            <Shield className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
             <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">
               {status === 'online' ? '100%' : status === 'degraded' ? 'Partial' : '--'}
             </p>
@@ -121,7 +121,7 @@ export default function PublicStatusPage() {
 
         <div className="mt-10 glass-panel p-6">
           <div className="flex items-center gap-3">
-            <Server className="h-5 w-5 text-amber-300" />
+            <Server className="h-5 w-5 text-amber-600 dark:text-amber-300" />
             <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-th-text-m">Server Details</h2>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

@@ -31,7 +31,7 @@ function PlayerPositionTooltip({ active, payload }: { active?: boolean; payload?
 
   return (
     <div className="rounded-2xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-xs text-th-text-s shadow-2xl">
-      <p className="font-semibold text-amber-200">{player.name}</p>
+      <p className="font-semibold text-amber-700 dark:text-amber-200">{player.name}</p>
       <p className="mt-1 text-th-text-m">{player.mapLabel}</p>
       <p className="mt-1 text-th-text-m">
         X {Math.round(player.x).toLocaleString()} • Y {Math.round(player.y).toLocaleString()}
@@ -73,11 +73,11 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             <p className="section-title">Live map telemetry</p>
             <h2 className="mt-1 text-xl font-semibold text-th-text">Hagga Basin Tactical Overlay</h2>
             <p className="mt-2 max-w-3xl text-sm text-th-text-m">
-              Placeholder desert backdrop in use. Add <code className="rounded bg-th-surface-s/80 px-1.5 py-0.5 text-xs text-amber-200">/public/maps/hagga-basin.webp</code> and swap the background once final art is available.
+              Placeholder desert backdrop in use. Add <code className="rounded bg-th-surface-s/80 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-200">/public/maps/hagga-basin.webp</code> and swap the background once final art is available.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-th-text-m">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-amber-200">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-amber-700 dark:text-amber-200">
               <Users className="h-4 w-4" /> {plottedPlayers.length} tracked
             </span>
             {refreshIntervalMs > 0 ? <span>Refreshes every {Math.round(refreshIntervalMs / 1000)}s</span> : null}
@@ -89,7 +89,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                   onClick={() => setViewMode(mode)}
                   className={cn(
                     'rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-colors',
-                    viewMode === mode ? 'bg-amber-500/15 text-amber-200' : 'text-th-text-m hover:text-th-text-s',
+                    viewMode === mode ? 'bg-amber-500/15 text-amber-700 dark:text-amber-200' : 'text-th-text-m hover:text-th-text-s',
                   )}
                 >
                   {mode === 'tactical' ? 'Tactical' : 'Chart'}
@@ -124,7 +124,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-amber-300/10 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-th-bg/80 to-transparent" />
 
-            <div className="absolute left-4 top-4 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-200/90">
+            <div className="absolute left-4 top-4 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
               Hagga Basin
             </div>
             <div className="absolute right-4 top-4 rounded-full border border-th-border/80 bg-th-bg/70 px-3 py-1 text-xs text-th-text-s">
@@ -136,7 +136,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
 
             {plottedPlayers.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-                <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-300">
+                <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
                   <LocateFixed className="h-6 w-6" />
                 </div>
                 <div>
@@ -159,7 +159,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                 <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-md" />
                 <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition-transform duration-150 ease-[var(--ease-out-expo)] group-hover:scale-125" />
                 <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
-                  <span className="block font-semibold text-amber-200">{player.name}</span>
+                  <span className="block font-semibold text-amber-700 dark:text-amber-200">{player.name}</span>
                   <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
                   <span className="mt-1 block text-th-text-m">
                     X {Math.round(player.x).toLocaleString()} • Y {Math.round(player.y).toLocaleString()}
@@ -203,7 +203,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
 
             {normalizedPlayers.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-                <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-300">
+                <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
                   <LocateFixed className="h-6 w-6" />
                 </div>
                 <div>

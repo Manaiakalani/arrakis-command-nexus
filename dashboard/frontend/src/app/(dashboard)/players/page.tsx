@@ -78,7 +78,7 @@ export default function PlayersPage() {
             onClick={() => setActiveTab(tab)}
             className={cn(
               'rounded-full border px-4 py-2 text-sm font-medium capitalize transition-[color,background-color,border-color] dune-focus',
-              activeTab === tab ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-th-border bg-th-surface-s/70 text-th-text-m',
+              activeTab === tab ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200' : 'border-th-border bg-th-surface-s/70 text-th-text-m',
             )}
           >
             {tab}
@@ -91,8 +91,8 @@ export default function PlayersPage() {
           className={cn(
             'rounded-3xl border px-4 py-3 text-sm',
             kickStatus.tone === 'success'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-              : 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200',
           )}
         >
           {kickStatus.message}
@@ -110,7 +110,7 @@ export default function PlayersPage() {
                 <p className="mt-2 text-sm text-th-text-m">Hagga Basin tactical overlay and density heatmap.</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200">
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-700 dark:text-amber-200">
                   <LocateFixed className="h-4 w-4" /> {(playerPositions.data ?? []).length} tracked
                 </span>
               </div>
@@ -208,7 +208,7 @@ export default function PlayersPage() {
 
       {activeTab === 'allowlist' ? (
         <div className="glass-panel flex min-h-[320px] flex-col items-center justify-center gap-4 p-8 text-center">
-          <ShieldAlert className="h-10 w-10 text-amber-300" />
+          <ShieldAlert className="h-10 w-10 text-amber-600 dark:text-amber-300" />
           <div>
             <h2 className="text-xl font-semibold text-th-text">Allowlist View</h2>
             <p className="mt-2 max-w-xl text-th-text-m">Allowlist management is reserved for the backend control plane. Once exposed, the dashboard is ready to surface it here.</p>
@@ -220,7 +220,7 @@ export default function PlayersPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-th-bg/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="ban-dialog-title">
           <div className="glass-panel w-full max-w-lg p-6">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-300"><Ban className="h-5 w-5" /></div>
+              <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300"><Ban className="h-5 w-5" /></div>
               <div>
                 <h3 className="text-xl font-semibold text-th-text" id="ban-dialog-title">Ban Player</h3>
                 <p className="text-sm text-th-text-m">{selectedPlayer.name} • {selectedPlayer.steamId}</p>

@@ -95,10 +95,10 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel border-amber-500/20 bg-amber-500/10 p-5 text-amber-100">
-        <p className="section-title text-amber-200/80">Command Nexus</p>
+      <div className="glass-panel border-amber-500/20 bg-amber-500/10 p-5 text-amber-800 dark:text-amber-100">
+        <p className="section-title text-amber-600/80 dark:text-amber-200/80">Command Nexus</p>
         <h2 className="mt-1 text-xl font-semibold">Dashboard Settings</h2>
-        <p className="mt-2 max-w-3xl text-sm text-amber-100/80">
+        <p className="mt-2 max-w-3xl text-sm text-amber-800/80 dark:text-amber-100/80">
           Configure the Command Nexus dashboard itself. Server-specific game settings live under Configuration.
         </p>
       </div>
@@ -167,7 +167,7 @@ export default function SettingsPage() {
 
         {/* Security */}
         <section className="glass-panel p-5">
-          <div className="mb-4 flex items-center gap-2 text-red-400">
+          <div className="mb-4 flex items-center gap-2 text-red-600 dark:text-red-400">
             <Shield className="h-5 w-5" aria-hidden="true" />
             <h3 className="text-lg font-semibold text-th-text">Security</h3>
           </div>
@@ -229,7 +229,7 @@ export default function SettingsPage() {
              <input id="prometheusUrl" name="prometheusUrl" type="url" className="dune-input mt-1 w-full" placeholder="https://prometheus.example.com" defaultValue={integrations.prometheusUrl as string ?? ''} key={`pm-${integrations.prometheusUrl}`} />
            </div>
            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-             <p className="mb-3 text-sm font-medium text-emerald-300">Uptime Kuma</p>
+             <p className="mb-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">Uptime Kuma</p>
              <div className="space-y-3">
                <div>
                  <label htmlFor="uptimeKumaUrl" className="block text-sm font-medium text-th-text-s">Instance URL</label>
@@ -331,7 +331,7 @@ export default function SettingsPage() {
                 </button>
                 <button
                   type="button"
-                  className="dune-button-muted text-xs text-red-400 hover:text-red-300"
+                  className="dune-button-muted text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                   onClick={() => handleRemoveAdmin(admin.id)}
                   aria-label={`Remove ${admin.username}`}
                 >

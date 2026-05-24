@@ -172,14 +172,14 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
                 className={cn(
                   'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-[color,background-color,border-color]',
                   selected === file.filename
-                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
+                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200'
                     : 'border-th-border bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',
-                  drifted && 'border-amber-500/50 bg-amber-500/10 text-amber-100',
+                  drifted && 'border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-100',
                 )}
               >
                 <span>{file.filename}</span>
                 {drifted ? (
-                  <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-200">
+                  <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-200">
                     Drifted
                   </span>
                 ) : null}
@@ -187,16 +187,16 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
             );
           })}
         </div>
-        <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-100">
           Changes will be applied after restart. Save carefully before rotating the active shards.
         </div>
         {activeFile?.drift?.drifted ? (
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
               <div>
-                <p className="font-medium text-amber-100">Config has changed since last baseline</p>
-                <p className="mt-1 text-amber-100/80">
+                <p className="font-medium text-amber-800 dark:text-amber-100">Config has changed since last baseline</p>
+                <p className="mt-1 text-amber-800/80 dark:text-amber-100/80">
                   Baseline {activeFile.drift.baselineHash || 'none'} · Current {activeFile.drift.currentHash || 'missing'}
                 </p>
               </div>
@@ -205,7 +205,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
               <button
                 type="button"
                 onClick={() => void handleAcceptDrift()}
-                className="rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+                className="rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-800 dark:text-amber-100 transition hover:bg-amber-500/20"
               >
                 Accept Changes
               </button>

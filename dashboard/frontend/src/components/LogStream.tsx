@@ -9,8 +9,8 @@ import type { LogEvent, Severity } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const severityClasses: Record<Severity, string> = {
-  ERROR: 'border-red-500/30 bg-red-500/10 text-red-300',
-  WARN: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+  ERROR: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300',
+  WARN: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200',
   INFO: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
   DEBUG: 'border-th-border bg-th-surface text-th-text-s',
 };
@@ -133,7 +133,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
                 className={cn(
                   'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-[color,background-color,border-color] dune-focus',
                   selectedService === service
-                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
+                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200'
                     : 'border-th-border bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',
                 )}
               >
@@ -151,7 +151,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
               Auto-scroll
             </label>
             <div className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/70 px-3 py-2 text-xs text-th-text-s" role="status" aria-label={`Stream ${status}`}>
-              {status === 'open' ? <Wifi className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-red-400" />}
+              {status === 'open' ? <Wifi className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
               {status}
             </div>
           </div>

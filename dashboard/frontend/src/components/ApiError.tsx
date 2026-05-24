@@ -22,7 +22,7 @@ export function ApiError({ error, onRetry, compact, className }: ApiErrorProps) 
 
   if (compact) {
     return (
-      <div className={cn('flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300', className)}>
+      <div className={cn('flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300', className)}>
         <Icon className="h-3.5 w-3.5 shrink-0" />
         <span className="truncate">{message}</span>
         {onRetry && (
@@ -36,7 +36,7 @@ export function ApiError({ error, onRetry, compact, className }: ApiErrorProps) 
 
   return (
     <div className={cn('glass-panel border-red-500/20 p-6 text-center', className)}>
-      <Icon className="mx-auto h-8 w-8 text-red-400" />
+      <Icon className="mx-auto h-8 w-8 text-red-600 dark:text-red-400" />
       <p className="mt-3 text-sm font-medium text-th-text-s">{message}</p>
       {onRetry && (
         <button type="button" onClick={onRetry} className="dune-button-muted mt-4">
