@@ -89,7 +89,7 @@ timestamp=$timestamp
 profile=$DEPLOYMENT_PROFILE
 maps=$map_list
 container_states=$container_states
-files=$(printf '%s,' "${created_files[@]}" | sed 's/,$//')
+files=$(printf '%s,' "${created_files[@]##*/}" | sed 's/,$//')
 EOF
 created_files+=("$meta_file")
 

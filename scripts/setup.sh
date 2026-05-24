@@ -98,7 +98,10 @@ if detected_ip="$(curl -fsS api.ipify.org 2>/dev/null)"; then
   log_info "Detected public IP: $detected_ip"
 fi
 public_ip_default="$(strip_wrapping_quotes "${EXTERNAL_ADDRESS:-$detected_ip}")"
-public_ip="$(prompt_input 'Public IP (leave blank to use the detected value)' "$public_ip_default")"
+public_ip="$(prompt_input 'Public IP or domain (required for players to connect)' "$public_ip_default")"
+if [[ -z "$public_ip" ]]; then
+  log_warn 'EXTERNAL_ADDRESS is empty. Players will not be able to connect until you set it in .env.'
+fi
 set_env_value EXTERNAL_ADDRESS "$public_ip"
 
 profile="$(select_profile)"

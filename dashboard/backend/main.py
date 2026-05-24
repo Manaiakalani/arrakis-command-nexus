@@ -111,7 +111,9 @@ async def _track_player_connections(postgres_service: PostgresService) -> None:
 
             previous_ids = current_ids
         except Exception:  # noqa: BLE001
-            pass
+            logging.getLogger("player_tracker").warning(
+                "Failed to track player connections", exc_info=True
+            )
         await asyncio.sleep(15)
 
 

@@ -43,6 +43,7 @@ x-game-server-base: &game-server-base
     - 1.1.1.1
     - 8.8.8.8
   restart: unless-stopped
+  stop_grace_period: 90s
   environment:
     DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD:-}
     DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
@@ -474,6 +475,8 @@ services:
     build:
       context: ./dashboard/backend
     restart: unless-stopped
+    cap_drop:
+      - ALL
     environment:
       DUNE_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
       DUNE_ADMIN_MUTATIONS_ENABLED: ${DUNE_ADMIN_MUTATIONS_ENABLED}
@@ -542,6 +545,8 @@ services:
       context: ./dashboard/frontend
     image: dune-awakening-dashboard-frontend
     restart: unless-stopped
+    cap_drop:
+      - ALL
     ports:
       - "${DUNE_ADMIN_BIND_ADDRESS}:${DUNE_ADMIN_HOST_PORT}:3000"
     environment:
