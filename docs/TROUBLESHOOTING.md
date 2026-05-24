@@ -185,3 +185,45 @@ ON CONFLICT (server_id, map) DO NOTHING;
 
 **Prevention:** Keep the `partition-repair` service in your compose configuration. It waits
 for servers to register in `farm_state`, then ensures matching `world_partition` rows exist.
+
+## Performance Tuning
+
+If your server feels sluggish, has high latency, or containers are being OOM-killed:
+
+### Apply Host Tuning
+
+```bash
+# Preview changes without modifying anything
+sudo ./scripts/host-tuning.sh --dry-run
+
+# Apply kernel + Docker tuning
+sudo ./scripts/host-tuning.sh
+
+# Also add swap on low-memory hosts (< 32 GB)
+sudo ./scripts/host-tuning.sh --swap 8
+```
+
+This sets `vm.swappiness=10`, increases UDP buffers for game traffic, disables transparent
+hugepages, and configures Docker log rotation. See `vm/README.md` for per-map memory profiles.
+
+### Increase Container Memory Limits
+
+Edit `.env` and raise the `MEM_LIMIT_*` values:
+
+```bash
+MEM_LIMIT_SURVIVAL=16g   # Default 12g, increase if OOM-killed
+MEM_LIMIT_DEEP_DESERT=12g
+```
+
+Then `docker compose up -d` to apply.
+
+## Collecting a Diagnostic Snapshot
+
+When filing a bug report or asking for help, collect a snapshot:
+
+```bash
+./scripts/collect-snapshot.sh
+```
+
+This creates a tarball with system info, container state, logs, database status, and network
+config. All credentials are automatically redacted before packaging.
