@@ -38,7 +38,9 @@ class DockerService:
         }
         self.critical_roles = {"gateway", "director", "postgres"}
         self._stats_cache: dict[str, tuple[float, dict[str, float | None]]] = {}
-        self._stats_ttl = 5.0  # seconds
+        self._stats_ttl = 8.0  # seconds
+        self._containers_cache: tuple[float, list[ServiceStatus]] | None = None
+        self._containers_ttl = 3.0  # seconds
 
     async def start(self) -> None:
         await asyncio.to_thread(self._connect)
@@ -63,13 +65,18 @@ class DockerService:
     async def list_containers(self) -> list[ServiceStatus]:
         if not self.client:
             return []
+        now = time.monotonic()
+        if self._containers_cache and (now - self._containers_cache[0]) < self._containers_ttl:
+            return self._containers_cache[1]
         containers = await asyncio.to_thread(
             lambda: self.client.containers.list(
                 all=True,
                 filters={"label": f"com.docker.compose.project={self.compose_project}"},
             )
         )
-        return [self._to_service_status(container) for container in containers]
+        result = [self._to_service_status(container) for container in containers]
+        self._containers_cache = (now, result)
+        return result
 
     async def get_container_stats(self, name: str) -> dict[str, float | None]:
         now = time.monotonic()
@@ -151,12 +158,18 @@ class DockerService:
         if not map_services:
             return []
 
+        now = time.monotonic()
+
         async def _collect(service: ServiceStatus) -> MapStatus:
-            stats: dict[str, float | None] = {}
-            try:
-                stats = await self.get_container_stats(service.name)
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("Could not collect stats for %s: %s", service.name, exc)
+            # Use cached stats if available; fetch in background if stale
+            cached = self._stats_cache.get(service.name)
+            stats: dict[str, float | None] = cached[1] if cached else {}
+
+            if not cached or (now - cached[0]) >= self._stats_ttl:
+                try:
+                    stats = await self.get_container_stats(service.name)
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("Could not collect stats for %s: %s", service.name, exc)
 
             # Per-container uptime from creation timestamp
             uptime_s: float | None = None
