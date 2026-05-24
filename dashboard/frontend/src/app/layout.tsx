@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     title: 'Arrakis Command Nexus',
     description: 'Self-hosted control center for the Dune Awakening server fleet.',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1440, height: 900, alt: 'Arrakis Command Nexus Dashboard' }],
   },
 };
 

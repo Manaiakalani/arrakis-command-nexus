@@ -20,6 +20,8 @@ x-game-server-command:
   rmq-game-port: &cmd-rmq-game-port --RMQGamePort=5672
   rmq-admin-host: &cmd-rmq-admin-host --RMQAdminHostname=admin-rmq
   rmq-admin-port: &cmd-rmq-admin-port --RMQAdminPort=5672
+  # POD_IP is optional. It binds the game server to a specific NIC.
+  # On single-host Docker it can be left unset (the warning is harmless).
   multihome: &cmd-multihome -MultiHome=$POD_IP
 
 x-container-security: &container-security
