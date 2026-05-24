@@ -455,7 +455,6 @@ services:
     restart: unless-stopped
     environment:
       CONTAINERS: 1
-      EXEC: 1
       IMAGES: 1
       INFO: 1
       PING: 1
