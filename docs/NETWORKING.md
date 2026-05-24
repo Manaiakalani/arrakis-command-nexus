@@ -95,3 +95,15 @@ Adjust the UDP ranges to match your active deployment profile instead of blindly
 ## Remote Dashboard Access with Cloudflare Tunnel
 
 If you want to reach the dashboard from outside your LAN without opening router ports, use [Cloudflare Tunnel](./CLOUDFLARE_TUNNEL.md). It creates an outbound-only encrypted connection from your server to Cloudflare's edge, letting you access the dashboard at a custom domain (e.g. `https://dune.example.com`) with zero inbound firewall rules. Game server UDP ports still need traditional port forwarding.
+
+## Using a Custom Domain for Your Game Server
+
+If you use Cloudflare-managed DNS and want a friendly hostname (e.g. `dune.example.com`) as your `EXTERNAL_ADDRESS`:
+
+1. In the Cloudflare dashboard, add an **A record** pointing to your public IP.
+2. **Set the proxy status to "DNS only" (grey cloud icon).**  
+   Cloudflare's proxy only handles HTTP/HTTPS. Game traffic uses UDP, which Cloudflare will silently drop if the record is proxied (orange cloud).
+3. Set `EXTERNAL_ADDRESS=dune.example.com` in your `.env` file.
+4. Recreate the game services: `docker compose up -d`
+
+> **Warning:** If you leave the Cloudflare proxy enabled (orange cloud), the domain will resolve to Cloudflare IPs instead of your server. FLS heartbeats will succeed (they use HTTPS), but players will be unable to connect because UDP game packets are dropped at Cloudflare's edge. If in doubt, use your raw public IP as `EXTERNAL_ADDRESS` instead.
