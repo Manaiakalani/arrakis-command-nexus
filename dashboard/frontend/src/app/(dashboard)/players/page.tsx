@@ -1,10 +1,9 @@
 'use client';
 
 import { Ban, Download, LocateFixed, ShieldAlert, UserCheck } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 
-import { HaggaBasinMap } from '@/components/HaggaBasinMap';
-import { PlayerHeatmap } from '@/components/PlayerHeatmap';
 import { PlayerTable } from '@/components/PlayerTable';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
@@ -18,6 +17,16 @@ type KickStatus = {
   tone: 'success' | 'error';
   message: string;
 };
+
+const HaggaBasinMap = dynamic(() => import('@/components/HaggaBasinMap').then((mod) => mod.HaggaBasinMap), {
+  ssr: false,
+  loading: () => <div className="h-72 animate-pulse rounded-3xl bg-th-surface/50" />,
+});
+
+const PlayerHeatmap = dynamic(() => import('@/components/PlayerHeatmap').then((mod) => mod.PlayerHeatmap), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse rounded-3xl bg-th-surface/50" />,
+});
 
 export default function PlayersPage() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('online');

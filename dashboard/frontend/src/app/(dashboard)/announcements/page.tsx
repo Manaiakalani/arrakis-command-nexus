@@ -70,8 +70,8 @@ export default function AnnouncementsPage() {
             <Megaphone className="h-5 w-5" />
           </div>
           <div>
-            <p className="section-title">Broadcast console</p>
-            <h1 className="mt-1 text-2xl font-semibold text-th-text">In-game announcements</h1>
+            <p className="section-title">Broadcast Console</p>
+            <h1 className="mt-1 text-2xl font-semibold text-th-text">In-Game Announcements</h1>
           </div>
         </div>
 

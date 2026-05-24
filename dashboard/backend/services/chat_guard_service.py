@@ -36,7 +36,7 @@ class ChatGuardService:
     async def start(self):
         if self.enabled:
             logger.info(
-                "Chat guard started (consecutive=%d, rate=%d/%ds, auto_kick=%s)",
+                "Chat guard started (consecutive=%s, rate=%s/%ss, auto_kick=%s)",
                 self.max_consecutive,
                 self.rate_max_messages,
                 self.rate_window_seconds,

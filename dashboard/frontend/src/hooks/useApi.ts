@@ -11,6 +11,8 @@ interface UseApiOptions<T> {
 export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> = {}) {
   const { enabled = true, refreshInterval, initialData } = options;
   const fetcherRef = useRef(fetcher);
+  const enabledRef = useRef(enabled);
+  const isMountedRef = useRef(true);
   const [data, setData] = useState<T | undefined>(initialData);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
@@ -20,29 +22,45 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     fetcherRef.current = fetcher;
   }, [fetcher]);
 
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  useEffect(() => () => {
+    isMountedRef.current = false;
+  }, []);
+
   const run = useCallback(async () => {
-    if (!enabled) {
+    if (!enabledRef.current) {
       return undefined;
     }
 
     try {
-      // Only show loading spinner on initial fetch (stale-while-revalidate)
-      if (!hasData.current) {
+      if (!hasData.current && isMountedRef.current) {
         setLoading(true);
       }
+
       const next = await fetcherRef.current();
+      if (!isMountedRef.current) {
+        return next;
+      }
+
       setData(next);
       hasData.current = true;
       setError(null);
       return next;
     } catch (err) {
       const nextError = err instanceof Error ? err : new Error('Unknown request error');
-      setError(nextError);
+      if (isMountedRef.current) {
+        setError(nextError);
+      }
       throw nextError;
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, [enabled]);
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -58,11 +76,11 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
       return;
     }
 
-    const id = window.setInterval(() => {
+    const intervalId = window.setInterval(() => {
       void run();
     }, refreshInterval);
 
-    return () => window.clearInterval(id);
+    return () => window.clearInterval(intervalId);
   }, [enabled, refreshInterval, run]);
 
   return {

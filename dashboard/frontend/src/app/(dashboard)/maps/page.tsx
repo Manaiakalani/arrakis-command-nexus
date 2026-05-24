@@ -1,13 +1,22 @@
 'use client';
 
 import { Archive, Info, Play, Square } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
-import { HaggaBasinMap } from '@/components/HaggaBasinMap';
-import { MapCard } from '@/components/MapCard';
 import { MapCardSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
+
+const HaggaBasinMap = dynamic(() => import('@/components/HaggaBasinMap').then((mod) => mod.HaggaBasinMap), {
+  ssr: false,
+  loading: () => <div className="h-[420px] animate-pulse rounded-3xl bg-th-surface/50" />,
+});
+
+const MapCard = dynamic(() => import('@/components/MapCard').then((mod) => mod.MapCard), {
+  ssr: false,
+  loading: () => <MapCardSkeleton />,
+});
 
 export default function MapsPage() {
   const { data: maps = [], loading, refetch } = useApi(() => apiClient.getMaps(), { refreshInterval: 15000, initialData: [] });
