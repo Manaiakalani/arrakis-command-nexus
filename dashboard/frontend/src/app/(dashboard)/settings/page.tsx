@@ -14,6 +14,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 
+import { Skeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
@@ -84,6 +85,12 @@ export default function SettingsPage() {
     await apiClient.updateAdmin(id, { enabled });
     await admins.refetch();
   }, [admins]);
+
+  const isLoading = settings.loading || admins.loading;
+
+  if (isLoading) {
+    return <SettingsPageSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -363,6 +370,77 @@ export default function SettingsPage() {
               Add
             </button>
           </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingsPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="glass-panel border-amber-500/20 bg-amber-500/10 p-5 space-y-2">
+        <Skeleton className="h-3 w-28 bg-amber-500/20" />
+        <Skeleton className="h-8 w-56 bg-amber-500/20" />
+        <Skeleton className="h-4 w-full max-w-3xl bg-amber-500/20" />
+      </div>
+      <div className="glass-panel p-5 space-y-3">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-4 w-72" />
+        <div className="flex gap-3">
+          <Skeleton className="h-11 w-40 rounded-xl" />
+          <Skeleton className="h-11 w-40 rounded-xl" />
+        </div>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <section key={index} className="glass-panel p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-7 w-28" />
+            </div>
+            {Array.from({ length: 4 }).map((__, fieldIndex) => (
+              <div key={fieldIndex} className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+              </div>
+            ))}
+            <Skeleton className="h-11 w-32 rounded-xl" />
+          </section>
+        ))}
+      </div>
+      <div className="glass-panel overflow-hidden">
+        <div className="border-b border-th-border-m/80 p-5 space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-full max-w-2xl" />
+        </div>
+        <div className="divide-y divide-th-border-m/80">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="flex items-center justify-between p-5">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-9 w-20 rounded-xl" />
+                <Skeleton className="h-9 w-9 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-th-border-m/80 p-5">
+          <div className="flex items-end gap-3">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-11 w-full rounded-xl" />
+            </div>
+            <Skeleton className="h-11 w-20 rounded-xl" />
+          </div>
         </div>
       </div>
     </div>

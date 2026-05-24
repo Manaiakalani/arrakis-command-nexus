@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { MetricsChart } from '@/components/MetricsChart';
 import { NetworkSparkline } from '@/components/NetworkSparkline';
 import { ResourceGauge } from '@/components/ResourceGauge';
+import { Skeleton } from '@/components/Skeleton';
 import { UptimeChart } from '@/components/UptimeChart';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
@@ -39,6 +40,12 @@ export default function SystemPage() {
     { value: 'disk', label: 'Disk usage' },
     { value: 'network', label: 'Network pulse' },
   ];
+
+  const isLoading = metrics.loading && !metrics.data;
+
+  if (isLoading) {
+    return <SystemPageSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -213,6 +220,71 @@ export default function SystemPage() {
             { key: 'networkOutMbps', label: 'Outbound', color: '#fdba74', unit: 'Mbps' },
           ]}
         />
+      </section>
+    </div>
+  );
+}
+
+function SystemPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-8 w-56" />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Skeleton className="h-11 w-40 rounded-xl" />
+          <Skeleton className="h-11 w-28 rounded-xl" />
+          <Skeleton className="h-11 w-36 rounded-xl" />
+        </div>
+      </div>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="glass-panel p-5 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-6 w-28" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+              <Skeleton className="h-12 w-12 rounded-2xl" />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <Skeleton className="h-28 w-28 rounded-full" />
+              <div className="space-y-3 text-right">
+                <Skeleton className="ml-auto h-8 w-24" />
+                <Skeleton className="ml-auto h-4 w-28" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <div className="glass-panel p-5 space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-8 w-40" />
+        </div>
+        <Skeleton className="h-72 w-full rounded-3xl" />
+      </div>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="glass-panel p-5 space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-56" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-12 rounded-lg" />
+              <Skeleton className="h-9 w-12 rounded-lg" />
+              <Skeleton className="h-9 w-12 rounded-lg" />
+            </div>
+            <Skeleton className="h-64 w-full rounded-3xl" />
+          </div>
+        ))}
       </section>
     </div>
   );

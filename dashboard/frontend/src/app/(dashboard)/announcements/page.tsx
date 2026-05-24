@@ -3,6 +3,7 @@
 import { Megaphone, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
@@ -56,6 +57,10 @@ export default function AnnouncementsPage() {
       setBusy(false);
     }
   };
+
+  if (history.loading) {
+    return <AnnouncementsPageSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -160,6 +165,37 @@ export default function AnnouncementsPage() {
 
         {!history.loading && (history.data ?? []).length === 0 ? <div className="p-10 text-center text-th-text-m">No announcements have been sent yet.</div> : null}
       </div>
+    </div>
+  );
+}
+
+function AnnouncementsPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="glass-panel p-6 space-y-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-2xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-8 w-64" />
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-11 w-full rounded-xl" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-11 w-full rounded-xl" />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Skeleton className="h-11 w-44 rounded-xl" />
+          <Skeleton className="h-16 w-72 rounded-2xl" />
+        </div>
+      </div>
+      <TableSkeleton rows={5} />
     </div>
   );
 }

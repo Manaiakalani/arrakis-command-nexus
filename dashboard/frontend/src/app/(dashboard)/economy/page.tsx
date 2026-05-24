@@ -3,6 +3,7 @@
 import { AlertTriangle, BadgeAlert, Coins, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
+import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { StatusCard } from '@/components/StatusCard';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
@@ -66,6 +67,12 @@ export default function EconomyPage() {
       setSubmitting(false);
     }
   };
+
+  const isLoading = summary.loading && !summary.data;
+
+  if (isLoading) {
+    return <EconomyPageSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -157,6 +164,53 @@ export default function EconomyPage() {
             ) : null}
           </div>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function EconomyPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="glass-panel p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-12 w-12 rounded-2xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-40" />
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="glass-panel p-5 space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-8 w-48" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="space-y-2 md:col-span-1 last:md:col-span-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+              </div>
+            ))}
+            <div className="space-y-2 md:col-span-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-40 w-full rounded-2xl" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <Skeleton className="h-4 w-52" />
+            <Skeleton className="h-11 w-32 rounded-xl" />
+          </div>
+        </div>
+        <TableSkeleton rows={5} />
       </section>
     </div>
   );

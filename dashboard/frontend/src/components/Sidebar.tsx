@@ -129,7 +129,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             type="button"
             onClick={onClose}
             data-testid="sidebar-close"
-            className="inline-flex items-center justify-center rounded-lg border border-th-border/60 bg-th-surface-s/60 p-1.5 text-th-text-m transition-colors duration-150 hover:border-th-border hover:bg-th-surface hover:text-th-text-s lg:hidden"
+            className="inline-flex items-center justify-center rounded-lg border border-th-border/60 bg-th-surface-s/60 p-2.5 text-th-text-m transition-colors duration-150 hover:border-th-border hover:bg-th-surface hover:text-th-text-s lg:hidden"
             aria-label="Close navigation"
           >
             <X className="h-4 w-4" />

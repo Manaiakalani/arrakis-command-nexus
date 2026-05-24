@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { HaggaBasinMap } from '@/components/HaggaBasinMap';
 import { PlayerHeatmap } from '@/components/PlayerHeatmap';
 import { PlayerTable } from '@/components/PlayerTable';
+import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import type { Player } from '@/lib/types';
@@ -60,6 +61,12 @@ export default function PlayersPage() {
       });
     }
   };
+
+  const isLoading = players.loading || playerPositions.loading || bans.loading;
+
+  if (isLoading) {
+    return <PlayersPageSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -187,6 +194,36 @@ export default function PlayersPage() {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function PlayersPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className="h-10 w-24 rounded-full" />
+        ))}
+      </div>
+      <TableSkeleton rows={6} />
+      <div className="glass-panel overflow-hidden">
+        <div className="flex flex-col gap-4 border-b border-th-border-m/80 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-8 w-72" />
+            <Skeleton className="h-4 w-full max-w-2xl" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-28 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-xl" />
+          </div>
+        </div>
+        <div className="space-y-5 p-5">
+          <Skeleton className="h-72 w-full rounded-3xl" />
+          <Skeleton className="h-64 w-full rounded-3xl" />
+        </div>
+      </div>
     </div>
   );
 }
