@@ -1,6 +1,6 @@
 # Documentation
 
-This project packages Funcom's dedicated server stack, helper scripts, and a web dashboard so you can run a private Dune Awakening battlegroup on your own Linux host.
+This project packages Funcom's dedicated server stack, helper scripts, Docker Compose files, and the Arrakis Command Nexus dashboard so you can run a private or community Dune Awakening battlegroup on your own infrastructure.
 
 ## Quick Links
 
@@ -15,10 +15,10 @@ This project packages Funcom's dedicated server stack, helper scripts, and a web
 This project automates the moving parts required to self-host Dune Awakening:
 
 - Docker Compose definitions for core infrastructure and game shards
-- Profile-based deployments for small, medium, and large battlegroups
+- Profile-based deployments for `basic`, `standard`, and `full` battlegroups
 - `dune` CLI for setup, startup, updates, backups, and diagnostics
-- Web dashboard for map orchestration, player visibility, logs, backups, and configuration
-- Security-focused defaults including localhost-only admin bindings and secret file support
+- Arrakis Command Nexus dashboard for map orchestration, player visibility, player connection history, logs, backups, configuration, and public status sharing
+- Security-focused defaults including local-only admin bindings and secret file support
 
 ## Architecture
 

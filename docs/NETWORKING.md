@@ -1,6 +1,6 @@
 # Networking Guide
 
-This project uses a mix of public player ports, internal localhost-only management ports, and host-networked game services. Plan your firewall and router rules before opening the stack to the internet.
+This project uses a mix of public player ports, internal local-only management ports, and host-networked game services. Plan your firewall and router rules before opening the stack to the internet.
 
 ## Required Ports
 
@@ -71,7 +71,7 @@ Solutions:
 sudo ufw allow 31982/tcp
 sudo ufw allow 7777:7810/udp
 sudo ufw allow 7888:7921/udp
-sudo ufw allow from 192.168.0.0/16 to any port 18080 proto tcp
+sudo ufw allow from <your-lan-subnet> to any port 18080 proto tcp
 ```
 
 ### iptables
@@ -80,7 +80,7 @@ sudo ufw allow from 192.168.0.0/16 to any port 18080 proto tcp
 sudo iptables -A INPUT -p tcp --dport 31982 -j ACCEPT
 sudo iptables -A INPUT -p udp --dport 7777:7810 -j ACCEPT
 sudo iptables -A INPUT -p udp --dport 7888:7921 -j ACCEPT
-sudo iptables -A INPUT -p tcp -s 192.168.0.0/16 --dport 18080 -j ACCEPT
+sudo iptables -A INPUT -p tcp -s <your-lan-subnet> --dport 18080 -j ACCEPT
 ```
 
 Adjust the UDP ranges to match your active deployment profile instead of blindly opening the full range.
@@ -89,5 +89,5 @@ Adjust the UDP ranges to match your active deployment profile instead of blindly
 
 - Game services run on a custom bridge network with fixed IPs.
 - PostgreSQL and RabbitMQ management ports should stay bound to `127.0.0.1`.
-- The dashboard is fronted by Nginx and should normally remain localhost-only.
+- The dashboard is served by the Next.js frontend container and should normally remain local-only.
 - Because game services use bridge networking with fixed IPs, Docker network isolation protects internal services. Your host firewall adds an extra layer.

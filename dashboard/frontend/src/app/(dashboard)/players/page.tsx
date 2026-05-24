@@ -1,6 +1,6 @@
 'use client';
 
-import { Ban, ChevronDown, ChevronUp, LocateFixed, ShieldAlert, UserCheck } from 'lucide-react';
+import { Ban, ChevronDown, ChevronUp, Download, LocateFixed, ShieldAlert, UserCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { HaggaBasinMap } from '@/components/HaggaBasinMap';
@@ -9,10 +9,10 @@ import { PlayerTable } from '@/components/PlayerTable';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
-import type { Player } from '@/lib/types';
+import type { ConnectionLogEntry, Player } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const tabs = ['online', 'banned', 'allowlist'] as const;
+const tabs = ['online', 'banned', 'history', 'allowlist'] as const;
 
 type KickStatus = {
   tone: 'success' | 'error';
@@ -29,6 +29,7 @@ export default function PlayersPage() {
   const players = useApi(() => apiClient.getPlayers(), { refreshInterval: 10000, initialData: [] });
   const playerPositions = useApi(() => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
   const bans = useApi(() => apiClient.getBans(), { refreshInterval: 15000, initialData: [] });
+  const connections = useApi(() => apiClient.getConnectionHistory(), { refreshInterval: 30000, initialData: [] });
 
   useEffect(() => {
     if (!kickStatus) {
@@ -157,6 +158,65 @@ export default function PlayersPage() {
         </div>
       ) : null}
 
+      {activeTab === 'history' ? (
+        <div className="glass-panel overflow-hidden">
+          <div className="flex flex-col gap-4 border-b border-th-border-m/80 p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="section-title">Intelligence</p>
+              <h2 className="mt-1 text-xl font-semibold text-th-text">Connection History</h2>
+              <p className="mt-2 text-sm text-th-text-m">A log of player connect and disconnect events on your server.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <a href="/api/players/connections/export?format=csv" download className="dune-button-muted inline-flex items-center gap-2">
+                <Download className="h-4 w-4" /> CSV
+              </a>
+              <a href="/api/players/connections/export?format=json" download className="dune-button-muted inline-flex items-center gap-2">
+                <Download className="h-4 w-4" /> JSON
+              </a>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text-m">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Time</th>
+                  <th className="px-4 py-3 font-medium">Event</th>
+                  <th className="px-4 py-3 font-medium">Player</th>
+                  <th className="px-4 py-3 font-medium">Steam ID</th>
+                  <th className="px-4 py-3 font-medium">Map</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-th-border-m/60">
+                {(connections.data ?? []).map((entry) => (
+                  <tr key={entry.id} className="transition-colors hover:bg-th-surface-s/40">
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-th-text-m">{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                        entry.event === 'connect'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
+                          : 'bg-red-500/15 text-red-600 dark:text-red-300',
+                      )}>
+                        <span className={cn('h-1.5 w-1.5 rounded-full', entry.event === 'connect' ? 'bg-emerald-400' : 'bg-red-400')} />
+                        {entry.event === 'connect' ? 'Connected' : 'Disconnected'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-th-text">{entry.playerName ?? 'Unknown'}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-th-text-m">{entry.steamId}</td>
+                    <td className="px-4 py-3 text-th-text-s">{entry.mapName ?? '-'}</td>
+                  </tr>
+                ))}
+                {(connections.data ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-10 text-center text-th-text-m">No connection events recorded yet. Events are tracked automatically when players join or leave.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
       {activeTab === 'allowlist' ? (
         <div className="glass-panel flex min-h-[320px] flex-col items-center justify-center gap-4 p-8 text-center">
           <ShieldAlert className="h-10 w-10 text-amber-300" />
@@ -202,7 +262,7 @@ function PlayersPageSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        {Array.from({ length: 3 }).map((_, index) => (
+        {Array.from({ length: 4 }).map((_, index) => (
           <Skeleton key={index} className="h-10 w-24 rounded-full" />
         ))}
       </div>

@@ -149,7 +149,7 @@ class LogService:
 
     def _make_entry(self, service: str, line: str) -> LogEntry:
         timestamp, remainder = _extract_timestamp(line)
-        clean = _strip_ansi(remainder)
+        clean = redact(_strip_ansi(remainder))
         severity = _detect_severity(clean)
         return LogEntry(
             timestamp=timestamp,

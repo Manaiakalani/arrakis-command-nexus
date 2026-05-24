@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -32,7 +31,6 @@ def _webhook_to_frontend(entry) -> dict:
     for event_name, field_name in _EVENT_FIELDS.items():
         if getattr(entry, field_name, False):
             events.append(event_name)
-    created = getattr(entry, "created_at", None)
     return {
         "id": str(getattr(entry, "id", "")),
         "name": f"Webhook #{getattr(entry, 'id', '')}",

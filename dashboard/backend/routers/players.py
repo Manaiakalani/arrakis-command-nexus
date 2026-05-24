@@ -3,14 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session
-from db.models import AllowlistedPlayer, AuditLog, BannedPlayer
+from db.models import AllowlistedPlayer, AuditLog, BannedPlayer, ConnectionLog
 from models.allowlist import AllowlistEntry, AllowlistRequest
-from models.player import BanEntry, BanRequest
 
 router = APIRouter(tags=["players"])
 
@@ -205,3 +205,117 @@ async def add_allowlist(
     await session.commit()
     await session.refresh(entry)
     return AllowlistEntry.model_validate(entry)
+
+
+# ---------------------------------------------------------------------------
+# Connection History
+# ---------------------------------------------------------------------------
+
+_previous_player_ids: set[str] = set()
+
+
+async def record_player_change(
+    session: AsyncSession,
+    current_players: list,
+    map_name: str | None = None,
+) -> None:
+    """Compare current online players to previous snapshot and log connect/disconnect events."""
+    global _previous_player_ids  # noqa: PLW0603
+    current_ids = {p.steam_id for p in current_players}
+    joined = current_ids - _previous_player_ids
+    left = _previous_player_ids - current_ids
+
+    for sid in joined:
+        player = next((p for p in current_players if p.steam_id == sid), None)
+        session.add(
+            ConnectionLog(
+                steam_id=sid,
+                player_name=getattr(player, "name", None),
+                event="connect",
+                map_name=getattr(player, "map_name", map_name),
+            )
+        )
+    for sid in left:
+        session.add(
+            ConnectionLog(
+                steam_id=sid,
+                event="disconnect",
+                map_name=map_name,
+            )
+        )
+    if joined or left:
+        await session.commit()
+    _previous_player_ids = current_ids
+
+
+@router.get("/players/connections")
+async def list_connections(
+    limit: int = 200,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    result = await session.execute(
+        select(ConnectionLog)
+        .order_by(ConnectionLog.timestamp.desc())
+        .limit(min(limit, 1000))
+    )
+    return [
+        {
+            "id": row.id,
+            "steamId": row.steam_id,
+            "playerName": row.player_name,
+            "event": row.event,
+            "mapName": row.map_name,
+            "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+        }
+        for row in result.scalars().all()
+    ]
+
+
+@router.get("/players/connections/export")
+async def export_connections(
+    format: str = "csv",
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    result = await session.execute(
+        select(ConnectionLog).order_by(ConnectionLog.timestamp.desc()).limit(5000)
+    )
+    rows = result.scalars().all()
+
+    import csv
+    import io
+    import json as json_mod
+
+    if format == "json":
+        data = [
+            {
+                "steamId": r.steam_id,
+                "playerName": r.player_name,
+                "event": r.event,
+                "mapName": r.map_name,
+                "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+            }
+            for r in rows
+        ]
+        content = json_mod.dumps(data, indent=2)
+        return StreamingResponse(
+            io.BytesIO(content.encode()),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=connection_history.json"},
+        )
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Steam ID", "Player Name", "Event", "Map", "Timestamp"])
+    for r in rows:
+        writer.writerow([
+            r.steam_id,
+            r.player_name or "",
+            r.event,
+            r.map_name or "",
+            r.timestamp.isoformat() if r.timestamp else "",
+        ])
+    return StreamingResponse(
+        io.BytesIO(buf.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=connection_history.csv"},
+    )

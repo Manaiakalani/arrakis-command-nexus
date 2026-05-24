@@ -74,6 +74,17 @@ class DashboardSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ConnectionLog(Base):
+    __tablename__ = "connection_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    steam_id: Mapped[str] = mapped_column(String(64), index=True)
+    player_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    event: Mapped[str] = mapped_column(String(16), index=True)  # 'connect' or 'disconnect'
+    map_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+
+
 class AdminUser(Base):
     __tablename__ = "admin_users"
 

@@ -1,71 +1,75 @@
-# Dune Awakening Self-Hosted Docker Server
+# Dune Awakening Dedicated Server with Docker Compose and Arrakis Command Nexus
 
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/docker%20compose-v2-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/license/mit)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20WSL2-lightgrey)](./docs/QUICKSTART.md)
 
-> Self-host your own **Dune Awakening** dedicated server with Docker Compose, a CLI tool, and a full-featured web dashboard.
+Self-host a **Dune Awakening dedicated server** with **Docker Compose**, automatic infrastructure bootstrap, and the **Arrakis Command Nexus** companion dashboard for day-to-day operations.
 
-The easiest way to run a private Dune Awakening battlegroup on your own hardware. Works on bare-metal Linux, VMs, Proxmox, and Windows via WSL2.
-
----
+This project packages PostgreSQL, RabbitMQ, battlegroup services, helper scripts, and a browser-based control plane so you can launch a private or community server without manually wiring every dependency.
 
 ## Why This Project?
 
-Funcom's official self-hosting instructions require manual setup of PostgreSQL, RabbitMQ, and multiple game server processes. This project wraps everything into a single `docker compose up` with:
+Funcom's official self-hosting flow involves several services, credentials, and map processes. This repository turns that into a repeatable Docker Compose deployment with:
 
-- **Zero manual database setup** - PostgreSQL, schemas, and partitions are initialized automatically
-- **Automatic crash recovery** - partition repair sidecar and watchdog keep servers running
-- **Web dashboard** - manage your server from a browser instead of the command line
-- **One-command deployment** - `./dune init && ./dune start` gets you running in minutes
+- **One-command setup and startup** through the `dune` CLI
+- **Automatic database bootstrap and partition repair** for smoother restarts
+- **Companion dashboard** for admins who want more than raw container logs
+- **Profile-based scaling** for basic, standard, and full battlegroups
+- **Backup, restore, and update workflows** built around self-hosted operations
 
 ## Key Features
 
-### Server Management
-- **Profile-based deployments** - basic (~20 GB), standard (~30-40 GB), and full (~40 GB+) battlegroup configurations
-- **`dune` CLI** - setup wizard, startup, updates, backups, and diagnostics
-- **Map orchestration** - start, stop, restart, and backup individual map shards
-- **Crash detection** - automatic watchdog with configurable restart policies
-- **Partition repair** - sidecar service that fixes database partition conflicts after restarts
+### Docker Compose Server Management
+- **Docker Compose-first deployment** for the complete Dune Awakening self-hosted stack
+- **Profile-based battlegroups** for basic, standard, and full server layouts
+- **`dune` CLI tooling** for setup, startup, shutdown, updates, backups, restores, and diagnostics
+- **Map management** to start, stop, restart, and back up individual map shards
+- **Automatic crash recovery** with health checks, watchdog logic, and partition repair
+- **WSL2 support** for Windows hosts running Docker Desktop with Linux containers
 
-### Web Dashboard (Arrakis Command Nexus)
-- **Server overview** - real-time CPU, memory, uptime, and player count per map
-- **Live log streaming** - searchable, filterable SSE-based log viewer with download support
-- **System telemetry** - CPU, memory, disk, and network charts with 24-hour history
-- **Player management** - online player list, session tracking, kick capability
-- **Configuration editor** - edit server settings with drift detection
-- **Backup management** - manual and scheduled backups with retention policies
-- **Discord integration** - webhook notifications for server events
-- **In-game announcements** - send messages to players via RabbitMQ
-- **Economy monitoring** - anomaly detection for in-game currency
-- **Chat protection** - spam and rate-limit guard with auto-kick
-- **Character editor** - view and modify player character stats
-- **Public status page** - shareable server status (no auth required)
+### Arrakis Command Nexus Dashboard
+- **Companion web dashboard** for browser-based administration and visibility
+- **Player tracking** with online roster, session timers, and kick controls
+- **Player connection history** with recent join/leave events, exports, and a dedicated Players history tab
+- **Map management views** with shard status, uptime, telemetry, and orchestration shortcuts
+- **Live log streaming** with search, filtering, and download support
+- **Hagga Basin map management tools** including player map overlays and heatmaps
+- **Configuration editing** with drift detection for server settings
+- **Backup and restore workflows** for snapshots, retention policies, and recovery operations
+- **Discord webhooks** for start, stop, crash, join, and leave notifications
+- **Public status page** for shareable read-only server health
+- **Light and dark mode** support across the dashboard UI
+- **In-game announcements, moderation controls, economy monitoring, and character tools** for live operations
 
-### Security
-- **Token-based authentication** with constant-time comparison
-- **Localhost-only bindings** by default
-- **Secret redaction** in logs and API responses
-- **Container allowlist** - API operations restricted to compose project containers
-- **Configurable CORS** and mutation controls
+### Security and Operations
+- **Local-only admin defaults** unless you intentionally expose the dashboard
+- **Token-based authentication** for admin API access
+- **Secret file support** for sensitive credentials and tokens
+- **Container allowlisting and response redaction** for safer automation
+- **Scheduled backups** with configurable retention windows
 
-### Infrastructure
-- **Docker Compose** orchestration with health checks on all services
-- **PostgreSQL** with automatic schema initialization
-- **RabbitMQ** with TLS-ready configuration
-- **WSL2 compatible** - run on Windows 10/11 with Docker Desktop
+## Deployment Profiles
+
+| Profile | Best for | Typical maps | Recommended RAM |
+| --- | --- | --- | --- |
+| `basic` | Small private groups | Overmap + Survival | ~20 GB |
+| `standard` | Most community servers | Adds Deep Desert, social hubs, and story shards | ~30-40 GB |
+| `full` | Large always-on communities | Expanded Survival, Deep Desert, and story capacity | ~40 GB+ |
+
+See [docs/PROFILES.md](./docs/PROFILES.md) for the exact shard layouts.
 
 ## Prerequisites
 
 | Requirement | Details |
-| ----------- | ------- |
-| **OS** | Linux (Ubuntu, Debian, RHEL) or Windows 10/11 with WSL2 |
-| **Docker** | Docker Engine + Docker Compose v2 |
+| --- | --- |
+| **OS** | Linux or Windows 10/11 with WSL2 |
+| **Docker** | Docker Engine or Docker Desktop with Docker Compose v2 |
 | **CPU** | AVX2 support required |
-| **RAM** | 20-40+ GB depending on profile |
-| **Storage** | 50+ GB for server files and database |
-| **Network** | Public IP or port forwarding for online play |
+| **RAM** | 20-40+ GB depending on deployment profile |
+| **Storage** | 50+ GB for images, saves, database, and backups |
+| **Network** | Public IP, DNS, or router port forwarding for external players |
 
 ## Quick Start
 
@@ -78,85 +82,92 @@ git clone https://github.com/your-username/dune-server-docker.git
 cd dune-server-docker
 ./dune init
 
-# 3. Start the server
+# 3. Start the battlegroup
 ./dune start
 ```
 
-The dashboard is available at `http://localhost:18080` after startup.
+Typical dashboard endpoints after setup:
 
-### Windows (WSL2)
+- `http://your-server-ip:18080`
+- `https://dashboard.your-domain.com`
 
-```powershell
-# Enable WSL2 and install Ubuntu
-wsl --install -d Ubuntu
-```
-
-Then install Docker Desktop with the WSL2 backend enabled, open an Ubuntu terminal, and follow the Linux quick start above. See [Quick Start](./docs/QUICKSTART.md) for detailed WSL2 memory configuration.
+See [Quick Start](./docs/QUICKSTART.md) for the full Linux and WSL2 walkthrough.
 
 ## Architecture
 
-```
-                    +-----------------+
-                    |  Web Dashboard  |  :18080
-                    |  (Next.js)      |
-                    +--------+--------+
-                             |
-                    +--------+--------+
-                    |  Dashboard API  |  FastAPI
-                    |  (Python)       |
-                    +--------+--------+
-                             |
-          +------------------+------------------+
-          |                  |                  |
-  +-------+------+  +-------+------+  +--------+-------+
-  |  PostgreSQL  |  |  RabbitMQ    |  |  Docker Socket |
-  |  (game DB)   |  |  (game msg)  |  |  (management)  |
-  +--------------+  +--------------+  +----------------+
-          |                  |
-  +-------+------------------+-------+
-  |            Game Servers           |
-  |  Survival | Overmap | Deep Desert|
-  +----------------------------------+
+```text
+                    +--------------------------+
+                    | Arrakis Command Nexus    |
+                    | Next.js frontend         |
+                    +------------+-------------+
+                                 |
+                    +------------+-------------+
+                    | Dashboard API (FastAPI)  |
+                    +------------+-------------+
+                                 |
+         +-----------------------+------------------------+
+         |                       |                        |
++--------+--------+   +----------+---------+   +---------+---------+
+| PostgreSQL       |   | RabbitMQ           |   | Docker socket     |
+| world state      |   | game/admin traffic |   | orchestration     |
++--------+--------+   +----------+---------+   +---------+---------+
+         |                       |                        |
+         +-----------------------+------------------------+
+                                 |
+                    +------------+-------------+
+                    | Dune Awakening shards    |
+                    | Overmap, Survival, Deep  |
+                    | Desert, social, story    |
+                    +--------------------------+
 ```
 
 ## Documentation
 
 | Guide | Description |
-| ----- | ----------- |
-| [Quick Start](./docs/QUICKSTART.md) | Get running in five minutes (Linux and WSL2) |
-| [Configuration](./docs/CONFIGURATION.md) | Environment variables and config files |
-| [Config Keys](./docs/CONFIG_KEYS.md) | Complete reference of all server config keys |
-| [Profiles](./docs/PROFILES.md) | Basic, standard, and full deployment layouts |
-| [Networking](./docs/NETWORKING.md) | Ports, firewalls, and NAT hairpin fixes |
-| [Troubleshooting](./docs/TROUBLESHOOTING.md) | Common issues and solutions (including WSL2) |
+| --- | --- |
+| [Quick Start](./docs/QUICKSTART.md) | First deployment on Linux or WSL2 |
+| [Configuration](./docs/CONFIGURATION.md) | Environment variables, dashboard settings, and config files |
+| [Config Keys](./docs/CONFIG_KEYS.md) | Reference for gameplay, engine, and director tuning keys |
+| [Profiles](./docs/PROFILES.md) | Compare basic, standard, and full battlegroups |
+| [Networking](./docs/NETWORKING.md) | Ports, firewall planning, and NAT hairpin guidance |
+| [Troubleshooting](./docs/TROUBLESHOOTING.md) | Common startup, networking, dashboard, and WSL2 issues |
+| [Deep Desert Knobs](./docs/DEEP_DESERT_KNOBS.md) | Focused Deep Desert tuning reference |
+| [Resource Respawn Knobs](./docs/RESOURCE_RESPAWN_KNOBS.md) | Resource pacing and respawn-related settings |
 
-## CLI Commands
+## Common CLI Commands
 
 ```bash
 ./dune init        # Interactive setup wizard
-./dune start       # Start the server stack
-./dune stop        # Stop all services
-./dune restart     # Restart the stack
-./dune status      # Show service health
+./dune start       # Start the full stack
+./dune stop        # Stop services
+./dune restart     # Restart services
+./dune status      # Show container health
 ./dune logs        # Tail service logs
 ./dune backup      # Create a backup snapshot
-./dune restore     # Restore from a backup
-./dune update      # Pull latest server images
-./dune preflight   # Run pre-start checks
+./dune restore     # Restore from a backup snapshot
+./dune update      # Refresh server images
+./dune preflight   # Run pre-start validation
 ```
 
-## Contributing
+## Who Is This For?
 
-1. Fork the repository
-2. Create a feature branch
-3. Test your changes locally
-4. Open a pull request with a clear summary
+- Players who want a private Dune Awakening Docker server at home
+- Communities running a persistent self-hosted battlegroup
+- Admins who want a Docker Compose workflow plus a polished dashboard
+- Operators who need backups, Discord alerts, player visibility, and public status sharing
 
 ## Related Projects
 
-- [Funcom Self-Hosting Docs](https://duneawakening.com/self-hosted-servers/) - Official setup instructions
+- [Funcom Self-Hosting Docs](https://duneawakening.com/self-hosted-servers/) - Official self-hosting reference
 - [comfuzio/OpenDune-Director](https://github.com/comfuzio/OpenDune-Director) - Alternative director implementation
-- [Nerrowake/sietch-console](https://github.com/Nerrowake/sietch-console) - Console-based management tool
+- [Nerrowake/sietch-console](https://github.com/Nerrowake/sietch-console) - Console-based management tooling
+
+## Contributing
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Validate your changes locally.
+4. Open a pull request with a clear summary.
 
 ## License
 

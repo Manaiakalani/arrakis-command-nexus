@@ -10,6 +10,7 @@ import {
   ChatGuardViolation,
   ConfigDriftStatus,
   ConfigFile,
+  ConnectionLogEntry,
   DiscordWebhook,
   EconomyAlert,
   EconomySummary,
@@ -145,6 +146,10 @@ export class ApiClient {
 
   getBans() {
     return this.request<BanEntry[]>('/players/bans');
+  }
+
+  getConnectionHistory(limit = 200) {
+    return this.request<ConnectionLogEntry[]>(`/players/connections?limit=${limit}`);
   }
 
   getConfig(filename: string) {

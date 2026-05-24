@@ -19,6 +19,8 @@ async def get_watchdog_crashes(request: Request) -> list[dict]:
 async def restart_watchdog_service(service: str, request: Request) -> dict:
     try:
         return await request.app.state.watchdog_service.restart_service(service)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:

@@ -97,6 +97,10 @@ class DockerService:
         self._stats_cache[name] = (now, result)
         return result
 
+    def validate_container_name(self, name: str) -> str:
+        self._validate_container_name(name)
+        return name
+
     async def restart_container(self, name: str) -> dict[str, str]:
         container = await self._get_container(name)
         await asyncio.to_thread(container.restart)

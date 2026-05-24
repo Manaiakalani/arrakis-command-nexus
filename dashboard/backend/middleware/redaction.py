@@ -7,9 +7,12 @@ from collections.abc import Callable
 _REPLACERS: list[tuple[re.Pattern[str], str | Callable[[re.Match[str]], str]]]
 _REPLACERS = [
     (re.compile(r"(?i)(\bfls[_-]?token\b\s*[:=]\s*)([^\s,;]+)"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(\bx-admin-token\b\s*[:=]\s*)([^\s,;]+)"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(\bauthorization\b\s*:\s*bearer\s+)([^\s,;]+)"), r"\1[REDACTED]"),
     (re.compile(r"(?i)(\brabbit(?:mq)?[_-]?(?:password|secret|token)\b\s*[:=]\s*)([^\s,;]+)"), r"\1[REDACTED]"),
     (re.compile(r"(?i)(\b(?:postgres|pg|database|db)[_-]?password\b\s*[:=]\s*)([^\s,;]+)"), r"\1[REDACTED]"),
     (re.compile(r"(?i)(\bsteam[_-]?(?:token|api[_-]?key|secret)\b\s*[:=]\s*)([^\s,;]+)"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(https://discord(?:app)?\.com/api/webhooks/\d+/)([^\s/]+)"), r"\1[REDACTED]"),
     (re.compile(r"(?i)(amqps?://[^:\s]+:)([^@\s]+)(@)"), r"\1[REDACTED]\3"),
     (re.compile(r"(?i)(postgres(?:ql)?://[^:\s]+:)([^@\s/]+)(@)"), r"\1[REDACTED]\3"),
     (re.compile(r"(?i)(\b(?:password|secret|token)\b\s*[:=]\s*)([^\s,;]+)"), r"\1[REDACTED]"),

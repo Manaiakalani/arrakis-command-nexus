@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
@@ -9,8 +7,6 @@ from sqlalchemy import select
 
 from db.database import SessionLocal
 from db.models import AdminUser, DashboardSetting
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["settings"])
 

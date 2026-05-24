@@ -125,6 +125,18 @@
 - Clone the repository inside WSL2's native filesystem (e.g., `~/dune-server-docker`), not under `/mnt/c/`
 - Move Docker volumes to the WSL2 filesystem if they were created on the Windows mount
 
+## Expected Log Warnings (Safe to Ignore)
+
+These messages appear in normal operation and do not indicate a problem:
+
+| Service | Message | Explanation |
+|---------|---------|-------------|
+| Gateway | `Got invalid partition index (None)` | The overmap server registers itself but does not own a partition. The partition-repair sidecar handles this. |
+| Director | `Failed to process travel queue for partition 2` | Partition 2 does not exist in a single-survival setup (only partition 113). The director retries harmlessly. |
+| Overmap | `Could not serialize <hostname>` | DNS lookup for the external hostname fails inside the Docker network. Cosmetic only. |
+| RabbitMQ | `management_metrics_collection` deprecation | Suppressed by config. If the warning persists, verify `rabbitmq-admin.conf` and `rabbitmq-game.conf` include `deprecated_features.permit` lines. |
+| PostgreSQL | `duplicate key value violates unique constraint "world_partition_label_key"` | Ghost server entries from previous runs. Handled by partition-repair. |
+
 ## Overmap Partition Load Failure (LoadPartitionDefinition)
 
 **Symptoms:**

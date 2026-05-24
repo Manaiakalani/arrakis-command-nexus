@@ -79,6 +79,15 @@ export interface BanEntry {
   active: boolean;
 }
 
+export interface ConnectionLogEntry {
+  id: number;
+  steamId: string;
+  playerName?: string | null;
+  event: 'connect' | 'disconnect';
+  mapName?: string | null;
+  timestamp: string;
+}
+
 export interface ConfigField {
   key: string;
   label: string;

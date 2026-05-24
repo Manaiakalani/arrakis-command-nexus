@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from db.database import dispose_db, init_db
-from middleware.auth import AdminTokenMiddleware
+from middleware.auth import AdminTokenMiddleware, verify_admin_token
 from middleware.redaction import redact
 from routers import announce, backups, characters, chat_guard, config, discord, economy, logs, maps, players, settings, status, system, watchdog
 from services.announce_service import AnnounceService
@@ -48,9 +49,69 @@ for handler in logging.getLogger().handlers:
 logger = logging.getLogger(__name__)
 
 
+def _cors_origins() -> list[str]:
+    allowed_hosts_raw = os.getenv("DUNE_ADMIN_ALLOWED_HOSTS", "").strip()
+    if not allowed_hosts_raw:
+        return ["http://dashboard-frontend:3000"]
+
+    origins: list[str] = []
+    seen: set[str] = set()
+    for raw_host in allowed_hosts_raw.split(","):
+        candidate = raw_host.strip().rstrip("/")
+        if not candidate:
+            continue
+        if candidate == "*":
+            logger.warning("Ignoring insecure wildcard entry in DUNE_ADMIN_ALLOWED_HOSTS")
+            continue
+        options = [candidate] if "://" in candidate else [f"http://{candidate}", f"https://{candidate}"]
+        for origin in options:
+            if origin in seen:
+                continue
+            seen.add(origin)
+            origins.append(origin)
+
+    return origins or ["http://dashboard-frontend:3000"]
+
+
 def _frontend_dir() -> Path | None:
     candidate = Path(os.getenv("DUNE_ADMIN_FRONTEND_DIR", str(Path(__file__).resolve().parents[1] / "frontend" / "dist")))
     return candidate if candidate.exists() else None
+
+
+async def _track_player_connections(postgres_service: PostgresService) -> None:
+    """Poll online players every 15s and log connect/disconnect events."""
+    from db.database import SessionLocal
+    from db.models import ConnectionLog
+
+    previous_ids: set[str] = set()
+    while True:
+        try:
+            current_players = await postgres_service.get_online_players()
+            current_ids = {p.steam_id for p in current_players}
+            joined = current_ids - previous_ids
+            left = previous_ids - current_ids
+
+            if (joined or left) and previous_ids:  # skip first poll
+                async with SessionLocal() as session:
+                    for sid in joined:
+                        player = next((p for p in current_players if p.steam_id == sid), None)
+                        session.add(ConnectionLog(
+                            steam_id=sid,
+                            player_name=getattr(player, "name", None),
+                            event="connect",
+                            map_name=getattr(player, "map_name", None),
+                        ))
+                    for sid in left:
+                        session.add(ConnectionLog(
+                            steam_id=sid,
+                            event="disconnect",
+                        ))
+                    await session.commit()
+
+            previous_ids = current_ids
+        except Exception:  # noqa: BLE001
+            pass
+        await asyncio.sleep(15)
 
 
 @asynccontextmanager
@@ -104,10 +165,15 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Dune dashboard backend started")
 
+    # Background task: track player connections
+    connection_tracker_task = asyncio.create_task(
+        _track_player_connections(postgres_service), name="connection-tracker"
+    )
+
     # Security warnings for weak defaults
     admin_token = os.getenv("DUNE_ADMIN_TOKEN", "")
     if not admin_token:
-        logger.warning("SECURITY: DUNE_ADMIN_TOKEN is not set — API mutations are unprotected")
+        logger.warning("SECURITY: DUNE_ADMIN_TOKEN is not set — authenticated API actions will be rejected")
     elif admin_token.startswith("change-me"):
         logger.warning("SECURITY: DUNE_ADMIN_TOKEN is using a default value — change it for production")
     pg_pw = os.getenv("POSTGRES_DUNE_PASSWORD", "")
@@ -117,6 +183,9 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        connection_tracker_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await connection_tracker_task
         await chat_guard_service.stop()
         await economy_service.stop()
         await watchdog_service.stop()
@@ -131,31 +200,31 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Dune Awakening Dashboard API", version="1.0.0", lifespan=lifespan)
 
-allowed_hosts_raw = os.getenv("DUNE_ADMIN_ALLOWED_HOSTS", "").strip()
-allowed_hosts = [host.strip() for host in allowed_hosts_raw.split(",") if host.strip()] if allowed_hosts_raw else []
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_hosts or ["http://dashboard-frontend:3000"],
+    allow_origins=_cors_origins(),
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Accept", "X-Admin-Token"],
 )
 app.add_middleware(AdminTokenMiddleware)
 
-app.include_router(status.router, prefix="/api")
-app.include_router(announce.router, prefix="/api")
-app.include_router(maps.router, prefix="/api")
-app.include_router(config.router, prefix="/api")
-app.include_router(players.router, prefix="/api")
-app.include_router(logs.router, prefix="/api")
-app.include_router(system.router, prefix="/api")
-app.include_router(backups.router, prefix="/api")
-app.include_router(discord.router, prefix="/api")
-app.include_router(watchdog.router, prefix="/api")
-app.include_router(economy.router, prefix="/api")
-app.include_router(characters.router, prefix="/api")
-app.include_router(chat_guard.router, prefix="/api")
-app.include_router(settings.router, prefix="/api")
+_SECURE_API_DEPENDENCIES = [Depends(verify_admin_token)]
+
+app.include_router(status.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(announce.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(maps.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(config.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(players.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(logs.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(system.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(backups.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(discord.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(watchdog.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(economy.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(characters.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(chat_guard.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(settings.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 
 
 @app.get("/api/ping")
