@@ -7,6 +7,8 @@ Sits in front of RabbitMQ's HTTP auth backend and allows:
   - An optional management user for admin tooling
 All other requests are forwarded to the text-router for validation.
 """
+import hmac
+import logging
 import os
 import re
 import urllib.parse
@@ -22,6 +24,8 @@ SERVICE_USER_RE = re.compile(
     rf"^(sg|bgd|tr)\.{re.escape(WORLD_UNIQUE_NAME)}\.[^.]+(?:\.(game|admin))?$"
 )
 PLAYER_USER_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
+
+logger = logging.getLogger("rmq-auth-shim")
 
 
 def parse_form(body: bytes) -> dict:
@@ -53,10 +57,10 @@ class Handler(BaseHTTPRequestHandler):
             "/v0/auth/resource",
             "/v0/auth/topic",
         }:
-            if MANAGEMENT_USER and username == MANAGEMENT_USER:
+            if MANAGEMENT_USER and hmac.compare_digest(username, MANAGEMENT_USER):
                 if (
                     self.path == "/v0/auth/user"
-                    and form.get("password", "") == MANAGEMENT_PASSWORD
+                    and hmac.compare_digest(form.get("password", ""), MANAGEMENT_PASSWORD)
                 ):
                     self._respond(b"allow administrator")
                     return
@@ -92,5 +96,6 @@ class AuthServer(ThreadingHTTPServer):
 
 
 if __name__ == "__main__":
-    print("RMQ auth shim listening on :8080")
+    logging.basicConfig(level=os.environ.get("RMQ_AUTH_SHIM_LOG_LEVEL", "INFO").upper(), format="[%(levelname)s] %(message)s")
+    logger.info("RMQ auth shim listening on :8080")
     AuthServer(("0.0.0.0", 8080), Handler).serve_forever()

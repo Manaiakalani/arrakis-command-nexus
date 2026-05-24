@@ -110,6 +110,8 @@ class WatchdogService:
             previous = self._known_states.get(snapshot.service)
             crash_detected, message = self._detect_crash(snapshot, previous)
             restarted = False
+            if previous is not None and not crash_detected:
+                self._log_unusual_restart(snapshot, previous)
             if crash_detected:
                 if self.auto_restart and snapshot.status != "running":
                     restarted = await self._restart_container(snapshot.service, expected_restart_count=snapshot.restart_count)
@@ -155,6 +157,18 @@ class WatchdogService:
             return False, ""
 
         return True, self._build_message(snapshot, previous, include_restart_delta=restart_increased)
+
+    def _log_unusual_restart(self, snapshot: ContainerSnapshot, previous: ContainerSnapshot) -> None:
+        if snapshot.restart_count <= previous.restart_count:
+            return
+        logger.warning(
+            "SECURITY: Restart count increased for %s from %s to %s (status=%s, exit_code=%s)",
+            snapshot.service,
+            previous.restart_count,
+            snapshot.restart_count,
+            snapshot.status,
+            snapshot.exit_code,
+        )
 
     def _build_message(
         self,

@@ -6,5 +6,18 @@ dune text eol=lf
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
+# Common binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.tgz binary
+*.7z binary
+
 # Auto-detect for everything else
 * text=auto

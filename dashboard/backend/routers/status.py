@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 
+from middleware.request_utils import get_client_ip
+
 router = APIRouter(tags=["status"])
 
 _HEALTH_MAP = {"running": "healthy", "stopped": "stopped", "completed": "completed", "error": "offline"}
@@ -51,26 +53,23 @@ def _service_to_frontend(svc) -> dict:
     }
 
 
-def _get_client_ip(request: Request) -> str:
-    forwarded_for = request.headers.get("X-Forwarded-For", "")
-    if forwarded_for:
-        return forwarded_for.split(",", 1)[0].strip() or "unknown"
-    if request.client and request.client.host:
-        return request.client.host
-    return "unknown"
-
-
 async def _enforce_public_status_rate_limit(request: Request) -> None:
-    client_ip = _get_client_ip(request)
+    client_ip = get_client_ip(request)
     now = time.monotonic()
     cutoff = now - _PUBLIC_STATUS_WINDOW_SECONDS
     async with _public_status_lock:
         recent_requests = [ts for ts in _public_status_requests.get(client_ip, []) if ts > cutoff]
         if len(recent_requests) >= _PUBLIC_STATUS_RATE_LIMIT:
             _public_status_requests[client_ip] = recent_requests
+            retry_after = max(1, int((recent_requests[0] + _PUBLIC_STATUS_WINDOW_SECONDS) - now + 0.999))
             raise HTTPException(
                 status_code=429,
                 detail="Rate limit exceeded for the public status endpoint. Limit is 60 requests per minute per IP.",
+                headers={
+                    "Retry-After": str(retry_after),
+                    "X-RateLimit-Limit": str(_PUBLIC_STATUS_RATE_LIMIT),
+                    "X-RateLimit-Remaining": "0",
+                },
             )
         recent_requests.append(now)
         _public_status_requests[client_ip] = recent_requests
