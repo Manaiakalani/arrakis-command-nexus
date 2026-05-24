@@ -95,7 +95,7 @@ async def get_status(request: Request) -> dict:
 
     status_map = {"ok": "healthy", "warn": "degraded", "fail": "offline"}
     return {
-        "serverName": os.getenv("DUNE_WORLD_NAME", "Dune Awakening"),
+        "serverName": os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
         "region": os.getenv("WORLD_REGION", "North America"),
         "status": status_map.get(readiness["status"], "offline"),
         "uptimeSeconds": uptime or 0,

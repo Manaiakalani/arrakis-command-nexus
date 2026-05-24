@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
@@ -10,9 +12,11 @@ from db.models import AdminUser, DashboardSetting
 
 router = APIRouter(tags=["settings"])
 
+_world_name = os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server")
+
 DEFAULTS: dict[str, dict] = {
     "general": {
-        "serverName": "Arrakis Command Nexus",
+        "serverName": _world_name,
         "serverDescription": "Self-hosted Dune Awakening server fleet",
         "motd": "",
         "timezone": "UTC",
