@@ -84,7 +84,7 @@ packages:
 runcmd:
   - systemctl enable docker
   - systemctl start docker
-  - git clone https://github.com/manailab/dune-server-docker.git /opt/dune-server
+  - git clone https://github.com/Manaiakalani/arrakis-command-nexus.git /opt/dune-server
   - chown -R dune:dune /opt/dune-server
   - |
     cat > /etc/profile.d/dune-welcome.sh << 'MOTD'
