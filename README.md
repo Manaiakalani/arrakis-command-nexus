@@ -1,14 +1,26 @@
 # Dune Awakening Dedicated Server with Docker Compose and Arrakis Command Nexus
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/manailab/dune-server-docker/releases)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/docker%20compose-v2-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![CI](https://github.com/manailab/dune-server-docker/actions/workflows/ci.yml/badge.svg)](https://github.com/manailab/dune-server-docker/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/license/mit)
+[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20WSL2-lightgrey)](./docs/QUICKSTART.md)
 
 Self-host a **Dune Awakening dedicated server** with **Docker Compose**, automatic infrastructure bootstrap, and the **Arrakis Command Nexus** companion dashboard for day-to-day operations.
 
 This project packages PostgreSQL, RabbitMQ, battlegroup services, helper scripts, and a browser-based control plane so you can launch a private or community server without manually wiring every dependency.
+
+## Dashboard Preview
+
+<p align="center">
+  <img src="docs/screenshots/home-overview.png" alt="Home Overview" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/map-orchestration.png" alt="Map Orchestration" width="49%">
+  <img src="docs/screenshots/system-telemetry.png" alt="System Telemetry" width="49%">
+</p>
 
 ## Why This Project?
 
