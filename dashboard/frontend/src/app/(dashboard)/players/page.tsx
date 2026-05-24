@@ -1,6 +1,6 @@
 'use client';
 
-import { Ban, ChevronDown, ChevronUp, Download, LocateFixed, ShieldAlert, UserCheck } from 'lucide-react';
+import { Ban, Download, LocateFixed, ShieldAlert, UserCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { HaggaBasinMap } from '@/components/HaggaBasinMap';
@@ -25,7 +25,6 @@ export default function PlayersPage() {
   const [reason, setReason] = useState('Rule violation');
   const [duration, setDuration] = useState('24');
   const [kickStatus, setKickStatus] = useState<KickStatus | null>(null);
-  const [mapExpanded, setMapExpanded] = useState(false);
   const players = useApi(() => apiClient.getPlayers(), { refreshInterval: 10000, initialData: [] });
   const playerPositions = useApi(() => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
   const bans = useApi(() => apiClient.getBans(), { refreshInterval: 15000, initialData: [] });
@@ -108,28 +107,18 @@ export default function PlayersPage() {
               <div>
                 <p className="section-title">Spatial telemetry</p>
                 <h2 className="mt-1 text-xl font-semibold text-th-text">Live Player Position Analysis</h2>
-                <p className="mt-2 text-sm text-th-text-m">Expand to inspect the Hagga Basin tactical overlay and density heatmap without leaving the players roster.</p>
+                <p className="mt-2 text-sm text-th-text-m">Hagga Basin tactical overlay and density heatmap.</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200">
                   <LocateFixed className="h-4 w-4" /> {(playerPositions.data ?? []).length} tracked
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setMapExpanded((current) => !current)}
-                  className="dune-button-muted"
-                  aria-label={mapExpanded ? 'Collapse live position analysis' : 'Expand live position analysis'}
-                >
-                  {mapExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
               </div>
             </div>
-            {mapExpanded ? (
-              <div className="space-y-5 p-5">
-                <HaggaBasinMap players={playerPositions.data ?? []} refreshIntervalMs={0} />
-                <PlayerHeatmap players={playerPositions.data ?? []} refreshIntervalMs={0} />
-              </div>
-            ) : null}
+            <div className="space-y-5 p-5">
+              <HaggaBasinMap players={playerPositions.data ?? []} refreshIntervalMs={0} />
+              <PlayerHeatmap players={playerPositions.data ?? []} refreshIntervalMs={0} />
+            </div>
           </div>
         </>
       ) : null}
