@@ -92,8 +92,8 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
         {/* Header */}
         <div className={cn('flex items-center border-b border-th-border-m/50 px-3 py-4', collapsed ? 'justify-center' : 'justify-between')}>
           <div className={cn(
-            'flex items-center gap-3 overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent',
-            collapsed ? 'p-2' : 'px-3 py-3',
+            'flex items-center overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent',
+            collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-3',
           )}>
             <div className={cn(
               'flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300 shadow-dune',
@@ -101,13 +101,12 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             )}>
               <Worm className={cn(collapsed ? 'h-5 w-5' : 'h-6 w-6')} />
             </div>
-            <div className={cn(
-              'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
-              collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
-            )}>
-              <p className="text-xs uppercase tracking-[0.26em] text-amber-200/70">Arrakis</p>
-              <h2 className="text-lg font-semibold leading-tight text-th-text">Command Nexus</h2>
-            </div>
+            {!collapsed && (
+              <div className="overflow-hidden whitespace-nowrap">
+                <p className="text-xs uppercase tracking-[0.26em] text-amber-600/70 dark:text-amber-200/70">Arrakis</p>
+                <h2 className="text-lg font-semibold leading-tight text-th-text">Command Nexus</h2>
+              </div>
+            )}
           </div>
 
           {/* Desktop collapse toggle */}
@@ -139,15 +138,14 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
 
         {/* Cluster status */}
         <div className={cn('mx-3 mt-4 glass-panel', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
-          <div className={cn('flex items-center gap-3', collapsed && 'justify-center')}>
+          <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
             <span className={cn('h-3 w-3 shrink-0 rounded-full', statusMap[status])} />
-            <div className={cn(
-              'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
-              collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
-            )}>
-              <p className="text-xs uppercase tracking-[0.2em] text-th-text0">Cluster status</p>
-              <p className="text-sm font-medium capitalize text-th-text">{status}</p>
-            </div>
+            {!collapsed && (
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Cluster status</p>
+                <p className="text-sm font-medium capitalize text-th-text">{status}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -171,7 +169,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
                     : 'border-transparent text-th-text-s hover:border-th-border hover:bg-th-surface-s/70 hover:text-th-text',
                 )}
               >
-                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-300' : 'text-th-text0 group-hover:text-th-text-s')} />
+                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-300' : 'text-th-text-m group-hover:text-th-text-s')} />
                 <span className={cn(
                   'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
                   collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
@@ -195,15 +193,15 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
               <p className="mt-2 text-sm text-th-text-s">Live map, player, and service intelligence.</p>
               <div className="mt-3 space-y-2 border-t border-amber-500/10 pt-3 text-xs text-th-text-m">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-th-text0">Version</span>
+                  <span className="uppercase tracking-[0.18em] text-th-text-m">Version</span>
                   <span className="font-medium text-th-text">{version?.version ?? 'unknown'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-th-text0">Profile</span>
+                  <span className="uppercase tracking-[0.18em] text-th-text-m">Profile</span>
                   <span className="font-medium capitalize text-th-text">{version?.profile ?? 'basic'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-th-text0">Env</span>
+                  <span className="uppercase tracking-[0.18em] text-th-text-m">Env</span>
                   <span className="font-medium text-th-text">{environmentLabel}</span>
                 </div>
               </div>

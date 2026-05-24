@@ -33,10 +33,10 @@ function PlayerPositionTooltip({ active, payload }: { active?: boolean; payload?
     <div className="rounded-2xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-xs text-th-text-s shadow-2xl">
       <p className="font-semibold text-amber-200">{player.name}</p>
       <p className="mt-1 text-th-text-m">{player.mapLabel}</p>
-      <p className="mt-1 text-th-text0">
+      <p className="mt-1 text-th-text-m">
         X {Math.round(player.x).toLocaleString()} • Y {Math.round(player.y).toLocaleString()}
       </p>
-      <p className="mt-1 text-th-text0">Session {formatSessionDuration(player.sessionSeconds)}</p>
+      <p className="mt-1 text-th-text-m">Session {formatSessionDuration(player.sessionSeconds)}</p>
     </div>
   );
 }
@@ -161,7 +161,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                 <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
                   <span className="block font-semibold text-amber-200">{player.name}</span>
                   <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
-                  <span className="mt-1 block text-th-text0">
+                  <span className="mt-1 block text-th-text-m">
                     X {Math.round(player.x).toLocaleString()} • Y {Math.round(player.y).toLocaleString()}
                   </span>
                 </span>

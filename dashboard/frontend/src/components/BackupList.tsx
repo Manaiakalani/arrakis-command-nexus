@@ -46,7 +46,7 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-th-border-m text-left text-sm">
-          <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text0">
+          <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text-m">
             <tr>
               <th className="px-5 py-4 font-medium">Name</th>
               <th className="px-5 py-4 font-medium">Date</th>

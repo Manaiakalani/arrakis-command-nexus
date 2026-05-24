@@ -154,11 +154,11 @@ export default function SystemPage() {
           </div>
           <div className="mt-5 flex items-end justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-th-text0">Inbound</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-th-text-m">Inbound</p>
               <p className="mt-2 text-xl font-semibold tabular-nums text-th-text">{formatMbps(metrics.data?.networkInMbps)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs uppercase tracking-[0.22em] text-th-text0">Outbound</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-th-text-m">Outbound</p>
               <p className="mt-2 text-xl font-semibold tabular-nums text-th-text">{formatMbps(metrics.data?.networkOutMbps)}</p>
             </div>
           </div>

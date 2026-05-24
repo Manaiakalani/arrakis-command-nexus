@@ -65,7 +65,7 @@ export default function OverviewPage() {
         <StatusCard icon={Server} title="Server status" value={status.data?.status ?? 'loading'} subtitle={status.data?.serverName ?? 'Contacting cluster'} variant="default" />
         <StatusCard icon={Users} title="Players online" value={status.data?.playersOnline ?? 0} subtitle="Across active maps" variant="success">
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-th-text0">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-th-text-m">
               <span>Network pulse</span>
               <span>{(metrics.data?.networkInMbps ?? 0).toFixed(2)} / {(metrics.data?.networkOutMbps ?? 0).toFixed(2)} Mbps</span>
             </div>

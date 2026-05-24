@@ -81,7 +81,7 @@ export function UptimeChart() {
           </div>
           <p className="mt-2 text-sm">
             <span className="text-emerald-300">{formatDuration(uptime.data?.totalUpSeconds ?? 0)} available</span>
-            <span className="text-th-text0"> • </span>
+            <span className="text-th-text-m"> • </span>
             <span className="text-red-300">{formatDuration(uptime.data?.totalDownSeconds ?? 0)} impacted</span>
           </p>
         </div>
@@ -126,7 +126,7 @@ export function UptimeChart() {
           { label: 'Incidents', value: incidents.length, tone: 'text-th-text' },
         ].map((item) => (
           <div key={item.label} className="rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-th-text0">{item.label}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">{item.label}</p>
             <p className={`mt-2 text-lg font-semibold tabular-nums ${item.tone}`}>{item.value}</p>
           </div>
         ))}

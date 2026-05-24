@@ -143,7 +143,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-[260px] flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text0" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text-m" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} className="dune-input pl-11" placeholder="Search logs&#x2026;" aria-label="Search logs" name="log-search" autoComplete="off" spellCheck={false} />
             </div>
             <label className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/70 px-3 py-2 text-xs text-th-text-s">
@@ -171,7 +171,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
             <tbody>
               {visibleMessages.map((entry) => (
                 <tr key={entry.id} className="border-b border-th-border-m/40 hover:bg-th-surface-s/60">
-                  <td className="whitespace-nowrap px-2 py-1.5 align-top tabular-nums text-th-text0">{new Date(entry.timestamp).toLocaleTimeString()}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 align-top tabular-nums text-th-text-m">{new Date(entry.timestamp).toLocaleTimeString()}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 align-top">
                     <span className={cn('inline-block w-[3.5rem] text-center rounded border px-1 py-0.5 text-[10px] font-bold uppercase', severityClasses[entry.level])}>{entry.level}</span>
                   </td>
@@ -182,12 +182,12 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
             </tbody>
           </table>
         ) : (
-          <div className="flex min-h-[320px] items-center justify-center text-th-text0">
+          <div className="flex min-h-[320px] items-center justify-center text-th-text-m">
             {status === 'connecting' ? 'Connecting to log stream\u2026' : seedLogs.length === 0 ? 'Loading initial logs\u2026' : 'No matching log events.'}
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between border-t border-th-border-m/80 px-4 py-2 text-xs text-th-text0">
+      <div className="flex items-center justify-between border-t border-th-border-m/80 px-4 py-2 text-xs text-th-text-m">
         <span>{visibleMessages.length} entries</span>
         <span>{allMessages.length} total in buffer</span>
       </div>

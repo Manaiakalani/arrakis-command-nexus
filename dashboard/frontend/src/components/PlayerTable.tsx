@@ -57,7 +57,7 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
     <div className="glass-panel overflow-hidden">
       <div className="border-b border-th-border-m/80 p-4 sm:p-5">
         <div className="relative max-w-md">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text0" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text-m" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -72,7 +72,7 @@ export function PlayerTable({ players, onBan, onKick }: PlayerTableProps) {
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-th-border-m text-left text-sm">
-          <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text0">
+          <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text-m">
             <tr>
               {[
                 ['name', 'Name'],
