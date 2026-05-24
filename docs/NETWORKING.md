@@ -91,3 +91,7 @@ Adjust the UDP ranges to match your active deployment profile instead of blindly
 - PostgreSQL and RabbitMQ management ports should stay bound to `127.0.0.1`.
 - The dashboard is served by the Next.js frontend container and should normally remain local-only.
 - Because game services use bridge networking with fixed IPs, Docker network isolation protects internal services. Your host firewall adds an extra layer.
+
+## Remote Dashboard Access with Cloudflare Tunnel
+
+If you want to reach the dashboard from outside your LAN without opening router ports, use [Cloudflare Tunnel](./CLOUDFLARE_TUNNEL.md). It creates an outbound-only encrypted connection from your server to Cloudflare's edge, letting you access the dashboard at a custom domain (e.g. `https://dune.example.com`) with zero inbound firewall rules. Game server UDP ports still need traditional port forwarding.
