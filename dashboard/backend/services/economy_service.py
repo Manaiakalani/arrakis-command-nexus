@@ -34,7 +34,7 @@ class EconomyService:
     async def start(self):
         if self.enabled:
             self._task = asyncio.create_task(self._monitor_loop(), name="economy-monitor")
-            logger.info("Economy monitoring started (interval=%ds)", self.check_interval)
+            logger.info("Economy monitoring started (interval=%ss)", self.check_interval)
 
     async def stop(self):
         if self._task:

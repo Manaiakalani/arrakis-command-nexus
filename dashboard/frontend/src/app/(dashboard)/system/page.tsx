@@ -1,16 +1,50 @@
 'use client';
 
 import { Cpu, Download, HardDrive, Network, Waves } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
-import { MetricsChart } from '@/components/MetricsChart';
-import { NetworkSparkline } from '@/components/NetworkSparkline';
-import { ResourceGauge } from '@/components/ResourceGauge';
 import { Skeleton } from '@/components/Skeleton';
-import { UptimeChart } from '@/components/UptimeChart';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+const MetricsChart = dynamic(() => import('@/components/MetricsChart').then((mod) => mod.MetricsChart), {
+  ssr: false,
+  loading: () => <div className="h-80 animate-pulse rounded-xl bg-th-surface/50" />,
+});
+
+const NetworkSparkline = dynamic(() => import('@/components/NetworkSparkline').then((mod) => mod.NetworkSparkline), {
+  ssr: false,
+  loading: () => <div className="h-16 animate-pulse rounded-xl bg-th-surface/50" />,
+});
+
+const ResourceGauge = dynamic(() => import('@/components/ResourceGauge').then((mod) => mod.ResourceGauge), {
+  ssr: false,
+  loading: () => <div className="h-[116px] w-[116px] animate-pulse rounded-full bg-th-surface/50" />,
+});
+
+const UptimeChart = dynamic(() => import('@/components/UptimeChart').then((mod) => mod.UptimeChart), {
+  ssr: false,
+  loading: () => <div className="h-80 animate-pulse rounded-xl bg-th-surface/50" />,
+});
+
+const widgetOptions = [
+  { value: 'all', label: 'All widgets' },
+  { value: 'cpu', label: 'CPU load' },
+  { value: 'memory', label: 'Memory pressure' },
+  { value: 'disk', label: 'Disk usage' },
+  { value: 'network', label: 'Network pulse' },
+];
+
+const exportFormats = ['csv', 'json'] as const;
+const cpuSeries = [{ key: 'cpuPercent', label: 'CPU', color: '#f59e0b', unit: '%' }] as const;
+const memorySeries = [{ key: 'memoryPercent', label: 'Memory', color: '#fb923c', unit: '%' }] as const;
+const diskSeries = [{ key: 'diskPercent', label: 'Disk', color: '#fbbf24', unit: '%' }] as const;
+const networkSeries = [
+  { key: 'networkInMbps', label: 'Inbound', color: '#f59e0b', unit: 'Mbps' },
+  { key: 'networkOutMbps', label: 'Outbound', color: '#fdba74', unit: 'Mbps' },
+] as const;
 
 function formatPercent(value?: number) {
   return `${(value ?? 0).toFixed(1)}%`;
@@ -32,14 +66,6 @@ export default function SystemPage() {
   const history = useApi(() => apiClient.getSystemHistory(range), { refreshInterval: 15000, initialData: { range, points: [] } });
 
   const exportUrl = `/api/system/export?range=${encodeURIComponent(range)}&format=${encodeURIComponent(exportFormat)}${exportWidget !== 'all' ? `&widget=${encodeURIComponent(exportWidget)}` : ''}`;
-
-  const widgetOptions = [
-    { value: 'all', label: 'All widgets' },
-    { value: 'cpu', label: 'CPU load' },
-    { value: 'memory', label: 'Memory pressure' },
-    { value: 'disk', label: 'Disk usage' },
-    { value: 'network', label: 'Network pulse' },
-  ];
 
   const isLoading = metrics.loading && !metrics.data;
 
@@ -66,7 +92,7 @@ export default function SystemPage() {
             ))}
           </select>
           <div className="inline-flex overflow-hidden rounded-lg border border-th-border">
-            {(['csv', 'json'] as const).map((fmt) => (
+            {exportFormats.map((fmt) => (
               <button
                 key={fmt}
                 type="button"
@@ -185,7 +211,7 @@ export default function SystemPage() {
           selectedRange={range}
           onRangeChange={setRange}
           chartType="area"
-          series={[{ key: 'cpuPercent', label: 'CPU', color: '#f59e0b', unit: '%' }]}
+          series={[...cpuSeries]}
           yDomain={[0, 100]}
         />
         <MetricsChart
@@ -195,7 +221,7 @@ export default function SystemPage() {
           selectedRange={range}
           onRangeChange={setRange}
           chartType="area"
-          series={[{ key: 'memoryPercent', label: 'Memory', color: '#fb923c', unit: '%' }]}
+          series={[...memorySeries]}
           yDomain={[0, 100]}
         />
         <MetricsChart
@@ -205,7 +231,7 @@ export default function SystemPage() {
           selectedRange={range}
           onRangeChange={setRange}
           chartType="area"
-          series={[{ key: 'diskPercent', label: 'Disk', color: '#fbbf24', unit: '%' }]}
+          series={[...diskSeries]}
           yDomain={[0, 100]}
         />
         <MetricsChart
@@ -215,10 +241,7 @@ export default function SystemPage() {
           selectedRange={range}
           onRangeChange={setRange}
           chartType="line"
-          series={[
-            { key: 'networkInMbps', label: 'Inbound', color: '#f59e0b', unit: 'Mbps' },
-            { key: 'networkOutMbps', label: 'Outbound', color: '#fdba74', unit: 'Mbps' },
-          ]}
+          series={[...networkSeries]}
         />
       </section>
     </div>

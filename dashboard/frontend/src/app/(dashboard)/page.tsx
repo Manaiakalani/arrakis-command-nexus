@@ -1,9 +1,9 @@
 'use client';
 
 import { Activity, Check, Clock3, Database, Play, RefreshCcw, Server, ShieldCheck, Square, Users } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
-import { NetworkSparkline } from '@/components/NetworkSparkline';
 import { ResourceGauge } from '@/components/ResourceGauge';
 import { StatusCard } from '@/components/StatusCard';
 import { useApi } from '@/hooks/useApi';
@@ -16,6 +16,14 @@ const readinessStyles = {
   fail: 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-300',
 };
 
+const emptySystemHistory = { range: '1h', points: [] };
+const emptyUptimeData = { range: '24h', availabilityPercent: 0, totalUpSeconds: 0, totalDownSeconds: 0, events: [] };
+
+const NetworkSparkline = dynamic(() => import('@/components/NetworkSparkline').then((mod) => mod.NetworkSparkline), {
+  ssr: false,
+  loading: () => <div className="h-14 animate-pulse rounded-xl bg-th-surface/50" />,
+});
+
 function formatUptime(seconds = 0) {
   const hours = Math.floor(seconds / 3600);
   const days = Math.floor(hours / 24);
@@ -27,10 +35,10 @@ export default function OverviewPage() {
   const readiness = useApi(() => apiClient.getReady(), { refreshInterval: 20000 });
   const maps = useApi(() => apiClient.getMaps(), { refreshInterval: 20000 });
   const metrics = useApi(() => apiClient.getSystemMetrics(), { refreshInterval: 10000 });
-  const resourceHistory = useApi(() => apiClient.getSystemHistory('1h'), { refreshInterval: 15000, initialData: { range: '1h', points: [] } });
+  const resourceHistory = useApi(() => apiClient.getSystemHistory('1h'), { refreshInterval: 15000, initialData: emptySystemHistory });
   const uptime = useApi(() => apiClient.getUptimeData('24h'), {
     refreshInterval: 30000,
-    initialData: { range: '24h', availabilityPercent: 0, totalUpSeconds: 0, totalDownSeconds: 0, events: [] },
+    initialData: emptyUptimeData,
   });
 
   const serviceSummary = useMemo(() => status.data?.services ?? [], [status.data?.services]);
