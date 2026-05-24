@@ -5,11 +5,12 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { HaggaBasinMap } from '@/components/HaggaBasinMap';
 import { MapCard } from '@/components/MapCard';
+import { MapCardSkeleton } from '@/components/Skeleton';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
 export default function MapsPage() {
-  const { data: maps = [], refetch } = useApi(() => apiClient.getMaps(), { refreshInterval: 15000, initialData: [] });
+  const { data: maps = [], loading, refetch } = useApi(() => apiClient.getMaps(), { refreshInterval: 15000, initialData: [] });
   const { data: players = [] } = useApi(() => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
 
@@ -78,9 +79,16 @@ export default function MapsPage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-        {maps.map((map) => (
-          <MapCard key={map.name} map={map} onAction={handleAction} onBackup={handleBackup} />
-        ))}
+        {loading && maps.length === 0 ? (
+          <>
+            <MapCardSkeleton />
+            <MapCardSkeleton />
+          </>
+        ) : (
+          maps.map((map) => (
+            <MapCard key={map.name} map={map} onAction={handleAction} onBackup={handleBackup} />
+          ))
+        )}
       </div>
 
       <div className="glass-panel p-5">

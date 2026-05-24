@@ -65,3 +65,27 @@ export function PageSkeleton() {
     </div>
   );
 }
+
+export function MapCardSkeleton() {
+  return (
+    <div className="glass-panel p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <Skeleton className="h-9 w-9 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Skeleton className="h-16 rounded-xl" />
+        <Skeleton className="h-16 rounded-xl" />
+      </div>
+      <Skeleton className="h-3 w-full rounded-full" />
+      <div className="flex gap-3">
+        <Skeleton className="h-10 flex-1 rounded-xl" />
+        <Skeleton className="h-10 flex-1 rounded-xl" />
+        <Skeleton className="h-10 flex-1 rounded-xl" />
+      </div>
+    </div>
+  );
+}

@@ -312,6 +312,78 @@ test.describe('Theme toggle', () => {
       expect(criticalErrors).toEqual([]);
     }
   });
+
+  test('light mode: text has sufficient contrast against background', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Switch to light mode
+    await page.getByLabel(/Switch to light mode/i).click();
+    await page.waitForTimeout(300);
+
+    // Check primary text color is dark on light background
+    const heading = page.locator('h1').first();
+    const textColor = await heading.evaluate((el) => getComputedStyle(el).color);
+    const textMatch = textColor.match(/(\d+)/g);
+    if (textMatch) {
+      const [r, g, b] = textMatch.map(Number);
+      // Dark text on light bg: RGB should be low (< 100)
+      expect(r + g + b).toBeLessThan(300);
+    }
+
+    // Check sidebar background is light
+    const sidebar = page.getByTestId('sidebar');
+    const sidebarBg = await sidebar.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const sidebarMatch = sidebarBg.match(/(\d+)/g);
+    if (sidebarMatch) {
+      const [r, g, b] = sidebarMatch.map(Number);
+      expect(r).toBeGreaterThan(200);
+      expect(g).toBeGreaterThan(200);
+      expect(b).toBeGreaterThan(200);
+    }
+  });
+
+  test('light mode: glass panels have visible borders', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByLabel(/Switch to light mode/i).click();
+    await page.waitForTimeout(300);
+
+    // Glass panels should have visible borders in light mode
+    const panel = page.locator('.glass-panel').first();
+    const borderColor = await panel.evaluate((el) => getComputedStyle(el).borderColor);
+    // Border should not be transparent
+    expect(borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(borderColor).not.toBe('transparent');
+  });
+
+  test('light mode: maps page shows map cards correctly', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByLabel(/Switch to light mode/i).click();
+    await page.waitForTimeout(300);
+
+    await page.goto('/maps');
+    await page.waitForLoadState('networkidle');
+
+    // Map cards should be visible with proper contrast
+    const mapCards = page.locator('.glass-panel');
+    const count = await mapCards.count();
+    expect(count).toBeGreaterThan(0);
+
+    // Check first map card heading text is readable (dark text)
+    const firstHeading = page.locator('h3').first();
+    if (await firstHeading.isVisible()) {
+      const color = await firstHeading.evaluate((el) => getComputedStyle(el).color);
+      const match = color.match(/(\d+)/g);
+      if (match) {
+        const [r, g, b] = match.map(Number);
+        expect(r + g + b).toBeLessThan(300);
+      }
+    }
+  });
 });
 
 test.describe('Interactive features', () => {
