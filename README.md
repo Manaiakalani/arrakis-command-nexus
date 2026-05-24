@@ -1,6 +1,6 @@
 # Dune Awakening Dedicated Server with Docker Compose and Arrakis Command Nexus
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/Manaiakalani/arrakis-command-nexus/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue)](https://github.com/Manaiakalani/arrakis-command-nexus/releases)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/docker%20compose-v2-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![CI](https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml)

@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] - 2026-05-24
+
+### Changed
+- Upgraded Next.js from 14.2.x to 15.5.18, resolving 13 security advisories (DoS, SSRF, cache poisoning, XSS)
+- Upgraded React and React DOM from 18.x to 19.x (required by Next.js 15)
+- Upgraded PostCSS to 8.5.x with npm override to patch transitive XSS vulnerability (CVE-2026-41305)
+- Upgraded python-dotenv from 1.1.0 to 1.2.2 to fix symlink overwrite vulnerability (CVE-2026-28684)
+- Upgraded eslint-config-next to 15.5.18 for compatibility
+- Pinned `DUNE_IMAGE_TAG` in `.env.example` to specific version instead of `latest`
+
+### Added
+- `.github/CODEOWNERS` file assigning repository ownership
+- Graceful shutdown (`stop_grace_period: 30s`) for dashboard-api and dashboard-frontend
+- Playwright e2e-check job in CI pipeline
+
+### Security
+- All 17 Dependabot alerts resolved (0 remaining)
+- PostCSS override ensures no vulnerable transitive copies in the dependency tree
+- `CODEOWNERS` enforces review requirements for all code changes
+
 ## [1.1.0] - 2026-05-24
 
 ### Added

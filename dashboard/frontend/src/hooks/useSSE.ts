@@ -22,7 +22,7 @@ export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> =
   const { enabled = true, maxMessages = 250, parse } = options;
   const [messages, setMessages] = useState<T[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
-  const reconnectRef = useRef<number>();
+  const reconnectRef = useRef<number>(undefined);
   const parseRef = useRef(parse ?? defaultParser<T>);
 
   useEffect(() => {
