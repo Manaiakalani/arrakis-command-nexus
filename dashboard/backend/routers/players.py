@@ -211,43 +211,6 @@ async def add_allowlist(
 # Connection History
 # ---------------------------------------------------------------------------
 
-_previous_player_ids: set[str] = set()
-
-
-async def record_player_change(
-    session: AsyncSession,
-    current_players: list,
-    map_name: str | None = None,
-) -> None:
-    """Compare current online players to previous snapshot and log connect/disconnect events."""
-    global _previous_player_ids  # noqa: PLW0603
-    current_ids = {p.steam_id for p in current_players}
-    joined = current_ids - _previous_player_ids
-    left = _previous_player_ids - current_ids
-
-    for sid in joined:
-        player = next((p for p in current_players if p.steam_id == sid), None)
-        session.add(
-            ConnectionLog(
-                steam_id=sid,
-                player_name=getattr(player, "name", None),
-                event="connect",
-                map_name=getattr(player, "map_name", map_name),
-            )
-        )
-    for sid in left:
-        session.add(
-            ConnectionLog(
-                steam_id=sid,
-                event="disconnect",
-                map_name=map_name,
-            )
-        )
-    if joined or left:
-        await session.commit()
-    _previous_player_ids = current_ids
-
-
 @router.get("/players/connections")
 async def list_connections(
     limit: int = 200,

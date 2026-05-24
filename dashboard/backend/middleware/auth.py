@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import logging
 import os
 
 from fastapi import HTTPException
@@ -9,10 +10,14 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from middleware.request_utils import get_client_ip, get_sanitized_path
+
 SAFE_PATHS = {"/api/ping", "/api/health", "/api/public/status"}
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _TRUE_VALUES = {"1", "true", "yes", "on"}
 _REQUIRED_VALUES = _TRUE_VALUES | {"required"}
+
+logger = logging.getLogger(__name__)
 
 
 def _auth_error(request: Request) -> tuple[int, str] | None:
@@ -31,10 +36,22 @@ def _auth_error(request: Request) -> tuple[int, str] | None:
         return 503, "Admin token is not configured."
 
     if not hmac.compare_digest(provided_token, expected_token):
+        logger.warning(
+            "SECURITY: Admin auth rejected method=%s path=%s client_ip=%s",
+            request.method,
+            get_sanitized_path(request),
+            get_client_ip(request),
+        )
         return 401, "Invalid admin token."
 
     mutations_enabled = os.getenv("DUNE_ADMIN_MUTATIONS_ENABLED", "true").lower() in _TRUE_VALUES
     if request.method in MUTATING_METHODS and not mutations_enabled:
+        logger.warning(
+            "SECURITY: Mutating API attempt blocked method=%s path=%s client_ip=%s",
+            request.method,
+            get_sanitized_path(request),
+            get_client_ip(request),
+        )
         return 403, "Mutating API operations are disabled."
 
     return None

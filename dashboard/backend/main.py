@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from db.database import dispose_db, init_db
 from middleware.auth import AdminTokenMiddleware, verify_admin_token
 from middleware.redaction import redact
+from middleware.request_logging import RequestLoggingMiddleware
 from routers import announce, backups, characters, chat_guard, config, discord, economy, logs, maps, players, settings, status, system, watchdog
 from services.announce_service import AnnounceService
 from services.backup_scheduler import BackupScheduler
@@ -208,6 +209,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "Accept", "X-Admin-Token"],
 )
 app.add_middleware(AdminTokenMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
 
 _SECURE_API_DEPENDENCIES = [Depends(verify_admin_token)]
 

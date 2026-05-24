@@ -22,10 +22,15 @@ x-game-server-command:
   rmq-admin-port: &cmd-rmq-admin-port --RMQAdminPort=5672
   multihome: &cmd-multihome -MultiHome=$POD_IP
 
+x-container-security: &container-security
+  security_opt:
+    - no-new-privileges:true
+
 # ---------------------------------------------------------------------------
 # Base template for game server containers
 # ---------------------------------------------------------------------------
 x-game-server-base: &game-server-base
+  <<: *container-security
   image: funcom/self-hosting/seabass-server:${DUNE_IMAGE_TAG}
   dns:
     - 1.1.1.1
@@ -54,6 +59,7 @@ services:
   # Postgres - world state persistence
   # -------------------------------------------------------------------------
   postgres:
+    <<: *container-security
     image: igw-postgres:17.4-alpine-fc-13
     restart: unless-stopped
     environment:
@@ -75,11 +81,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.2
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Admin RabbitMQ - internal coordination
   # -------------------------------------------------------------------------
   admin-rmq:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-rabbitmq:${DUNE_IMAGE_TAG}
     hostname: admin-rmq
     restart: unless-stopped
@@ -104,11 +112,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.3
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Game RabbitMQ - client login and game traffic
   # -------------------------------------------------------------------------
   game-rmq:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-rabbitmq:${DUNE_IMAGE_TAG}
     hostname: game-rmq
     restart: unless-stopped
@@ -136,11 +146,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.4
+      backend: {}
 
   # -------------------------------------------------------------------------
   # RMQ Auth Shim - HTTP auth backend for RabbitMQ
   # -------------------------------------------------------------------------
   rmq-auth-shim:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
     restart: unless-stopped
     working_dir: /workspace
@@ -165,11 +177,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.7
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Database Init - one-shot schema bootstrap
   # -------------------------------------------------------------------------
   db-init:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
     restart: "no"
     working_dir: /root/PSQL
@@ -186,11 +200,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.42
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Partition Repair - fixes world_partition after server restarts
   # -------------------------------------------------------------------------
   partition-repair:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
     restart: unless-stopped
     working_dir: /root/PSQL
@@ -223,11 +239,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.43
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Director - battlegroup state and travel management
   # -------------------------------------------------------------------------
   director:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-bg-director:${DUNE_IMAGE_TAG}
     restart: unless-stopped
     dns:
@@ -279,11 +297,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.5
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Text Router - chat routing
   # -------------------------------------------------------------------------
   text-router:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-text-router:${DUNE_IMAGE_TAG}
     restart: unless-stopped
     dns:
@@ -339,11 +359,13 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.6
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Gateway - FLS farm registration
   # -------------------------------------------------------------------------
   gateway:
+    <<: *container-security
     image: funcom/self-hosting/seabass-server-gateway:${DUNE_IMAGE_TAG}
     restart: unless-stopped
     dns:
@@ -403,11 +425,37 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.40
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Docker socket proxy - narrows dashboard access to the Docker API
+  # -------------------------------------------------------------------------
+  docker-socket-proxy:
+    <<: *container-security
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      EXEC: 1
+      IMAGES: 1
+      INFO: 1
+      PING: 1
+      POST: 1
+      VERSION: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    networks:
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Dashboard API
   # -------------------------------------------------------------------------
   dashboard-api:
+    <<: *container-security
     build:
       context: ./dashboard/backend
     restart: unless-stopped
@@ -443,8 +491,8 @@ services:
       DUNE_IMAGE_TAG: ${DUNE_IMAGE_TAG}
       DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-basic}
       DUNE_FLS_ENV: ${DUNE_FLS_ENV:-retail}
+      DUNE_DOCKER_BASE_URL: tcp://docker-socket-proxy:2375
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./config:/workspace/config:ro
       - ./backups:/workspace/backups
       - ./secrets:/workspace/secrets:ro
@@ -453,6 +501,8 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+      docker-socket-proxy:
+        condition: service_started
     healthcheck:
       test:
         - CMD-SHELL
@@ -462,13 +512,13 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      default:
-        ipv4_address: 10.80.0.50
+      backend: {}
 
   # -------------------------------------------------------------------------
   # Dashboard Frontend (Next.js with API proxy)
   # -------------------------------------------------------------------------
   dashboard-frontend:
+    <<: *container-security
     build:
       context: ./dashboard/frontend
     image: dune-awakening-dashboard-frontend
@@ -493,6 +543,7 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.51
+      backend: {}
 
 # ===========================================================================
 # Internal Docker bridge network (not exposed to your LAN)
@@ -505,4 +556,6 @@ networks:
     ipam:
       config:
         - subnet: ${DUNE_DOCKER_SUBNET:-10.80.0.0/20}
+  backend:
+    internal: true
 
