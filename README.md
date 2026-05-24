@@ -165,6 +165,7 @@ flowchart TB
 | [Deep Desert Knobs](./docs/DEEP_DESERT_KNOBS.md) | Focused Deep Desert tuning reference |
 | [Resource Respawn Knobs](./docs/RESOURCE_RESPAWN_KNOBS.md) | Resource pacing and respawn-related settings |
 | [Security Policy](./SECURITY.md) | Hardening checklist and responsible disclosure |
+| [Cloudflare Tunnel](./docs/CLOUDFLARE_TUNNEL.md) | Expose the dashboard over the internet without port forwarding |
 
 ## Common CLI Commands
 
