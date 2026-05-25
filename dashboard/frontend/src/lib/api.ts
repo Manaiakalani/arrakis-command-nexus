@@ -276,6 +276,14 @@ export class ApiClient {
     });
   }
 
+  stopServer() {
+    return this.request<{ status: string; action: string; succeeded: string[]; failed: { service: string; error: string }[]; total: number }>('/server/stop', { method: 'POST' });
+  }
+
+  startServer() {
+    return this.request<{ status: string; action: string; succeeded: string[]; failed: { service: string; error: string }[]; total: number }>('/server/start', { method: 'POST' });
+  }
+
   getDiscordWebhooks() {
     return this.request<DiscordWebhook[]>('/discord/webhooks');
   }

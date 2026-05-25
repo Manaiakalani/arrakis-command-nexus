@@ -1,6 +1,6 @@
 'use client';
 
-import { AlarmClock, Cpu, Download, HardDrive, Network, Power, Waves } from 'lucide-react';
+import { AlarmClock, Cpu, Download, HardDrive, Network, Pause, Play, Power, Waves } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -117,9 +117,11 @@ export default function SystemPage() {
   const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
   const [manualWarningMinutes, setManualWarningMinutes] = useState(0);
   const [restartingNow, setRestartingNow] = useState(false);
+  const [stoppingServer, setStoppingServer] = useState(false);
+  const [startingServer, setStartingServer] = useState(false);
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const metrics = useApi(() => apiClient.getSystemMetrics(), { refreshInterval: 10000 });
-  const history = useApi(() => apiClient.getSystemHistory(range), { refreshInterval: 15000, initialData: { range, points: [] } });
+  const history = useApi(() => apiClient.getSystemHistory(range), { refreshInterval: 15000, initialData: { range, points: [] }, deps: [range] });
   const restartScheduleApi = useApi(() => apiClient.getRestartSchedule(), {
     refreshInterval: 15000,
     initialData: DEFAULT_RESTART_SCHEDULE,
@@ -318,6 +320,85 @@ export default function SystemPage() {
           chartType="line"
           series={[...networkSeries]}
         />
+      </section>
+
+      <section className="glass-panel p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="section-title">Server control</p>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Power Management</h2>
+            <p className="mt-2 text-sm text-th-text-m">Stop or start all game server containers (maps and infrastructure). The dashboard remains accessible.</p>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <button
+            type="button"
+            disabled={stoppingServer || startingServer || restartingNow}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-700 transition-colors hover:bg-red-500/20 dark:text-red-300 disabled:cursor-not-allowed disabled:opacity-60 dune-focus"
+            onClick={async () => {
+              if (!window.confirm('Stop ALL game server containers? Players will be disconnected.')) return;
+              setStoppingServer(true);
+              try {
+                const result = await apiClient.stopServer();
+                const msg = result.status === 'ok'
+                  ? `Stopped ${result.succeeded.length} services.`
+                  : `Stopped ${result.succeeded.length} services with ${result.failed.length} errors.`;
+                toast(msg, result.status === 'ok' ? 'success' : 'error');
+              } catch (err) {
+                toast(`Failed to stop server: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+              } finally {
+                setStoppingServer(false);
+              }
+            }}
+          >
+            <Pause className="h-4 w-4" />
+            {stoppingServer ? 'Stopping...' : 'Stop server'}
+          </button>
+          <button
+            type="button"
+            disabled={stoppingServer || startingServer || restartingNow}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-semibold text-green-700 transition-colors hover:bg-green-500/20 dark:text-green-300 disabled:cursor-not-allowed disabled:opacity-60 dune-focus"
+            onClick={async () => {
+              if (!window.confirm('Start ALL game server containers?')) return;
+              setStartingServer(true);
+              try {
+                const result = await apiClient.startServer();
+                const msg = result.status === 'ok'
+                  ? `Started ${result.succeeded.length} services.`
+                  : `Started ${result.succeeded.length} services with ${result.failed.length} errors.`;
+                toast(msg, result.status === 'ok' ? 'success' : 'error');
+              } catch (err) {
+                toast(`Failed to start server: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+              } finally {
+                setStartingServer(false);
+              }
+            }}
+          >
+            <Play className="h-4 w-4" />
+            {startingServer ? 'Starting...' : 'Start server'}
+          </button>
+          <button
+            type="button"
+            disabled={stoppingServer || startingServer || restartingNow}
+            className="dune-button flex items-center justify-center gap-2"
+            onClick={async () => {
+              if (!window.confirm('Restart ALL game server containers? Players will be briefly disconnected.')) return;
+              setRestartingNow(true);
+              try {
+                const result = await apiClient.restartNow(0);
+                const msg = result.status === 'failed' ? 'Restart failed.' : 'Server restart triggered.';
+                toast(msg, result.status === 'failed' ? 'error' : 'success');
+              } catch (err) {
+                toast(`Failed to restart: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+              } finally {
+                setRestartingNow(false);
+              }
+            }}
+          >
+            <Power className="h-4 w-4" />
+            {restartingNow ? 'Restarting...' : 'Restart server'}
+          </button>
+        </div>
       </section>
 
       <section className="glass-panel p-5">

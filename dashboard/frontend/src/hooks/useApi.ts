@@ -6,10 +6,12 @@ interface UseApiOptions<T> {
   enabled?: boolean;
   refreshInterval?: number;
   initialData?: T;
+  /** When any element changes, the fetcher is re-invoked immediately. */
+  deps?: unknown[];
 }
 
 export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> = {}) {
-  const { enabled = true, refreshInterval, initialData } = options;
+  const { enabled = true, refreshInterval, initialData, deps } = options;
   const fetcherRef = useRef(fetcher);
   const enabledRef = useRef(enabled);
   const isMountedRef = useRef(true);
@@ -70,7 +72,8 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     }
 
     void run(false);
-  }, [enabled, run]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, run, ...(deps ?? [])]);
 
   useEffect(() => {
     if (!enabled || !refreshInterval) {

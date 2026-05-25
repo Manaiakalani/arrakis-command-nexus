@@ -51,6 +51,7 @@ export function UptimeChart() {
   const uptime = useApi(() => apiClient.getUptimeData(range), {
     refreshInterval: 30000,
     initialData: { range, availabilityPercent: 0, totalUpSeconds: 0, totalDownSeconds: 0, events: [] },
+    deps: [range],
   });
 
   const chartData = useMemo(

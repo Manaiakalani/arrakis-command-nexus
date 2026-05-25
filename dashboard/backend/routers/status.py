@@ -209,3 +209,47 @@ async def service_action(name: str, action: str, request: Request) -> dict:
         raise HTTPException(status_code=500, detail="Service action failed. Check server logs for details.") from exc
 
     return {"service": name, "action": action, **result}
+
+
+# Game-server roles that should be targeted by bulk stop/start
+_GAME_SERVER_ROLES = {"overmap", "survival"}
+# Infrastructure roles are also stoppable but separated so the UI can differentiate
+_INFRA_ROLES = {"gateway", "director", "rabbitmq", "postgres", "text-router", "auth-shim"}
+
+
+@router.post("/server/{action}")
+async def server_bulk_action(action: str, request: Request) -> dict:
+    """Stop, start, or restart all game-server containers (maps + infrastructure)."""
+    if action not in _ALLOWED_ACTIONS:
+        raise HTTPException(status_code=400, detail=f"Invalid action '{action}'. Must be one of: {', '.join(sorted(_ALLOWED_ACTIONS))}")
+
+    docker_service = request.app.state.docker_service
+    handler = getattr(docker_service, f"{action}_container", None)
+    if handler is None:
+        raise HTTPException(status_code=500, detail=f"Docker service missing '{action}_container' method")
+
+    services = await docker_service.list_containers()
+    target_roles = _GAME_SERVER_ROLES | _INFRA_ROLES
+    targets = [
+        svc for svc in services
+        if docker_service._map_role(svc.name) in target_roles
+    ]
+
+    results: list[dict] = []
+    errors: list[dict] = []
+    for svc in targets:
+        try:
+            await handler(svc.name)
+            results.append({"service": svc.name, "action": action, "status": "ok"})
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Bulk %s failed for %s: %s", action, svc.name, exc)
+            errors.append({"service": svc.name, "error": str(exc)})
+
+    overall = "ok" if not errors else ("partial" if results else "failed")
+    return {
+        "status": overall,
+        "action": action,
+        "succeeded": [r["service"] for r in results],
+        "failed": errors,
+        "total": len(targets),
+    }
