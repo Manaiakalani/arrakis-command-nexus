@@ -27,7 +27,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /install /usr/local
 COPY . .
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true \
-    && chown -R app:app /app
+    && chown -R app:app /app \
+    && mkdir -p /workspace/data \
+    && chown app:app /workspace/data
 USER app
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

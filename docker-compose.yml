@@ -563,10 +563,12 @@ services:
       DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-basic}
       DUNE_FLS_ENV: ${DUNE_FLS_ENV:-retail}
       DUNE_DOCKER_BASE_URL: tcp://docker-socket-proxy:2375
+      DUNE_DASHBOARD_DB_URL: sqlite+aiosqlite:////workspace/data/dashboard.db
     volumes:
       - ./config:/workspace/config:ro
       - ./backups:/workspace/backups
       - ./secrets:/workspace/secrets:ro
+      - ./dashboard-data:/workspace/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -637,4 +639,3 @@ networks:
         - subnet: ${DUNE_DOCKER_SUBNET:-10.80.0.0/20}
   backend:
     internal: true
-
