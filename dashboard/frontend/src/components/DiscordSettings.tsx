@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import type { DiscordWebhook } from '@/lib/types';
 
-const availableEvents = ['server-start', 'server-stop', 'backup-complete', 'player-ban', 'map-restart'];
+const availableEvents = ['server-start', 'server-stop', 'server-crash', 'player-join', 'player-leave'];
 
 interface DiscordSettingsProps {
   webhooks: DiscordWebhook[];

@@ -19,9 +19,9 @@ router = APIRouter(tags=["discord"])
 _EVENT_FIELDS = {
     "server-start": "notify_start",
     "server-stop": "notify_stop",
-    "backup-complete": "notify_crash",
-    "player-ban": "notify_player_join",
-    "map-restart": "notify_player_leave",
+    "server-crash": "notify_crash",
+    "player-join": "notify_player_join",
+    "player-leave": "notify_player_leave",
 }
 
 

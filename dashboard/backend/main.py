@@ -86,7 +86,7 @@ def _frontend_dir() -> Path | None:
     return candidate if candidate.exists() else None
 
 
-async def _track_player_connections(postgres_service: PostgresService) -> None:
+async def _track_player_connections(postgres_service: PostgresService, discord_service=None) -> None:
     """Poll online players every 15s and log connect/disconnect events."""
     from db.database import SessionLocal
     from db.models import AuditLog, ConnectionLog
@@ -127,6 +127,24 @@ async def _track_player_connections(postgres_service: PostgresService) -> None:
                             performed_by="system",
                         ))
                     await session.commit()
+
+                # Send Discord notifications outside the DB session
+                if discord_service is not None:
+                    for sid in joined:
+                        player = next((p for p in current_players if p.steam_id == sid), None)
+                        pname = getattr(player, "name", None) or sid
+                        mname = getattr(player, "map_name", None) or "Unknown"
+                        await discord_service.enqueue(
+                            "player_join",
+                            f"**{pname}** connected to **{mname}** ({len(current_ids)} online)",
+                            title="Player Connected",
+                        )
+                    for sid in left:
+                        await discord_service.enqueue(
+                            "player_leave",
+                            f"**{sid}** disconnected ({len(current_ids)} online)",
+                            title="Player Disconnected",
+                        )
 
             previous_ids = current_ids
         except Exception:  # noqa: BLE001
@@ -195,7 +213,7 @@ async def lifespan(app: FastAPI):
 
     # Background task: track player connections
     connection_tracker_task = asyncio.create_task(
-        _track_player_connections(postgres_service), name="connection-tracker"
+        _track_player_connections(postgres_service, discord_service), name="connection-tracker"
     )
 
     # Security warnings for weak defaults
