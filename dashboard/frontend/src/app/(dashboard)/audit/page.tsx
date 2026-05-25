@@ -9,6 +9,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+import { useToast } from '@/components/ToastProvider';
+
 const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 const TOKEN =
   typeof window !== 'undefined' ? localStorage.getItem('admin_token') ?? '' : '';
@@ -22,6 +24,8 @@ interface AuditEntry {
 }
 
 const ACTION_LABELS: Record<string, string> = {
+  player_login: 'Player Login',
+  player_logout: 'Player Logout',
   player_kick: 'Player Kicked',
   player_ban_add: 'Player Banned',
   player_ban_remove: 'Ban Removed',
@@ -41,6 +45,8 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
+  player_login: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  player_logout: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
   player_kick: 'bg-red-500/20 text-red-400 border-red-500/30',
   player_ban_add: 'bg-red-500/20 text-red-400 border-red-500/30',
   player_ban_remove: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -81,6 +87,7 @@ function formatDetails(details: Record<string, unknown>): string {
 }
 
 export default function AuditPage() {
+  const { toast } = useToast();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -107,11 +114,11 @@ export default function AuditPage() {
         setTotal(data.total ?? 0);
       }
     } catch {
-      /* ignore */
+      toast('Failed to load audit trail', 'error');
     } finally {
       setLoading(false);
     }
-  }, [offset, category]);
+  }, [offset, category, toast]);
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -123,9 +130,9 @@ export default function AuditPage() {
         setSummary(data.by_action ?? {});
       }
     } catch {
-      /* ignore */
+      toast('Failed to load audit summary', 'error');
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchAudit();
@@ -145,15 +152,15 @@ export default function AuditPage() {
         <div className="flex items-center gap-3">
           <ClipboardList className="h-7 w-7 text-amber-400" />
           <div>
-            <h1 className="text-2xl font-bold text-sand-100">Audit Trail</h1>
-            <p className="text-sm text-sand-400">
+            <h1 className="text-2xl font-bold text-th-text">Audit Trail</h1>
+            <p className="text-sm text-th-text-m">
               Track all admin actions, config changes, and player events
             </p>
           </div>
         </div>
         <button
           onClick={() => { fetchAudit(); fetchSummary(); }}
-          className="flex items-center gap-2 rounded-lg border border-sand-700 bg-sand-800/60 px-3 py-2 text-sm text-sand-300 hover:bg-sand-700/60 transition-colors"
+          className="dune-button-muted flex items-center gap-2"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
@@ -164,7 +171,7 @@ export default function AuditPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Object.entries(CATEGORY_LABELS).map(([cat, label]) => {
           const catActions = {
-            player: ['player_kick', 'player_ban_add', 'player_ban_remove', 'allowlist_add'],
+            player: ['player_login', 'player_logout', 'player_kick', 'player_ban_add', 'player_ban_remove', 'allowlist_add'],
             character: ['item_grant', 'solari_grant', 'teleport', 'character_update', 'health_set'],
             config: ['config_update', 'config_drift_accept'],
             system: ['backup_create', 'backup_restore', 'announcement_send', 'discord_webhook_add'],
@@ -177,18 +184,18 @@ export default function AuditPage() {
               className={`rounded-xl border p-4 text-left transition-colors ${
                 category === cat
                   ? 'border-amber-500/50 bg-amber-500/10'
-                  : 'border-sand-700/50 bg-sand-800/40 hover:bg-sand-800/70'
+                  : 'border-th-border/50 bg-th-surface-s/40 hover:bg-th-surface/70'
               }`}
             >
-              <p className="text-xs text-sand-400">{label}</p>
-              <p className="text-2xl font-bold text-sand-100">{count}</p>
+              <p className="text-xs text-th-text-m">{label}</p>
+              <p className="text-2xl font-bold text-th-text">{count}</p>
             </button>
           );
         })}
       </div>
 
       {/* Filter bar */}
-      <div className="flex items-center gap-2 text-sm text-sand-400">
+      <div className="flex items-center gap-2 text-sm text-th-text-m">
         <Filter className="h-4 w-4" />
         <span>
           {category ? `Filtered: ${CATEGORY_LABELS[category] ?? category}` : 'All events'}
@@ -197,50 +204,50 @@ export default function AuditPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-sand-700/50 bg-sand-900/40 overflow-hidden">
+      <div className="glass-panel overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-sand-500">Loading audit trail...</div>
+          <div className="p-8 text-center text-th-text-m">Loading audit trail...</div>
         ) : entries.length === 0 ? (
-          <div className="p-8 text-center text-sand-500">No audit entries found</div>
+          <div className="p-8 text-center text-th-text-m">No audit entries found</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-sand-700/50 text-sand-400">
+              <tr className="border-b border-th-border/50 text-th-text-m">
                 <th className="px-4 py-3 text-left font-medium">Time</th>
                 <th className="px-4 py-3 text-left font-medium">Action</th>
                 <th className="px-4 py-3 text-left font-medium">Details</th>
                 <th className="px-4 py-3 text-left font-medium">By</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-sand-800/50">
+            <tbody className="divide-y divide-th-border-m/50">
               {entries.map((e) => (
                 <tr
                   key={e.id}
                   onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}
-                  className="hover:bg-sand-800/30 cursor-pointer transition-colors"
+                  className="hover:bg-th-surface-s/50 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 text-sand-400 whitespace-nowrap">
+                  <td className="px-4 py-3 text-th-text-m whitespace-nowrap">
                     {formatDate(e.created_at)}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block rounded-md border px-2 py-0.5 text-xs font-medium ${
-                        ACTION_COLORS[e.action] ?? 'bg-sand-700/30 text-sand-300 border-sand-600/30'
+                        ACTION_COLORS[e.action] ?? 'bg-th-surface-s/30 text-th-text-s border-th-border/30'
                       }`}
                     >
                       {ACTION_LABELS[e.action] ?? e.action}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sand-300 max-w-md">
+                  <td className="px-4 py-3 text-th-text-s max-w-md">
                     {expandedId === e.id ? (
-                      <pre className="whitespace-pre-wrap text-xs text-sand-300 bg-sand-900/60 rounded p-2 mt-1">
+                      <pre className="whitespace-pre-wrap text-xs text-th-text-s bg-th-bg-s/60 rounded p-2 mt-1">
                         {JSON.stringify(e.details, null, 2)}
                       </pre>
                     ) : (
                       <span className="truncate block max-w-md">{formatDetails(e.details)}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sand-400 whitespace-nowrap">
+                  <td className="px-4 py-3 text-th-text-m whitespace-nowrap">
                     {e.performed_by}
                   </td>
                 </tr>
@@ -252,11 +259,11 @@ export default function AuditPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-sand-400">
+        <div className="flex items-center justify-between text-sm text-th-text-m">
           <button
             disabled={offset === 0}
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-            className="flex items-center gap-1 rounded-lg border border-sand-700 px-3 py-1.5 hover:bg-sand-800/60 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="dune-button-muted flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronLeft className="h-4 w-4" /> Previous
           </button>
@@ -266,7 +273,7 @@ export default function AuditPage() {
           <button
             disabled={offset + PAGE_SIZE >= total}
             onClick={() => setOffset(offset + PAGE_SIZE)}
-            className="flex items-center gap-1 rounded-lg border border-sand-700 px-3 py-1.5 hover:bg-sand-800/60 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="dune-button-muted flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Next <ChevronRight className="h-4 w-4" />
           </button>

@@ -4,12 +4,14 @@ import { Megaphone, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
 const preRestartOptions = [1, 2, 5, 10, 15] as const;
 
 export default function AnnouncementsPage() {
+  const { toast } = useToast();
   const [message, setMessage] = useState('');
   const [sender, setSender] = useState('Server');
   const [minutes, setMinutes] = useState<number>(5);
@@ -33,12 +35,15 @@ export default function AnnouncementsPage() {
     try {
       const response = await apiClient.sendGameAnnouncement(message.trim(), sender.trim() || undefined);
       setFeedback({ type: response.success ? 'success' : 'error', text: response.message });
+      toast(response.message, response.success ? 'success' : 'error');
       if (response.success) {
         setMessage('');
       }
       await refreshHistory();
     } catch (error) {
-      setFeedback({ type: 'error', text: error instanceof Error ? error.message : 'Failed to send announcement' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send announcement';
+      setFeedback({ type: 'error', text: errorMessage });
+      toast(`Failed to send announcement: ${errorMessage}`, 'error');
     } finally {
       setBusy(false);
     }
@@ -49,10 +54,14 @@ export default function AnnouncementsPage() {
     setFeedback(null);
     try {
       const response = await apiClient.sendPreRestartWarning(minutes);
-      setFeedback({ type: response.success ? 'success' : 'error', text: response.success ? 'Pre-restart warning sent.' : 'Failed to send pre-restart warning.' });
+      const feedbackMessage = response.success ? 'Pre-restart warning sent.' : 'Failed to send pre-restart warning.';
+      setFeedback({ type: response.success ? 'success' : 'error', text: feedbackMessage });
+      toast(feedbackMessage, response.success ? 'success' : 'error');
       await refreshHistory();
     } catch (error) {
-      setFeedback({ type: 'error', text: error instanceof Error ? error.message : 'Failed to send pre-restart warning' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send pre-restart warning';
+      setFeedback({ type: 'error', text: errorMessage });
+      toast(`Failed to send pre-restart warning: ${errorMessage}`, 'error');
     } finally {
       setBusy(false);
     }

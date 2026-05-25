@@ -3,6 +3,7 @@
 import { Shield, ShieldAlert, Trash2 } from 'lucide-react';
 
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import type { ChatGuardViolation } from '@/lib/types';
@@ -14,6 +15,7 @@ const violationLabels: Record<ChatGuardViolation['type'], string> = {
 };
 
 export default function ModerationPage() {
+  const { toast } = useToast();
   const settings = useApi(() => apiClient.getChatGuardSettings(), { refreshInterval: 15000 });
   const violations = useApi(() => apiClient.getChatGuardViolations(), { refreshInterval: 10000, initialData: [] });
 
@@ -24,8 +26,10 @@ export default function ModerationPage() {
     try {
       await apiClient.clearChatGuardViolations();
       await Promise.all([settings.refetch(), violations.refetch()]);
+      toast('Chat guard violations cleared.', 'success');
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Failed to clear violations.');
+      const message = error instanceof Error ? error.message : 'Failed to clear violations.';
+      toast(`Failed to clear violations: ${message}`, 'error');
     }
   };
 

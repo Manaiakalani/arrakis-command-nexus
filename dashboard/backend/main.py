@@ -87,7 +87,7 @@ def _frontend_dir() -> Path | None:
 async def _track_player_connections(postgres_service: PostgresService) -> None:
     """Poll online players every 15s and log connect/disconnect events."""
     from db.database import SessionLocal
-    from db.models import ConnectionLog
+    from db.models import AuditLog, ConnectionLog
 
     previous_ids: set[str] = set()
     while True:
@@ -101,16 +101,28 @@ async def _track_player_connections(postgres_service: PostgresService) -> None:
                 async with SessionLocal() as session:
                     for sid in joined:
                         player = next((p for p in current_players if p.steam_id == sid), None)
+                        pname = getattr(player, "name", None)
+                        mname = getattr(player, "map_name", None)
                         session.add(ConnectionLog(
                             steam_id=sid,
-                            player_name=getattr(player, "name", None),
+                            player_name=pname,
                             event="connect",
-                            map_name=getattr(player, "map_name", None),
+                            map_name=mname,
+                        ))
+                        session.add(AuditLog(
+                            action="player_login",
+                            details={"steam_id": sid, "player_name": pname, "map": mname},
+                            performed_by="system",
                         ))
                     for sid in left:
                         session.add(ConnectionLog(
                             steam_id=sid,
                             event="disconnect",
+                        ))
+                        session.add(AuditLog(
+                            action="player_logout",
+                            details={"steam_id": sid},
+                            performed_by="system",
                         ))
                     await session.commit()
 

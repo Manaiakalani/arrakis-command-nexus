@@ -4,12 +4,14 @@ import { useCallback, useMemo } from 'react';
 
 import { ConfigEditor } from '@/components/ConfigEditor';
 import { Skeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
 const configFiles = ['UserGame.ini', 'UserEngine.ini', 'director.ini', 'gateway.ini'];
 
 export default function ConfigPage() {
+  const { toast } = useToast();
   const configs = useApi(() => Promise.all(configFiles.map((file) => apiClient.getConfig(file))), { initialData: [] });
   const driftStatus = useApi(() => apiClient.getConfigDrift(), { initialData: { files: {} } });
 
@@ -26,21 +28,23 @@ export default function ConfigPage() {
     try {
       await apiClient.updateConfig(filename, data);
       await refreshConfigs();
+      toast(`${filename} saved successfully.`, 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save config.';
-      window.alert(message);
+      toast(`Failed to save config: ${message}`, 'error');
     }
-  }, [refreshConfigs]);
+  }, [refreshConfigs, toast]);
 
   const handleAcceptDrift = useCallback(async (filename: string) => {
     try {
       await apiClient.acceptConfigDrift(filename);
       await refreshConfigs();
+      toast(`${filename} drift accepted.`, 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to accept drift.';
-      window.alert(message);
+      toast(`Failed to accept config drift: ${message}`, 'error');
     }
-  }, [refreshConfigs]);
+  }, [refreshConfigs, toast]);
 
   const isLoading = configs.loading || driftStatus.loading;
 

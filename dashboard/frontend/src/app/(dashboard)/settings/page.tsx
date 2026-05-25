@@ -15,12 +15,14 @@ import {
 } from 'lucide-react';
 
 import { Skeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
 type SettingsData = Record<string, Record<string, unknown>>;
 
 export default function SettingsPage() {
+  const { toast } = useToast();
   const settings = useApi(() => apiClient.getSettings(), { initialData: {} as SettingsData });
   const admins = useApi(() => apiClient.getAdmins(), { initialData: [] });
   const [saving, setSaving] = useState<string | null>(null);
@@ -37,21 +39,31 @@ export default function SettingsPage() {
     try {
       await apiClient.updateSettingsSection(section, data);
       await settings.refetch();
+      toast(`${section.charAt(0).toUpperCase()}${section.slice(1)} settings saved.`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `Failed to save ${section} settings.`;
+      toast(`Failed to save ${section} settings: ${message}`, 'error');
     } finally {
       setSaving(null);
     }
-  }, [settings]);
+  }, [settings, toast]);
 
   const handleExport = useCallback(async () => {
-    const data = await apiClient.exportSettings();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `nexus-settings-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, []);
+    try {
+      const data = await apiClient.exportSettings();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nexus-settings-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Settings exported.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export settings.';
+      toast(`Failed to export settings: ${message}`, 'error');
+    }
+  }, [toast]);
 
   const handleImport = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -61,30 +73,54 @@ export default function SettingsPage() {
       const payload = JSON.parse(text);
       await apiClient.importSettings(payload);
       await settings.refetch();
-    } catch {
-      // invalid JSON
+      toast('Settings imported.', 'success');
+    } catch (error) {
+      const message = error instanceof SyntaxError
+        ? 'Invalid JSON file.'
+        : error instanceof Error
+          ? error.message
+          : 'Failed to import settings.';
+      toast(`Failed to import settings: ${message}`, 'error');
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [settings]);
+  }, [settings, toast]);
 
   const handleAddAdmin = useCallback(async () => {
     const username = newAdmin.trim();
     if (!username) return;
-    await apiClient.addAdmin(username);
-    setNewAdmin('');
-    await admins.refetch();
-  }, [newAdmin, admins]);
+    try {
+      await apiClient.addAdmin(username);
+      setNewAdmin('');
+      await admins.refetch();
+      toast('Administrator added.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add administrator.';
+      toast(`Failed to add administrator: ${message}`, 'error');
+    }
+  }, [newAdmin, admins, toast]);
 
   const handleRemoveAdmin = useCallback(async (id: number) => {
     if (!window.confirm('Remove this administrator?')) return;
-    await apiClient.removeAdmin(id);
-    await admins.refetch();
-  }, [admins]);
+    try {
+      await apiClient.removeAdmin(id);
+      await admins.refetch();
+      toast('Administrator removed.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove administrator.';
+      toast(`Failed to remove administrator: ${message}`, 'error');
+    }
+  }, [admins, toast]);
 
   const handleToggleAdmin = useCallback(async (id: number, enabled: boolean) => {
-    await apiClient.updateAdmin(id, { enabled });
-    await admins.refetch();
-  }, [admins]);
+    try {
+      await apiClient.updateAdmin(id, { enabled });
+      await admins.refetch();
+      toast(`Administrator ${enabled ? 'enabled' : 'disabled'}.`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update administrator.';
+      toast(`Failed to update administrator: ${message}`, 'error');
+    }
+  }, [admins, toast]);
 
   const isLoading = settings.loading || admins.loading;
 

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { PlayerTable } from '@/components/PlayerTable';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import type { ConnectionLogEntry, Player } from '@/lib/types';
@@ -29,6 +30,7 @@ const PlayerHeatmap = dynamic(() => import('@/components/PlayerHeatmap').then((m
 });
 
 export default function PlayersPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('online');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [reason, setReason] = useState('Rule violation');
@@ -57,8 +59,10 @@ export default function PlayersPage() {
       await apiClient.banPlayer(selectedPlayer.steamId, reason, duration ? Number(duration) : undefined);
       setSelectedPlayer(null);
       await Promise.all([players.refetch(), playerPositions.refetch(), bans.refetch()]);
+      toast(`Banned ${selectedPlayer.name}.`, 'success');
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Failed to ban player.');
+      const message = error instanceof Error ? error.message : 'Failed to ban player.';
+      toast(`Failed to ban player: ${message}`, 'error');
     }
   };
 
@@ -67,11 +71,25 @@ export default function PlayersPage() {
       const response = await apiClient.kickPlayer(player.steamId);
       setKickStatus({ tone: response.status === 'ok' ? 'success' : 'error', message: response.message });
       await Promise.all([players.refetch(), playerPositions.refetch()]);
+      toast(response.message, response.status === 'ok' ? 'success' : 'error');
     } catch (error) {
+      const message = error instanceof Error ? error.message : `Failed to kick ${player.steamId}`;
       setKickStatus({
         tone: 'error',
-        message: error instanceof Error ? error.message : `Failed to kick ${player.steamId}`,
+        message,
       });
+      toast(`Failed to kick player: ${message}`, 'error');
+    }
+  };
+
+  const handleUnban = async (steamId: string) => {
+    try {
+      await apiClient.unbanPlayer(steamId);
+      await bans.refetch();
+      toast('Player unbanned.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to unban player.';
+      toast(`Failed to unban player: ${message}`, 'error');
     }
   };
 
@@ -150,7 +168,7 @@ export default function PlayersPage() {
                   <p className="mt-1 text-sm text-th-text-m">{entry.reason}</p>
                   <p className="mt-1 text-xs text-th-text-m">Expires: {entry.expiresAt ? new Date(entry.expiresAt).toLocaleString() : 'Never'}</p>
                 </div>
-                <button type="button" onClick={() => void apiClient.unbanPlayer(entry.steamId).then(() => bans.refetch())} className="dune-button">
+                <button type="button" onClick={() => void handleUnban(entry.steamId)} className="dune-button">
                   <UserCheck className="mr-2 h-4 w-4" /> Unban
                 </button>
               </div>

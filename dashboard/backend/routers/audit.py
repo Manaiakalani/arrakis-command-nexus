@@ -11,7 +11,7 @@ router = APIRouter(tags=["audit"])
 
 # Action categories for UI filtering
 ACTION_CATEGORIES = {
-    "player": ["player_kick", "player_ban_add", "player_ban_remove", "allowlist_add", "allowlist_remove"],
+    "player": ["player_kick", "player_ban_add", "player_ban_remove", "allowlist_add", "allowlist_remove", "player_login", "player_logout"],
     "character": ["item_grant", "solari_grant", "teleport", "character_update", "health_set"],
     "config": ["config_update", "config_drift_accept"],
     "system": ["backup_create", "backup_restore", "announcement_send", "discord_webhook_add"],

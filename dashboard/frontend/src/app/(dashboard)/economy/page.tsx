@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { StatusCard } from '@/components/StatusCard';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import type { EconomyAlert } from '@/lib/types';
@@ -17,6 +18,7 @@ const severityClasses: Record<EconomyAlert['severity'], string> = {
 };
 
 export default function EconomyPage() {
+  const { toast } = useToast();
   const summary = useApi(() => apiClient.getEconomySummary(), { refreshInterval: 15000 });
   const alerts = useApi(() => apiClient.getEconomyAlerts(), { refreshInterval: 15000, initialData: [] });
   const [type, setType] = useState('manual');
@@ -32,6 +34,10 @@ export default function EconomyPage() {
     try {
       await apiClient.acknowledgeAlert(alertId);
       await Promise.all([summary.refetch(), alerts.refetch()]);
+      toast('Alert acknowledged.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to acknowledge alert.';
+      toast(`Failed to acknowledge alert: ${message}`, 'error');
     } finally {
       setAcknowledgingId(null);
     }
@@ -63,6 +69,11 @@ export default function EconomyPage() {
       setMessage('');
       setDetailsText('{}');
       await Promise.all([summary.refetch(), alerts.refetch()]);
+      toast('Economy alert created.', 'success');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create alert.';
+      setFormError(errorMessage);
+      toast(`Failed to create alert: ${errorMessage}`, 'error');
     } finally {
       setSubmitting(false);
     }

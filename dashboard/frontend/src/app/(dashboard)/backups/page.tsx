@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { BackupList } from '@/components/BackupList';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 import type { BackupSchedule } from '@/lib/types';
@@ -21,6 +22,7 @@ function formatDate(value?: string | null, fallback = 'Never') {
 }
 
 export default function BackupsPage() {
+  const { toast } = useToast();
   const backups = useApi(() => apiClient.getBackups(), { refreshInterval: 15000, initialData: [] });
   const scheduleApi = useApi(() => apiClient.getBackupSchedule(), { refreshInterval: 15000, initialData: DEFAULT_SCHEDULE });
   const [schedule, setSchedule] = useState<BackupSchedule>(DEFAULT_SCHEDULE);
@@ -128,8 +130,11 @@ export default function BackupsPage() {
                 scheduleApi.setData(updated);
                 setSchedule(updated);
                 setScheduleMessage('Backup schedule saved.');
+                toast('Backup schedule saved.', 'success');
               } catch (error) {
-                setScheduleMessage(error instanceof Error ? error.message : 'Failed to save backup schedule.');
+                const message = error instanceof Error ? error.message : 'Failed to save backup schedule.';
+                setScheduleMessage(message);
+                toast(`Failed to save backup schedule: ${message}`, 'error');
               } finally {
                 setSavingSchedule(false);
               }
@@ -146,23 +151,29 @@ export default function BackupsPage() {
             await apiClient.createBackup(scope);
             await backups.refetch();
             await scheduleApi.refetch();
+            toast('Backup created successfully.', 'success');
           } catch (error) {
-            window.alert(error instanceof Error ? error.message : 'Backup creation failed.');
+            const message = error instanceof Error ? error.message : 'Backup creation failed.';
+            toast(`Failed to create backup: ${message}`, 'error');
           }
         }}
         onRestore={async (id) => {
           try {
             await apiClient.restoreBackup(id);
+            toast('Backup restored successfully.', 'success');
           } catch (error) {
-            window.alert(error instanceof Error ? error.message : 'Restore failed.');
+            const message = error instanceof Error ? error.message : 'Restore failed.';
+            toast(`Failed to restore backup: ${message}`, 'error');
           }
         }}
         onDelete={async (id) => {
           try {
             await apiClient.deleteBackup(id);
             await backups.refetch();
+            toast('Backup deleted successfully.', 'success');
           } catch (error) {
-            window.alert(error instanceof Error ? error.message : 'Delete failed.');
+            const message = error instanceof Error ? error.message : 'Delete failed.';
+            toast(`Failed to delete backup: ${message}`, 'error');
           }
         }}
       />

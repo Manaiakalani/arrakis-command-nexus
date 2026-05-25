@@ -4,6 +4,7 @@ import { AlertTriangle, Cpu, HardDrive, RotateCcw, Save } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
 
@@ -31,6 +32,7 @@ const CATEGORY_META: Record<string, { title: string; subtitle: string; icon: typ
 };
 
 export default function ResourcesPage() {
+  const { toast } = useToast();
   const resources = useApi(() => apiClient.getResourceLimits(), { initialData: null });
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -56,9 +58,12 @@ export default function ResourcesPage() {
       const result = await apiClient.updateResourceLimits(edits);
       setFeedback({ type: 'success', text: result.message });
       setEdits({});
-      resources.refetch();
+      await resources.refetch();
+      toast(result.message, 'success');
     } catch (err) {
-      setFeedback({ type: 'error', text: err instanceof Error ? err.message : 'Failed to save' });
+      const message = err instanceof Error ? err.message : 'Failed to save';
+      setFeedback({ type: 'error', text: message });
+      toast(`Failed to save resource limits: ${message}`, 'error');
     } finally {
       setSaving(false);
     }
