@@ -379,6 +379,45 @@ class CharacterService:
                 result = await self.grant_item(character_id, "SolarisCoin", stack_size=amount)
                 return {"success": True, "solari_added": amount, "new_total": amount, **result}
 
+    async def teleport(self, character_id: str, x: float, y: float, z: float) -> dict[str, Any]:
+        """Teleport a character by updating their actor transform. Takes effect on relog."""
+        if not self.mutations_enabled:
+            raise PermissionError("Mutations disabled. Set DUNE_ADMIN_MUTATIONS_ENABLED=true")
+
+        pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None
+        if pool is None:
+            raise PermissionError("No database connection")
+
+        account_id = int(character_id)
+        async with pool.acquire() as connection:
+            pawn = await connection.fetchrow("""
+                SELECT eps.player_pawn_id
+                FROM dune.encrypted_player_state eps
+                WHERE eps.account_id = $1
+            """, account_id)
+            if pawn is None:
+                raise KeyError(character_id)
+
+            pawn_id = pawn["player_pawn_id"]
+
+            # Update transform keeping existing rotation
+            await connection.execute("""
+                UPDATE dune.actors
+                SET transform = ROW(
+                    ROW($2, $3, $4)::vector,
+                    (transform).rotation
+                )::transform
+                WHERE id = $1
+            """, pawn_id, x, y, z)
+
+            logger.info("Teleported account %d to (%.1f, %.1f, %.1f)", account_id, x, y, z)
+            return {
+                "success": True,
+                "character_id": character_id,
+                "position": {"x": x, "y": y, "z": z},
+                "note": "Player must relog for teleport to take effect.",
+            }
+
     async def list_item_templates(self, search: str | None = None) -> dict[str, Any]:
         """List distinct item template_ids from the database."""
         pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None

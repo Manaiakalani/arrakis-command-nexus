@@ -111,6 +111,25 @@ async def set_health(character_id: str, payload: SetHealthRequest, request: Requ
         raise HTTPException(status_code=501, detail=str(exc))
 
 
+class TeleportRequest(BaseModel):
+    x: float
+    y: float
+    z: float
+
+
+@router.post("/characters/{character_id}/teleport")
+async def teleport_character(character_id: str, payload: TeleportRequest, request: Request) -> dict:
+    """Teleport a character to specific coordinates. Takes effect on relog."""
+    try:
+        return await request.app.state.character_service.teleport(
+            character_id, x=payload.x, y=payload.y, z=payload.z,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Character not found")
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+
 @router.get("/items/templates")
 async def list_item_templates(request: Request, search: Optional[str] = None) -> dict:
     """List known item template IDs from the database."""

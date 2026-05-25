@@ -8,6 +8,7 @@ import {
   Flame,
   Heart,
   Loader2,
+  MapPin,
   Package,
   Pickaxe,
   RefreshCcw,
@@ -111,6 +112,10 @@ export default function CharactersPage() {
   const [searchingTemplates, setSearchingTemplates] = useState(false);
   const [inventoryData, setInventoryData] = useState<Record<string, { template_id: string; stack_size: number; position_index: number; quality_level: number }[]> | null>(null);
   const [loadingInventory, setLoadingInventory] = useState(false);
+  const [teleportX, setTeleportX] = useState('');
+  const [teleportY, setTeleportY] = useState('');
+  const [teleportZ, setTeleportZ] = useState('');
+  const [teleporting, setTeleporting] = useState(false);
 
   const filteredCharacters = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -326,6 +331,29 @@ export default function CharactersPage() {
       setInventoryData(null);
     } finally {
       setLoadingInventory(false);
+    }
+  };
+
+  const handleTeleport = async (x?: number, y?: number, z?: number) => {
+    if (!selectedId) return;
+    const px = x ?? parseFloat(teleportX);
+    const py = y ?? parseFloat(teleportY);
+    const pz = z ?? parseFloat(teleportZ);
+    if (isNaN(px) || isNaN(py) || isNaN(pz)) {
+      setGrantResult({ tone: 'error', message: 'Enter valid X, Y, Z coordinates.' });
+      return;
+    }
+    setTeleporting(true);
+    setGrantResult(null);
+    try {
+      await apiClient.teleportCharacter(selectedId, px, py, pz);
+      setGrantResult({ tone: 'success', message: `Teleport set to (${px.toFixed(0)}, ${py.toFixed(0)}, ${pz.toFixed(0)}). Relog to move.` });
+      setTeleportX(''); setTeleportY(''); setTeleportZ('');
+      void handleReset();
+    } catch (error) {
+      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Teleport failed.' });
+    } finally {
+      setTeleporting(false);
     }
   };
 
@@ -847,6 +875,60 @@ export default function CharactersPage() {
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading inventory...
                   </div>
                 ) : null}
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+                  <div>
+                    <p className="text-sm font-semibold text-th-text">Teleport</p>
+                    <p className="text-xs text-th-text-m">
+                      Move {selectedCharacter.name} to any coordinates.
+                      {selectedCharacter.metadata?.position ? ` Current: (${Math.round(Number(selectedCharacter.metadata.position.x))}, ${Math.round(Number(selectedCharacter.metadata.position.y))}, ${Math.round(Number(selectedCharacter.metadata.position.z))})` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-th-text mb-2">Quick Teleport</p>
+                  <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+                    <button type="button" className="dune-button-muted text-xs" disabled={teleporting} onClick={() => void handleTeleport(157100, 315000, 662)}>
+                      <MapPin className="mr-1.5 h-3.5 w-3.5" /> Spawn Point
+                    </button>
+                    <button type="button" className="dune-button-muted text-xs" disabled={teleporting} onClick={() => void handleTeleport(230651, 224403, 1006)}>
+                      <MapPin className="mr-1.5 h-3.5 w-3.5" /> Hagga Basin Center
+                    </button>
+                    {(characters.data ?? []).filter(c => c.id !== selectedId && c.metadata?.position).map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="dune-button-muted text-xs"
+                        disabled={teleporting}
+                        onClick={() => void handleTeleport(
+                          Number(c.metadata!.position!.x),
+                          Number(c.metadata!.position!.y),
+                          Number(c.metadata!.position!.z),
+                        )}
+                      >
+                        <MapPin className="mr-1.5 h-3.5 w-3.5" /> To {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-th-text mb-2">Custom Coordinates</p>
+                  <div className="grid gap-3 grid-cols-[1fr_1fr_1fr_auto]">
+                    <input className="dune-input" type="number" placeholder="X" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} disabled={teleporting} />
+                    <input className="dune-input" type="number" placeholder="Y" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} disabled={teleporting} />
+                    <input className="dune-input" type="number" placeholder="Z" value={teleportZ} onChange={(e) => setTeleportZ(e.target.value)} disabled={teleporting} />
+                    <button type="button" className="dune-button" disabled={teleporting || !teleportX || !teleportY || !teleportZ} onClick={() => void handleTeleport()}>
+                      {teleporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                      Teleport
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-th-text-m">Player must relog for teleport to take effect. Rotation is preserved.</p>
+                </div>
               </div>
             </div>
           ) : null}

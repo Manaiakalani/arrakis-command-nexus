@@ -147,6 +147,13 @@ export class ApiClient {
     });
   }
 
+  teleportCharacter(id: string, x: number, y: number, z: number) {
+    return this.request<{ success: boolean; position: { x: number; y: number; z: number } }>(`/characters/${encodeURIComponent(id)}/teleport`, {
+      method: 'POST',
+      body: JSON.stringify({ x, y, z }),
+    });
+  }
+
   searchItemTemplates(search?: string) {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
     return this.request<{ templates: { id: string; count: number }[]; total: number }>(`/items/templates${query}`);
