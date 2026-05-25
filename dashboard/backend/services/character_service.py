@@ -228,6 +228,175 @@ class CharacterService:
 
         raise NotImplementedError("Character mutations require game DB schema mapping")
 
+    async def get_inventory(self, character_id: str) -> dict[str, Any]:
+        """Get all items in a character's inventories."""
+        pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None
+        if pool is None:
+            return {"character_id": character_id, "inventories": []}
+
+        account_id = int(character_id)
+        async with pool.acquire() as connection:
+            rows = await connection.fetch("""
+                SELECT
+                    it.template_id,
+                    it.stack_size,
+                    it.position_index,
+                    it.quality_level,
+                    i.inventory_type,
+                    it.stats AS item_stats
+                FROM dune.items it
+                JOIN dune.inventories i ON i.id = it.inventory_id
+                WHERE i.actor_id IN (
+                    SELECT id FROM dune.actors WHERE owner_account_id = $1
+                )
+                ORDER BY i.inventory_type, it.position_index
+            """, account_id)
+
+        inv_type_names = {
+            0: "backpack", 1: "equipment", 12: "quest",
+            14: "emotes", 15: "hotbar", 20: "crafting_queue",
+            25: "ammo", 27: "emote_wheel", 29: "unknown_29",
+            30: "unknown_30", 31: "unknown_31", 32: "unknown_32",
+            33: "unknown_33",
+        }
+        grouped: dict[str, list] = {}
+        for row in rows:
+            inv_name = inv_type_names.get(row["inventory_type"], f"type_{row['inventory_type']}")
+            grouped.setdefault(inv_name, []).append({
+                "template_id": row["template_id"],
+                "stack_size": int(row["stack_size"]),
+                "position_index": int(row["position_index"]),
+                "quality_level": int(row["quality_level"]),
+            })
+
+        return {"character_id": character_id, "inventories": grouped}
+
+    async def grant_item(
+        self,
+        character_id: str,
+        template_id: str,
+        stack_size: int = 1,
+        quality_level: int = 0,
+    ) -> dict[str, Any]:
+        """Grant an item directly into a character's backpack inventory."""
+        if not self.mutations_enabled:
+            raise PermissionError("Mutations disabled. Set DUNE_ADMIN_MUTATIONS_ENABLED=true")
+
+        pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None
+        if pool is None:
+            raise PermissionError("No database connection")
+
+        account_id = int(character_id)
+        async with pool.acquire() as connection:
+            # Find the player's backpack inventory (type 0)
+            inv = await connection.fetchrow("""
+                SELECT i.id AS inventory_id
+                FROM dune.inventories i
+                WHERE i.actor_id IN (
+                    SELECT id FROM dune.actors WHERE owner_account_id = $1
+                )
+                AND i.inventory_type = 0
+                LIMIT 1
+            """, account_id)
+            if inv is None:
+                raise KeyError(character_id)
+
+            inventory_id = inv["inventory_id"]
+
+            # Find the next open position_index in the backpack
+            max_pos = await connection.fetchval("""
+                SELECT COALESCE(MAX(position_index), -1) + 1
+                FROM dune.items WHERE inventory_id = $1
+            """, inventory_id)
+
+            # Insert the item directly
+            import time
+            new_item_id = await connection.fetchval("""
+                INSERT INTO dune.items
+                    (inventory_id, template_id, stack_size, position_index,
+                     quality_level, is_new, acquisition_time, stats)
+                VALUES ($1, $2, $3, $4, $5, true, $6, '{}'::jsonb)
+                RETURNING id
+            """, inventory_id, template_id, stack_size, max_pos,
+                quality_level, int(time.time()))
+
+            logger.info(
+                "Granted item %s (x%d) to account %d, item_id=%d",
+                template_id, stack_size, account_id, new_item_id,
+            )
+            return {
+                "success": True,
+                "item_id": int(new_item_id),
+                "template_id": template_id,
+                "stack_size": stack_size,
+                "inventory_type": "backpack",
+                "position_index": int(max_pos),
+            }
+
+    async def grant_solari(self, character_id: str, amount: int) -> dict[str, Any]:
+        """Add solari coins to a character's backpack as SolarisCoin items."""
+        if not self.mutations_enabled:
+            raise PermissionError("Mutations disabled. Set DUNE_ADMIN_MUTATIONS_ENABLED=true")
+
+        pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None
+        if pool is None:
+            raise PermissionError("No database connection")
+
+        account_id = int(character_id)
+        async with pool.acquire() as connection:
+            # Find existing SolarisCoin stack in backpack
+            existing = await connection.fetchrow("""
+                SELECT it.id, it.stack_size
+                FROM dune.items it
+                JOIN dune.inventories i ON i.id = it.inventory_id
+                WHERE i.actor_id IN (
+                    SELECT id FROM dune.actors WHERE owner_account_id = $1
+                )
+                AND i.inventory_type = 0
+                AND it.template_id = 'SolarisCoin'
+                LIMIT 1
+            """, account_id)
+
+            if existing:
+                new_balance = int(existing["stack_size"]) + amount
+                await connection.execute("""
+                    UPDATE dune.items SET stack_size = $1 WHERE id = $2
+                """, new_balance, existing["id"])
+                logger.info("Added %d solari to account %d (new total: %d)", amount, account_id, new_balance)
+                return {"success": True, "solari_added": amount, "new_total": new_balance}
+            else:
+                # No existing stack, grant as new item
+                result = await self.grant_item(character_id, "SolarisCoin", stack_size=amount)
+                return {"success": True, "solari_added": amount, "new_total": amount, **result}
+
+    async def list_item_templates(self, search: str | None = None) -> dict[str, Any]:
+        """List distinct item template_ids from the database."""
+        pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None
+        if pool is None:
+            return {"templates": [], "total": 0}
+
+        async with pool.acquire() as connection:
+            if search:
+                rows = await connection.fetch("""
+                    SELECT DISTINCT template_id, COUNT(*) as count
+                    FROM dune.items
+                    WHERE template_id ILIKE $1
+                    GROUP BY template_id
+                    ORDER BY template_id
+                    LIMIT 100
+                """, f"%{search}%")
+            else:
+                rows = await connection.fetch("""
+                    SELECT DISTINCT template_id, COUNT(*) as count
+                    FROM dune.items
+                    GROUP BY template_id
+                    ORDER BY count DESC, template_id
+                    LIMIT 200
+                """)
+
+        templates = [{"id": r["template_id"], "count": int(r["count"])} for r in rows]
+        return {"templates": templates, "total": len(templates)}
+
     def get_editable_stats(self) -> list[dict[str, str]]:
         return EDITABLE_STATS
 
