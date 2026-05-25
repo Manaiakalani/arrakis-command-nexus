@@ -75,14 +75,20 @@ export function getPlayerMapBounds(players: Array<{ x: number; y: number }>) {
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  const paddingX = Math.max((maxX - minX) * 0.12, 5_000);
-  const paddingY = Math.max((maxY - minY) * 0.12, 5_000);
+
+  // Use player spread or a minimum 20K unit window, whichever is larger
+  const spanX = Math.max(maxX - minX, 20_000);
+  const spanY = Math.max(maxY - minY, 20_000);
+  const paddingX = spanX * 0.15;
+  const paddingY = spanY * 0.15;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
 
   return {
-    minX: Math.min(DEFAULT_HAGGA_BASIN_BOUNDS.minX, minX - paddingX),
-    maxX: Math.max(DEFAULT_HAGGA_BASIN_BOUNDS.maxX, maxX + paddingX),
-    minY: Math.min(DEFAULT_HAGGA_BASIN_BOUNDS.minY, minY - paddingY),
-    maxY: Math.max(DEFAULT_HAGGA_BASIN_BOUNDS.maxY, maxY + paddingY),
+    minX: centerX - spanX / 2 - paddingX,
+    maxX: centerX + spanX / 2 + paddingX,
+    minY: centerY - spanY / 2 - paddingY,
+    maxY: centerY + spanY / 2 + paddingY,
   };
 }
 

@@ -73,7 +73,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             <p className="section-title">Live map telemetry</p>
             <h2 className="mt-1 text-xl font-semibold text-th-text">Hagga Basin Tactical Overlay</h2>
             <p className="mt-2 max-w-3xl text-sm text-th-text-m">
-              Placeholder desert backdrop in use. Add <code className="rounded bg-th-surface-s/80 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-200">/public/maps/hagga-basin.webp</code> and swap the background once final art is available.
+              Live player positions from the Funcom game database. Hover over a dot to see coordinates. Map auto-zooms to player locations.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-th-text-m">
@@ -127,11 +127,13 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             <div className="absolute left-4 top-4 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
               Hagga Basin
             </div>
-            <div className="absolute right-4 top-4 rounded-full border border-th-border/80 bg-th-bg/70 px-3 py-1 text-xs text-th-text-s">
-              X {Math.round(bounds.minX).toLocaleString()} → {Math.round(bounds.maxX).toLocaleString()}
-            </div>
-            <div className="absolute bottom-4 right-4 rounded-full border border-th-border/80 bg-th-bg/70 px-3 py-1 text-xs text-th-text-s">
-              Y {Math.round(bounds.minY).toLocaleString()} → {Math.round(bounds.maxY).toLocaleString()}
+            <div className="absolute right-4 top-4 flex flex-col items-end gap-1 text-[10px] text-th-text-m">
+              <span className="rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-0.5">
+                X: {Math.round(bounds.minX).toLocaleString()} to {Math.round(bounds.maxX).toLocaleString()}
+              </span>
+              <span className="rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-0.5">
+                Y: {Math.round(bounds.minY).toLocaleString()} to {Math.round(bounds.maxY).toLocaleString()}
+              </span>
             </div>
 
             {plottedPlayers.length === 0 ? (
@@ -161,8 +163,8 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                 <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
                   <span className="block font-semibold text-amber-700 dark:text-amber-200">{player.name}</span>
                   <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
-                  <span className="mt-1 block text-th-text-m">
-                    X {Math.round(player.x).toLocaleString()} • Y {Math.round(player.y).toLocaleString()}
+                  <span className="mt-1 block font-mono text-[10px] text-th-text-m">
+                    X: {Math.round(player.x).toLocaleString()} &bull; Y: {Math.round(player.y).toLocaleString()}{player.z !== null ? ` • Z: ${Math.round(player.z).toLocaleString()}` : ''}
                   </span>
                 </span>
               </button>
@@ -221,6 +223,29 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
           </div>
         )}
       </div>
+
+      {normalizedPlayers.length > 0 ? (
+        <div className="border-t border-th-border-m/80 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-th-text-m">Player Coordinates</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {normalizedPlayers.map((player) => (
+              <div
+                key={player.steamId}
+                className="flex items-center gap-3 rounded-2xl border border-th-border-m/60 bg-th-surface-s/30 px-4 py-2.5"
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: player.fill }} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-th-text">{player.name}</p>
+                  <p className="mt-0.5 font-mono text-[10px] text-th-text-m">
+                    X: {Math.round(player.x).toLocaleString()} &bull; Y: {Math.round(player.y).toLocaleString()}{player.z !== null ? ` • Z: ${Math.round(player.z).toLocaleString()}` : ''}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[10px] text-th-text-m">{formatSessionDuration(player.sessionSeconds)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
