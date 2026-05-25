@@ -2,7 +2,6 @@
 
 import { Flame, LocateFixed, Users } from 'lucide-react';
 import { useMemo } from 'react';
-import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
@@ -19,104 +18,61 @@ interface PlayerHeatmapProps {
   refreshIntervalMs?: number;
 }
 
-interface HeatmapCellDatum {
-  x: number;
-  y: number;
+interface HeatmapCell {
+  row: number;
+  col: number;
   count: number;
   intensity: number;
-  fill: string;
-  stroke: string;
   names: string[];
   averageSessionSeconds: number;
+  centerX: number;
+  centerY: number;
 }
 
-function getHeatColor(intensity: number) {
-  const clamped = Math.min(Math.max(intensity, 0), 1);
-  const alpha = 0.18 + clamped * 0.72;
-  return `rgba(251, 191, 36, ${alpha.toFixed(2)})`;
-}
+const GRID_COLS = 16;
+const GRID_ROWS = 12;
 
-function buildHeatmapCells(players: NormalizedPlayerMapPoint[]) {
-  const bounds = getPlayerMapBounds(players);
-  const columns = 12;
-  const rows = 12;
-  const stepX = Math.max((bounds.maxX - bounds.minX) / columns, 1);
-  const stepY = Math.max((bounds.maxY - bounds.minY) / rows, 1);
-  const buckets = new Map<string, { cellX: number; cellY: number; count: number; names: string[]; totalSessionSeconds: number }>();
+function buildHeatGrid(players: NormalizedPlayerMapPoint[], bounds: ReturnType<typeof getPlayerMapBounds>): HeatmapCell[] {
+  const stepX = Math.max((bounds.maxX - bounds.minX) / GRID_COLS, 1);
+  const stepY = Math.max((bounds.maxY - bounds.minY) / GRID_ROWS, 1);
 
-  players.forEach((player) => {
-    const cellX = Math.min(columns - 1, Math.max(0, Math.floor((player.x - bounds.minX) / stepX)));
-    const cellY = Math.min(rows - 1, Math.max(0, Math.floor((player.y - bounds.minY) / stepY)));
-    const key = `${cellX}:${cellY}`;
-    const existing = buckets.get(key) ?? { cellX, cellY, count: 0, names: [], totalSessionSeconds: 0 };
+  const buckets = new Map<string, { row: number; col: number; count: number; names: string[]; totalSession: number }>();
 
-    existing.count += 1;
-    existing.totalSessionSeconds += player.sessionSeconds;
-    existing.names.push(player.name);
-    buckets.set(key, existing);
-  });
+  for (const p of players) {
+    const col = Math.min(GRID_COLS - 1, Math.max(0, Math.floor((p.x - bounds.minX) / stepX)));
+    const row = Math.min(GRID_ROWS - 1, Math.max(0, Math.floor((p.y - bounds.minY) / stepY)));
+    const key = `${row}:${col}`;
+    const b = buckets.get(key) ?? { row, col, count: 0, names: [], totalSession: 0 };
+    b.count += 1;
+    b.totalSession += p.sessionSeconds;
+    b.names.push(p.name);
+    buckets.set(key, b);
+  }
 
-  const rawCells = Array.from(buckets.values()).map((bucket) => ({
-    x: bounds.minX + (bucket.cellX + 0.5) * stepX,
-    y: bounds.minY + (bucket.cellY + 0.5) * stepY,
-    count: bucket.count,
-    score: bucket.count + bucket.totalSessionSeconds / 3600,
-    names: bucket.names,
-    averageSessionSeconds: bucket.count > 0 ? Math.round(bucket.totalSessionSeconds / bucket.count) : 0,
+  const raw = Array.from(buckets.values()).map((b) => ({
+    ...b,
+    score: b.count + b.totalSession / 3600,
+    centerX: bounds.minX + (b.col + 0.5) * stepX,
+    centerY: bounds.minY + (b.row + 0.5) * stepY,
+    averageSessionSeconds: b.count > 0 ? Math.round(b.totalSession / b.count) : 0,
   }));
 
-  const maxScore = Math.max(...rawCells.map((cell) => cell.score), 1);
+  const maxScore = Math.max(...raw.map((c) => c.score), 1);
 
-  return rawCells.map((cell) => {
-    const intensity = cell.score / maxScore;
-    return {
-      x: cell.x,
-      y: cell.y,
-      count: cell.count,
-      intensity,
-      fill: getHeatColor(intensity),
-      stroke: intensity > 0.65 ? '#fbbf24' : '#fb923c',
-      names: cell.names,
-      averageSessionSeconds: cell.averageSessionSeconds,
-    } satisfies HeatmapCellDatum;
-  });
+  return raw.map((c) => ({
+    row: c.row,
+    col: c.col,
+    count: c.count,
+    intensity: c.score / maxScore,
+    names: c.names,
+    averageSessionSeconds: c.averageSessionSeconds,
+    centerX: c.centerX,
+    centerY: c.centerY,
+  }));
 }
 
-function HeatmapTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: HeatmapCellDatum }> }) {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  const cell = payload[0].payload;
-
-  return (
-    <div className="rounded-2xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-xs text-th-text-s shadow-2xl">
-      <p className="font-semibold text-amber-700 dark:text-amber-200">{cell.count} active player{cell.count === 1 ? '' : 's'}</p>
-      <p className="mt-1 text-th-text-m">Avg. session {formatSessionDuration(cell.averageSessionSeconds)}</p>
-      <p className="mt-1 text-th-text-m">{cell.names.slice(0, 3).join(', ')}{cell.names.length > 3 ? ` +${cell.names.length - 3} more` : ''}</p>
-    </div>
-  );
-}
-
-function HeatmapCell({ cx = 0, cy = 0, payload }: { cx?: number; cy?: number; payload?: HeatmapCellDatum }) {
-  if (!payload) {
-    return null;
-  }
-
-  const size = 18 + payload.intensity * 22;
-
-  return (
-    <rect
-      x={cx - size / 2}
-      y={cy - size / 2}
-      width={size}
-      height={size}
-      rx={6}
-      fill={payload.fill}
-      stroke={payload.stroke}
-      strokeWidth={1.5}
-    />
-  );
+function clamp(v: number, lo: number, hi: number) {
+  return Math.min(Math.max(v, lo), hi);
 }
 
 export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHeatmapProps) {
@@ -127,8 +83,12 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
 
   const normalizedPlayers = useMemo(() => normalizePlayerMapData(polledPlayers ?? players), [players, polledPlayers]);
   const bounds = useMemo(() => getPlayerMapBounds(normalizedPlayers), [normalizedPlayers]);
-  const cells = useMemo(() => buildHeatmapCells(normalizedPlayers), [normalizedPlayers]);
-  const emptyMessage = players.length === 0 ? 'No player activity to bin' : 'Position telemetry is unavailable for current players.';
+  const cells = useMemo(() => buildHeatGrid(normalizedPlayers, bounds), [normalizedPlayers, bounds]);
+
+  const spanX = Math.max(bounds.maxX - bounds.minX, 1);
+  const spanY = Math.max(bounds.maxY - bounds.minY, 1);
+
+  const emptyMessage = players.length === 0 ? 'No player activity to display' : 'Position telemetry is unavailable for current players.';
 
   return (
     <section className="glass-panel overflow-hidden">
@@ -137,7 +97,7 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
           <div>
             <p className="section-title">Density analysis</p>
             <h2 className="mt-1 text-xl font-semibold text-th-text">Player Activity Heatmap</h2>
-            <p className="mt-2 text-sm text-th-text-m">Grid cells brighten as more players cluster together, weighted by current session duration.</p>
+            <p className="mt-2 text-sm text-th-text-m">Grid cells brighten as more players cluster together, weighted by session duration.</p>
           </div>
           <div className="flex items-center gap-3 text-sm text-th-text-m">
             <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-amber-700 dark:text-amber-200">
@@ -148,33 +108,75 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
       </div>
 
       <div className="p-5">
-        <div className="relative h-[360px] overflow-hidden rounded-3xl border border-amber-500/15 bg-th-bg sand-glow">
-          {cells.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 24, right: 24, bottom: 24, left: 12 }}>
-                <CartesianGrid stroke="rgba(251, 191, 36, 0.12)" strokeDasharray="4 4" />
-                <XAxis
-                  type="number"
-                  dataKey="x"
-                  domain={[bounds.minX, bounds.maxX]}
-                  tick={{ fill: '#cbd5e1', fontSize: 12 }}
-                  tickFormatter={(value) => Math.round(value).toLocaleString()}
-                  stroke="rgba(245, 158, 11, 0.45)"
-                />
-                <YAxis
-                  type="number"
-                  dataKey="y"
-                  domain={[bounds.minY, bounds.maxY]}
-                  tick={{ fill: '#cbd5e1', fontSize: 12 }}
-                  tickFormatter={(value) => Math.round(value).toLocaleString()}
-                  stroke="rgba(245, 158, 11, 0.45)"
-                />
-                <Tooltip cursor={{ stroke: '#f59e0b', strokeOpacity: 0.18 }} content={<HeatmapTooltip />} />
-                <Scatter data={cells} shape={<HeatmapCell />} />
-              </ScatterChart>
-            </ResponsiveContainer>
-          ) : null}
+        <div
+          className="relative min-h-[400px] overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
+          style={{
+            backgroundImage: 'url(/maps/hagga-basin.webp)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-black/55" />
 
+          {/* Grid lines */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: 'linear-gradient(rgba(251, 191, 36, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.2) 1px, transparent 1px)',
+              backgroundSize: `${100 / GRID_COLS}% ${100 / GRID_ROWS}%`,
+            }}
+          />
+
+          {/* Heat cells */}
+          {cells.map((cell) => {
+            const left = ((cell.centerX - bounds.minX) / spanX) * 100;
+            const top = 100 - ((cell.centerY - bounds.minY) / spanY) * 100;
+            const a = 0.15 + cell.intensity * 0.65;
+            const size = 3 + cell.intensity * 5;
+            const blur = 20 + cell.intensity * 40;
+
+            return (
+              <div
+                key={`${cell.row}:${cell.col}`}
+                className="group absolute -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: `${clamp(left, 2, 98)}%`,
+                  top: `${clamp(top, 2, 98)}%`,
+                  width: `${size}rem`,
+                  height: `${size}rem`,
+                }}
+              >
+                {/* Glow */}
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle, rgba(251, 191, 36, ${(a * 1.2).toFixed(2)}) 0%, rgba(251, 146, 60, ${(a * 0.6).toFixed(2)}) 40%, transparent 70%)`,
+                    filter: `blur(${blur}px)`,
+                  }}
+                />
+                {/* Core dot */}
+                <div
+                  className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/80"
+                  style={{ backgroundColor: `rgba(251, 191, 36, ${Math.min(a + 0.3, 1).toFixed(2)})` }}
+                />
+                {/* Hover tooltip */}
+                <div className="pointer-events-none absolute bottom-[calc(100%+0.5rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
+                  <p className="font-semibold text-amber-700 dark:text-amber-200">
+                    {cell.count} player{cell.count === 1 ? '' : 's'}
+                  </p>
+                  <p className="mt-1 text-th-text-m">Avg. session {formatSessionDuration(cell.averageSessionSeconds)}</p>
+                  <p className="mt-1 text-th-text-m">{cell.names.slice(0, 4).join(', ')}{cell.names.length > 4 ? ` +${cell.names.length - 4}` : ''}</p>
+                  <p className="mt-1 font-mono text-[10px] text-th-text-m">
+                    X: {Math.round(cell.centerX).toLocaleString()} &bull; Y: {Math.round(cell.centerY).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Empty state */}
           {cells.length === 0 ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
               <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
@@ -182,13 +184,28 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
               </div>
               <div>
                 <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
-                <p className="mt-2 max-w-md text-sm text-th-text-m">Heat bins appear once online players stream coordinate telemetry into the dashboard.</p>
+                <p className="mt-2 max-w-md text-sm text-th-text-m">Heat zones appear once online players stream coordinate data.</p>
               </div>
             </div>
           ) : null}
 
+          {/* Labels */}
           <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
             <Flame className="h-3.5 w-3.5" /> Weighted density
+          </div>
+          <div className="absolute bottom-4 right-4 flex items-center gap-3 text-[10px] text-th-text-m">
+            <span className="flex items-center gap-1.5 rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-1">
+              <span className="h-2 w-2 rounded-full bg-amber-500/30" /> Low
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-1">
+              <span className="h-2 w-2 rounded-full bg-amber-400/70" /> Medium
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-1">
+              <span className="h-2 w-2 rounded-full bg-amber-300" /> High
+            </span>
+          </div>
+          <div className="absolute bottom-4 left-4 rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-1 text-[10px] text-th-text-m">
+            X: {Math.round(bounds.minX).toLocaleString()} to {Math.round(bounds.maxX).toLocaleString()} &bull; Y: {Math.round(bounds.minY).toLocaleString()} to {Math.round(bounds.maxY).toLocaleString()}
           </div>
         </div>
       </div>
