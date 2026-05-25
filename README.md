@@ -1,6 +1,6 @@
 # Dune Awakening Dedicated Server with Docker Compose and Arrakis Command Nexus
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue)](https://github.com/Manaiakalani/arrakis-command-nexus/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/Manaiakalani/arrakis-command-nexus/releases)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/docker%20compose-v2-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![CI](https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml)
@@ -49,11 +49,16 @@ Funcom's official self-hosting flow involves several services, credentials, and 
 - **Map management views** with shard status, uptime, telemetry, and orchestration shortcuts
 - **Live log streaming** with search, filtering, and download support
 - **Hagga Basin map management tools** including player map overlays and heatmaps
-- **Configuration editing** with drift detection for server settings
-- **Backup and restore workflows** for snapshots, retention policies, and recovery operations
+- **Game tweaks** for sandworm behavior, NPC difficulty, mining rates, loot drops, day/night cycle, crafting costs, and hydration
+- **Configuration editing** with dropdown selections, drift detection, and human-readable labels
+- **Backup and restore workflows** with scheduled backups, retention policies, and recovery operations
+- **Scheduled announcements** for recurring or one-time in-game messages
+- **Scheduled server restarts** with automatic pre-restart warnings and backup-before-restart
+- **Audit trail** for tracking all admin actions, player logins/logouts, config changes, and grants
 - **Discord webhooks** for start, stop, crash, join, and leave notifications
 - **Public status page** for shareable read-only server health
-- **Light and dark mode** support across the dashboard UI
+- **Toast notifications** for real-time feedback across all dashboard pages
+- **Light and dark mode** with warm sandy light theme and deep dark theme
 - **In-game announcements, moderation controls, economy monitoring, and character tools** for live operations
 
 ### Security and Operations
@@ -161,6 +166,7 @@ flowchart TB
 | [Quick Start](./docs/QUICKSTART.md) | First deployment on Linux or WSL2 |
 | [Configuration](./docs/CONFIGURATION.md) | Environment variables, dashboard settings, and config files |
 | [Config Keys](./docs/CONFIG_KEYS.md) | Reference for gameplay, engine, and director tuning keys |
+| [Design System](./docs/DESIGN.md) | Dashboard design tokens, components, and patterns |
 | [Profiles](./docs/PROFILES.md) | Compare basic, standard, and full battlegroups |
 | [Networking](./docs/NETWORKING.md) | Ports, firewall planning, and NAT hairpin guidance |
 | [Troubleshooting](./docs/TROUBLESHOOTING.md) | Common startup, networking, dashboard, and WSL2 issues |

@@ -1,12 +1,14 @@
 'use client';
 
-import { Cpu, Download, HardDrive, Network, Waves } from 'lucide-react';
+import { AlarmClock, Cpu, Download, HardDrive, Network, Power, Waves } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
+import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
+import type { RestartSchedule } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const MetricsChart = dynamic(() => import('@/components/MetricsChart').then((mod) => mod.MetricsChart), {
@@ -45,6 +47,15 @@ const networkSeries = [
   { key: 'networkInMbps', label: 'Inbound', color: '#f59e0b', unit: 'Mbps' },
   { key: 'networkOutMbps', label: 'Outbound', color: '#fdba74', unit: 'Mbps' },
 ] as const;
+const restartIntervals = [6, 12, 24, 48] as const;
+const manualWarningOptions = [0, 1, 5, 15] as const;
+const DEFAULT_RESTART_SCHEDULE: RestartSchedule = {
+  enabled: false,
+  intervalHours: 24,
+  warningMinutes: [15, 5, 1],
+  lastRestartAt: null,
+  nextRestartAt: null,
+};
 
 function formatPercent(value?: number) {
   return `${(value ?? 0).toFixed(1)}%`;
@@ -58,13 +69,77 @@ function formatMbps(value?: number) {
   return `${(value ?? 0).toFixed(2)} Mbps`;
 }
 
+function formatDate(value?: string | null, fallback = 'Not scheduled') {
+  return value ? new Date(value).toLocaleString() : fallback;
+}
+
+function formatCountdown(target?: string | null, now = Date.now()) {
+  if (!target) {
+    return 'Not scheduled';
+  }
+
+  const remainingMs = new Date(target).getTime() - now;
+  if (remainingMs <= 0) {
+    return 'Due now';
+  }
+
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts = [days > 0 ? `${days}d` : null, hours > 0 || days > 0 ? `${hours}h` : null, `${minutes}m`, `${seconds}s`].filter(Boolean);
+  return parts.join(' ');
+}
+
+function parseWarningMinutes(value: string) {
+  const rawParts = value.split(',').map((part) => part.trim()).filter(Boolean);
+  if (rawParts.length === 0) {
+    return [];
+  }
+
+  const parsed = rawParts.map((part) => Number(part));
+  if (parsed.some((part) => !Number.isInteger(part) || part <= 0)) {
+    throw new Error('Warning minutes must be a comma-separated list of positive whole numbers.');
+  }
+
+  return Array.from(new Set(parsed)).sort((left, right) => right - left);
+}
+
 export default function SystemPage() {
+  const { toast } = useToast();
   const [range, setRange] = useState('1h');
   const [exportWidget, setExportWidget] = useState('all');
   const [exportFormat, setExportFormat] = useState('csv');
+  const [schedule, setSchedule] = useState<RestartSchedule>(DEFAULT_RESTART_SCHEDULE);
+  const [warningInput, setWarningInput] = useState(DEFAULT_RESTART_SCHEDULE.warningMinutes.join(', '));
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
+  const [manualWarningMinutes, setManualWarningMinutes] = useState(0);
+  const [restartingNow, setRestartingNow] = useState(false);
+  const [countdownNow, setCountdownNow] = useState(Date.now());
   const metrics = useApi(() => apiClient.getSystemMetrics(), { refreshInterval: 10000 });
   const history = useApi(() => apiClient.getSystemHistory(range), { refreshInterval: 15000, initialData: { range, points: [] } });
+  const restartScheduleApi = useApi(() => apiClient.getRestartSchedule(), {
+    refreshInterval: 15000,
+    initialData: DEFAULT_RESTART_SCHEDULE,
+  });
 
+  useEffect(() => {
+    if (!restartScheduleApi.data) {
+      return;
+    }
+    setSchedule(restartScheduleApi.data);
+    setWarningInput((restartScheduleApi.data.warningMinutes ?? []).join(', '));
+  }, [restartScheduleApi.data]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setCountdownNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const warningSummary = useMemo(() => (schedule.warningMinutes.length > 0 ? schedule.warningMinutes.join(', ') : 'No warnings'), [schedule.warningMinutes]);
+  const nextRestartCountdown = useMemo(() => formatCountdown(schedule.nextRestartAt, countdownNow), [schedule.nextRestartAt, countdownNow]);
   const exportUrl = `/api/system/export?range=${encodeURIComponent(range)}&format=${encodeURIComponent(exportFormat)}${exportWidget !== 'all' ? `&widget=${encodeURIComponent(exportWidget)}` : ''}`;
 
   const isLoading = metrics.loading && !metrics.data;
@@ -243,6 +318,182 @@ export default function SystemPage() {
           chartType="line"
           series={[...networkSeries]}
         />
+      </section>
+
+      <section className="glass-panel p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="section-title">Restart orchestration</p>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Server Restart Schedule</h2>
+            <p className="mt-2 text-sm text-th-text-m">Schedule automatic shard restarts, send player warnings, and capture a backup before services recycle.</p>
+          </div>
+          <label className="flex items-center gap-3 rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
+            <input
+              type="checkbox"
+              checked={schedule.enabled}
+              onChange={(event) => {
+                setScheduleMessage(null);
+                setSchedule((current) => ({ ...current, enabled: event.target.checked }));
+              }}
+              className="h-4 w-4 rounded border-th-border bg-th-bg text-amber-500 focus:ring-amber-500"
+            />
+            <span>{schedule.enabled ? 'Automatic restarts enabled' : 'Automatic restarts disabled'}</span>
+          </label>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
+            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Status</p>
+            <p className="mt-2 text-lg font-semibold text-th-text">{schedule.enabled ? 'Enabled' : 'Disabled'}</p>
+          </div>
+          <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
+            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Interval</p>
+            <p className="mt-2 text-lg font-semibold text-th-text">Every {schedule.intervalHours}h</p>
+          </div>
+          <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
+            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Warnings</p>
+            <p className="mt-2 text-lg font-semibold text-th-text">{warningSummary}</p>
+          </div>
+          <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
+            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Countdown</p>
+            <p className="mt-2 text-lg font-semibold text-th-text">{nextRestartCountdown}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
+              <span className="mb-2 block text-th-text">Interval (hours)</span>
+              <select
+                value={schedule.intervalHours}
+                onChange={(event) => {
+                  setScheduleMessage(null);
+                  setSchedule((current) => ({ ...current, intervalHours: Number(event.target.value) }));
+                }}
+                className="dune-input"
+              >
+                {restartIntervals.map((interval) => (
+                  <option key={interval} value={interval}>{interval} hours</option>
+                ))}
+              </select>
+            </label>
+            <label className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
+              <span className="mb-2 block text-th-text">Warning minutes</span>
+              <input
+                className="dune-input"
+                value={warningInput}
+                onChange={(event) => {
+                  setScheduleMessage(null);
+                  setWarningInput(event.target.value);
+                }}
+                placeholder="15, 5, 1"
+              />
+            </label>
+            <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s md:col-span-2">
+              <div className="flex items-start gap-3">
+                <AlarmClock className="mt-0.5 h-5 w-5 text-amber-500" />
+                <div>
+                  <p className="font-medium text-th-text">Next scheduled restart</p>
+                  <p className="mt-1 text-th-text-s">{formatDate(schedule.nextRestartAt)}</p>
+                  <p className="mt-2 text-th-text-m">Last restart: {formatDate(schedule.lastRestartAt, 'Never')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-amber-500/10 p-3 text-amber-600 dark:text-amber-300">
+                <Power className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium text-th-text">Manual restart</p>
+                <p className="text-th-text-m">Optional warning countdown before restarting all detected map services.</p>
+              </div>
+            </div>
+            <label className="mt-4 block">
+              <span className="mb-2 block text-th-text">Warning before restart</span>
+              <select
+                value={manualWarningMinutes}
+                onChange={(event) => setManualWarningMinutes(Number(event.target.value))}
+                className="dune-input"
+              >
+                {manualWarningOptions.map((value) => (
+                  <option key={value} value={value}>{value === 0 ? 'No warning' : `${value} minute${value === 1 ? '' : 's'}`}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={restartingNow}
+              className="dune-button mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={async () => {
+                const confirmed = window.confirm(
+                  manualWarningMinutes > 0
+                    ? `Send a ${manualWarningMinutes}-minute warning, create a backup, and restart all map services?`
+                    : 'Create a backup and restart all map services now?',
+                );
+                if (!confirmed) {
+                  return;
+                }
+
+                setRestartingNow(true);
+                try {
+                  const result = await apiClient.restartNow(manualWarningMinutes);
+                  await restartScheduleApi.refetch();
+                  const baseMessage = result.scheduled
+                    ? `Restart scheduled for ${formatDate(result.restartAt, 'soon')}.`
+                    : result.status === 'partial'
+                      ? 'Restart completed with warnings.'
+                      : 'Server restart triggered successfully.';
+                  const detail = result.backupError ? ` Backup warning: ${result.backupError}` : '';
+                  toast(`${baseMessage}${detail}`, result.status === 'failed' ? 'error' : 'success');
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : 'Restart failed.';
+                  toast(`Failed to restart server: ${message}`, 'error');
+                } finally {
+                  setRestartingNow(false);
+                }
+              }}
+            >
+              <Power className="mr-2 h-4 w-4" />
+              {restartingNow ? 'Restarting...' : 'Restart server now'}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-th-text-m">{scheduleMessage ?? 'Changes are applied immediately and persisted for the next backend start.'}</p>
+          <button
+            type="button"
+            className="dune-button"
+            disabled={savingSchedule}
+            onClick={async () => {
+              setSavingSchedule(true);
+              try {
+                const warningMinutes = parseWarningMinutes(warningInput);
+                const updated = await apiClient.updateRestartSchedule({
+                  enabled: schedule.enabled,
+                  intervalHours: schedule.intervalHours,
+                  warningMinutes,
+                });
+                restartScheduleApi.setData(updated);
+                setSchedule(updated);
+                setWarningInput(updated.warningMinutes.join(', '));
+                setScheduleMessage('Restart schedule saved.');
+                toast('Restart schedule saved.', 'success');
+              } catch (error) {
+                const message = error instanceof Error ? error.message : 'Failed to save restart schedule.';
+                setScheduleMessage(message);
+                toast(`Failed to save restart schedule: ${message}`, 'error');
+              } finally {
+                setSavingSchedule(false);
+              }
+            }}
+          >
+            {savingSchedule ? 'Saving...' : 'Save restart schedule'}
+          </button>
+        </div>
       </section>
     </div>
   );

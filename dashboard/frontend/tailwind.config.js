@@ -37,12 +37,12 @@ module.exports = {
       },
       boxShadow: {
         dune: '0 20px 45px -20px rgba(245, 158, 11, 0.35)',
-        glass: '0 20px 60px -24px rgba(15, 23, 42, 0.75)',
-        'glass-light': '0 20px 60px -24px rgba(0, 0, 0, 0.08)',
+        glass: 'var(--glass-shadow)',
+        'glass-light': 'var(--glass-shadow)',
       },
       backgroundImage: {
         'dune-radial': 'var(--dune-radial)',
-        'dune-grid': 'linear-gradient(rgba(148,163,184,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.06) 1px, transparent 1px)'
+        'dune-grid': 'linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)'
       },
       keyframes: {
         float: {

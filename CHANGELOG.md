@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0] - 2026-05-25
+
+### Added
+- **Audit trail** page with filterable log of all admin actions, player logins/logouts, config changes, and grants
+- **Scheduled announcements** for recurring or one-time in-game messages with interval or specific time
+- **Scheduled server restarts** with automatic pre-restart warnings and backup-before-restart
+- **Game tweak settings** for sandworm behavior, NPC difficulty, mining rates, loot drops, day/night cycle, crafting costs, hydration, and vehicle durability
+- **Toast notifications** across all dashboard pages for real-time user feedback
+- **Container-compatible backup/restore scripts** using pg_dump/psql directly (no Docker-in-Docker needed)
+- **Design system document** (`docs/DESIGN.md`) with complete token, component, and pattern reference
+- **Excalidraw architecture diagrams** for system and dashboard feature mapping
+- Sidebar grouped into 6 logical sections (Core, Players, Server, Operations, Communication, Admin)
+- Player login/logout events tracked in audit log and connection history
+- Item grant stats fix: `FItemStackAndDurabilityStats` now included so granted items appear in-game
+
+### Changed
+- Light mode theme warmed up with sandy/amber tones matching the Dune aesthetic
+- Sidebar reorganized from 17 flat items into grouped sections with headers
+- UserGame.ini and UserEngine.ini file descriptions updated to reflect game tweak capabilities
+- API Dockerfile now includes PostgreSQL 17 client for backup compatibility
+- README updated with new feature descriptions and documentation links
+
+### Fixed
+- Backup creation 404 error (`/app/scripts/backup.sh` not found in API container)
+- Backup script POSIX sh compatibility (was using bash-only syntax in dash container)
+- pg_dump version mismatch (container had v15, server runs v17)
+- Backup directory permissions (owned by root, now writable by app user)
+- Granted items not appearing in-game (missing `FItemStackAndDurabilityStats` in stats JSON)
+- Unicode ellipsis characters (`...`) replaced with ASCII equivalents across frontend
+- Audit page CSS classes fixed from `sand-*` to proper `th-*` theme tokens
+
 ## [1.2.0] - 2026-05-24
 
 ### Changed

@@ -18,7 +18,8 @@ from middleware.rate_limit import RateLimitMiddleware
 from middleware.redaction import redact
 from middleware.request_logging import RequestLoggingMiddleware
 from middleware.security_headers import SecurityHeadersMiddleware
-from routers import announce, audit, backups, characters, chat_guard, config, discord, economy, logs, maps, players, settings, status, system, watchdog
+from routers import announce, audit, backups, characters, chat_guard, config, discord, economy, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, watchdog
+from services.announce_scheduler import AnnounceScheduler
 from services.announce_service import AnnounceService
 from services.backup_scheduler import BackupScheduler
 from services.backup_service import BackupService
@@ -31,6 +32,7 @@ from services.economy_service import EconomyService
 from services.log_service import LogService
 from services.metrics_service import MetricsService
 from services.postgres_service import PostgresService
+from services.restart_scheduler import RestartScheduler
 from services.watchdog_service import WatchdogService
 
 load_dotenv()
@@ -147,6 +149,7 @@ async def lifespan(app: FastAPI):
     backup_service = BackupService()
     backup_scheduler = BackupScheduler(backup_service)
     announce_service = AnnounceService()
+    announce_scheduler = AnnounceScheduler(announce_service)
     discord_service = DiscordService()
     postgres_service = PostgresService()
     character_service = CharacterService(postgres_service=postgres_service)
@@ -154,6 +157,7 @@ async def lifespan(app: FastAPI):
     log_service = LogService(docker_service)
     chat_guard_service = ChatGuardService(docker_service=docker_service)
     watchdog_service = WatchdogService(docker_service, discord_service)
+    restart_scheduler = RestartScheduler(announce_service, backup_service, docker_service, watchdog_service)
 
     app.state.docker_service = docker_service
     app.state.config_service = config_service
@@ -161,6 +165,8 @@ async def lifespan(app: FastAPI):
     app.state.backup_service = backup_service
     app.state.backup_scheduler = backup_scheduler
     app.state.announce_service = announce_service
+    app.state.announce_scheduler = announce_scheduler
+    app.state.restart_scheduler = restart_scheduler
     app.state.discord_service = discord_service
     app.state.postgres_service = postgres_service
     app.state.character_service = character_service
@@ -179,6 +185,8 @@ async def lifespan(app: FastAPI):
     await asyncio.gather(
         metrics_service.start(),
         backup_scheduler.start(),
+        announce_scheduler.start(),
+        restart_scheduler.start(),
         watchdog_service.start(),
         economy_service.start(),
         chat_guard_service.start(),
@@ -215,7 +223,9 @@ async def lifespan(app: FastAPI):
         await chat_guard_service.stop()
         await economy_service.stop()
         await watchdog_service.stop()
+        await restart_scheduler.stop()
         await backup_scheduler.stop()
+        await announce_scheduler.stop()
         await discord_service.stop()
         await metrics_service.stop()
         await postgres_service.close()
@@ -242,12 +252,14 @@ _SECURE_API_DEPENDENCIES = [Depends(verify_admin_token)]
 
 app.include_router(status.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(announce.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(scheduled_announce.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(maps.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(config.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(players.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(logs.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(system.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(backups.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(restart_schedule.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(discord.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(watchdog.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(economy.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)

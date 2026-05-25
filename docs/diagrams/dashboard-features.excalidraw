@@ -1,0 +1,115 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "arrakis-command-nexus",
+  "elements": [
+    {
+      "type": "rectangle",
+      "x": 300,
+      "y": 20,
+      "width": 400,
+      "height": 50,
+      "backgroundColor": "#ffc9c9",
+      "strokeColor": "#c92a2a",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "title",
+      "label": { "text": "Dashboard Feature Map" }
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 100,
+      "width": 200,
+      "height": 140,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2b8a3e",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "core",
+      "label": { "text": "Core\n\nOverview\nMaps + Heatmaps\nPlayer Tracking\nCharacter Editor" }
+    },
+    {
+      "type": "rectangle",
+      "x": 280,
+      "y": 100,
+      "width": 200,
+      "height": 140,
+      "backgroundColor": "#a5d8ff",
+      "strokeColor": "#1864ab",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "server",
+      "label": { "text": "Server\n\nConfiguration + Tweaks\nResources\nLive Logs\nSystem Telemetry" }
+    },
+    {
+      "type": "rectangle",
+      "x": 510,
+      "y": 100,
+      "width": 200,
+      "height": 140,
+      "backgroundColor": "#d0bfff",
+      "strokeColor": "#5f3dc4",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "ops",
+      "label": { "text": "Operations\n\nEconomy Alerts\nBackups + Scheduling\nModeration\nAudit Trail" }
+    },
+    {
+      "type": "rectangle",
+      "x": 740,
+      "y": 100,
+      "width": 200,
+      "height": 140,
+      "backgroundColor": "#ffd8a8",
+      "strokeColor": "#d9480f",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "comms",
+      "label": { "text": "Communication\n\nAnnouncements\nScheduled Messages\nDiscord Webhooks\nPre-restart Warnings" }
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 280,
+      "width": 200,
+      "height": 120,
+      "backgroundColor": "#ffec99",
+      "strokeColor": "#e67700",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "admin",
+      "label": { "text": "Admin\n\nWatchdog\nSettings\nPublic Status Page\nRestart Scheduling" }
+    },
+    {
+      "type": "rectangle",
+      "x": 280,
+      "y": 280,
+      "width": 200,
+      "height": 120,
+      "backgroundColor": "#c5f6fa",
+      "strokeColor": "#0b7285",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "game-tweaks",
+      "label": { "text": "Game Tweaks\n\nSandworm Controls\nNPC Difficulty\nMining Rates\nLoot + Crafting" }
+    },
+    {
+      "type": "rectangle",
+      "x": 510,
+      "y": 280,
+      "width": 200,
+      "height": 120,
+      "backgroundColor": "#eebefa",
+      "strokeColor": "#862e9c",
+      "fillStyle": "solid",
+      "roundness": { "type": 3 },
+      "id": "theme",
+      "label": { "text": "UI/UX\n\nWarm Light Theme\nDark Theme\nToast Notifications\nDesign System" }
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff",
+    "gridSize": 20
+  }
+}

@@ -6,6 +6,8 @@ This project packages Funcom's dedicated server stack, helper scripts, Docker Co
 
 - [Quick Start](./QUICKSTART.md)
 - [Configuration Reference](./CONFIGURATION.md)
+- [Config Keys](./CONFIG_KEYS.md)
+- [Design System](./DESIGN.md)
 - [Deployment Profiles](./PROFILES.md)
 - [Networking Guide](./NETWORKING.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)
@@ -56,7 +58,7 @@ This project automates the moving parts required to self-host Dune Awakening:
 
 - One-command initialization and startup via `dune init` and `dune start`
 - Profile overlays for basic, standard, and full battlegroup layouts
-- Dashboard with health monitoring, map controls, player management, config editing, backups, logs, and Discord alerts
+- Dashboard with health monitoring, map controls, player management, config editing, game tweaks, backups, scheduled announcements, server restart scheduling, audit trail, logs, and Discord alerts
 - Backup and restore tooling for config, saves, and database snapshots
 - Steam image loading and update helpers for Funcom server packages
 - Security-first defaults for admin services and secrets handling

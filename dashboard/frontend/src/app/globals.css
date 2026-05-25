@@ -10,30 +10,32 @@
   --duration-normal: 200ms;
 
   /* Semantic color tokens (RGB channels for Tailwind alpha) */
-  --th-bg:        248 250 252;   /* slate-50 */
-  --th-bg-s:      241 245 249;   /* slate-100 */
-  --th-surface:   255 255 255;   /* white */
-  --th-surface-s: 241 245 249;   /* slate-100 */
-  --th-border:    203 213 225;   /* slate-300 */
-  --th-border-m:  226 232 240;   /* slate-200 */
-  --th-text:      15 23 42;      /* slate-900 */
-  --th-text-s:    71 85 105;     /* slate-600 */
-  --th-text-m:    100 116 139;   /* slate-500 */
+  --th-bg:        253 251 247;   /* warm off-white, like parchment */
+  --th-bg-s:      247 243 235;   /* warm sand-tinted bg */
+  --th-surface:   255 253 250;   /* slightly warm white */
+  --th-surface-s: 247 243 235;   /* warm sand surface */
+  --th-border:    214 204 186;   /* warm sand border */
+  --th-border-m:  232 224 210;   /* lighter warm border */
+  --th-text:      41 32 18;      /* deep warm brown-black */
+  --th-text-s:    92 76 52;      /* warm brown secondary */
+  --th-text-m:    133 117 90;    /* warm muted text */
 
   /* Background gradient */
-  --dune-radial: radial-gradient(circle at top, rgba(245,158,11,0.08), transparent 40%),
-                 radial-gradient(circle at bottom right, rgba(251,146,60,0.05), transparent 32%);
+  --dune-radial: radial-gradient(circle at top, rgba(245,158,11,0.10), transparent 40%),
+                 radial-gradient(circle at bottom right, rgba(194,120,3,0.06), transparent 32%);
+  --grid-line: rgba(133, 117, 90, 0.06);
+  --glass-shadow: 0 20px 60px -24px rgba(133, 117, 90, 0.18);
 
   /* Tooltip/chart styles */
-  --tooltip-bg: rgba(255, 255, 255, 0.96);
-  --tooltip-border: rgba(203, 213, 225, 0.6);
-  --tooltip-text: #0f172a;
-  --tooltip-label: #475569;
-  --chart-grid: rgba(148,163,184,0.18);
-  --chart-axis: #94a3b8;
-  --gauge-track: rgba(148,163,184,0.18);
-  --scrollbar-thumb: rgba(245, 158, 11, 0.5);
-  --scrollbar-track: rgba(241, 245, 249, 0.6);
+  --tooltip-bg: rgba(255, 253, 250, 0.97);
+  --tooltip-border: rgba(214, 204, 186, 0.6);
+  --tooltip-text: #292012;
+  --tooltip-label: #5c4c34;
+  --chart-grid: rgba(133,117,90,0.15);
+  --chart-axis: #85755a;
+  --gauge-track: rgba(133,117,90,0.15);
+  --scrollbar-thumb: rgba(194, 120, 3, 0.5);
+  --scrollbar-track: rgba(247, 243, 235, 0.6);
 
   color-scheme: light;
 }
@@ -62,6 +64,8 @@
   --gauge-track: rgba(148,163,184,0.14);
   --scrollbar-thumb: rgba(245, 158, 11, 0.65);
   --scrollbar-track: rgba(15, 23, 42, 0.4);
+  --grid-line: rgba(148, 163, 184, 0.06);
+  --glass-shadow: 0 20px 60px -24px rgba(15, 23, 42, 0.75);
 
   color-scheme: dark;
 }
@@ -115,11 +119,8 @@ body {
 
 @layer components {
   .glass-panel {
-    @apply rounded-2xl border border-th-border/70 bg-th-surface/70 backdrop-blur-xl;
-    box-shadow: 0 20px 60px -24px rgba(0, 0, 0, 0.08);
-  }
-  .dark .glass-panel {
-    box-shadow: 0 20px 60px -24px rgba(15, 23, 42, 0.75);
+    @apply rounded-2xl border border-th-border/70 bg-th-surface/78 backdrop-blur-xl;
+    box-shadow: var(--glass-shadow);
   }
 
   .metric-card {

@@ -182,6 +182,27 @@ export interface BackupSchedule {
   cron?: string;
 }
 
+export interface RestartSchedule {
+  enabled: boolean;
+  intervalHours: number;
+  warningMinutes: number[];
+  lastRestartAt?: string | null;
+  nextRestartAt?: string | null;
+}
+
+export interface RestartNowResponse {
+  status: 'ok' | 'partial' | 'failed';
+  trigger: 'manual' | 'scheduled';
+  warningMinutes: number;
+  startedAt?: string | null;
+  restartAt?: string | null;
+  services: string[];
+  backupId?: string | null;
+  backupError?: string | null;
+  errors?: Record<string, string>;
+  scheduled?: boolean;
+}
+
 export interface DiscordEventRecord {
   id: string;
   event: string;
@@ -207,6 +228,25 @@ export interface AnnouncementHistoryEntry {
   timestamp: string;
   status: 'sent' | 'failed' | 'skipped';
   error?: string;
+}
+
+export interface ScheduledAnnouncement {
+  id: string;
+  message: string;
+  sender: string;
+  interval_minutes?: number | null;
+  next_run_at?: string | null;
+  enabled: boolean;
+  one_shot: boolean;
+  created_at: string;
+}
+
+export interface ScheduledAnnouncementMutation {
+  message?: string;
+  sender?: string;
+  interval_minutes?: number;
+  run_at?: string;
+  enabled?: boolean;
 }
 
 export interface ReadinessCheck {

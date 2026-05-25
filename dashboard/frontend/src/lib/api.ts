@@ -2,6 +2,8 @@ import {
   AnnouncementHistoryEntry,
   BackupEntry,
   BackupSchedule,
+  ScheduledAnnouncement,
+  ScheduledAnnouncementMutation,
   BanEntry,
   CharacterRecord,
   CharacterStatsSchema,
@@ -21,6 +23,8 @@ import {
   ReadinessStatus,
   ServerOverview,
   ServiceStatus,
+  RestartNowResponse,
+  RestartSchedule,
   SystemMetrics,
   SystemVersion,
   UptimeData,
@@ -254,6 +258,24 @@ export class ApiClient {
     });
   }
 
+  getRestartSchedule() {
+    return this.request<RestartSchedule>('/restart/schedule');
+  }
+
+  updateRestartSchedule(schedule: Partial<RestartSchedule>) {
+    return this.request<RestartSchedule>('/restart/schedule', {
+      method: 'PUT',
+      body: JSON.stringify(schedule),
+    });
+  }
+
+  restartNow(warningMinutes = 0) {
+    return this.request<RestartNowResponse>('/restart/now', {
+      method: 'POST',
+      body: JSON.stringify({ warningMinutes }),
+    });
+  }
+
   getDiscordWebhooks() {
     return this.request<DiscordWebhook[]>('/discord/webhooks');
   }
@@ -303,6 +325,32 @@ export class ApiClient {
 
   getAnnouncementHistory() {
     return this.request<AnnouncementHistoryEntry[]>('/announce/history');
+  }
+
+  getScheduledAnnouncements() {
+    return this.request<ScheduledAnnouncement[]>('/announce/scheduled');
+  }
+
+  createScheduledAnnouncement(data: ScheduledAnnouncementMutation) {
+    return this.request<ScheduledAnnouncement>('/announce/scheduled', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  updateScheduledAnnouncement(id: string, data: ScheduledAnnouncementMutation) {
+    return this.request<ScheduledAnnouncement>(`/announce/scheduled/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteScheduledAnnouncement(id: string) {
+    return this.request<void>(`/announce/scheduled/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  toggleScheduledAnnouncement(id: string) {
+    return this.request<ScheduledAnnouncement>(`/announce/scheduled/${encodeURIComponent(id)}/toggle`, { method: 'POST' });
   }
 
   getChatGuardSettings() {
