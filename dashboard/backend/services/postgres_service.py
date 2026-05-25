@@ -13,7 +13,12 @@ logger = logging.getLogger(__name__)
 
 class PostgresService:
     def __init__(self, dsn: str | None = None) -> None:
-        self.dsn = dsn or os.getenv("DUNE_FUNCOM_POSTGRES_DSN") or os.getenv("DUNE_POSTGRES_DSN")
+        self.dsn = (
+            dsn
+            or os.getenv("DUNE_FUNCOM_POSTGRES_DSN")
+            or os.getenv("DUNE_POSTGRES_DSN")
+            or os.getenv("DATABASE_URL")
+        )
         self.pool: asyncpg.Pool | None = None
         self._query_warning_emitted = False
 
@@ -36,27 +41,26 @@ class PostgresService:
         if self.pool is None:
             return []
 
-        # Placeholder query: the actual Funcom schema table/view names depend on the
-        # server version. Update the table name and columns once confirmed for your build.
         query = """
             SELECT
-                CAST(player_id AS TEXT) AS steam_id,
-                player_name AS name,
-                world_name AS map_name,
-                pos_x,
-                pos_y,
-                pos_z,
-                session_start,
-                TRUE AS is_online
-            FROM online_players_view
-            ORDER BY session_start DESC
+                CAST(ea."user" AS TEXT) AS steam_id,
+                CAST(eps.account_id AS TEXT) AS name,
+                eps.online_status,
+                eps.life_state,
+                eps.server_id,
+                eps.last_login_time AS session_start,
+                ea.platform_name
+            FROM dune.encrypted_player_state eps
+            JOIN dune.encrypted_accounts ea ON ea.id = eps.account_id
+            WHERE eps.online_status = 'Online'
+            ORDER BY eps.last_login_time DESC
         """
         try:
             async with self.pool.acquire() as connection:
                 rows = await connection.fetch(query)
         except asyncpg.PostgresError as exc:
             if not self._query_warning_emitted:
-                logger.warning("Postgres player query needs schema updates: %s", exc)
+                logger.warning("Postgres player query failed: %s", exc)
                 self._query_warning_emitted = True
             return []
 
@@ -66,11 +70,14 @@ class PostgresService:
         if self.pool is None:
             return {}
 
-        # Placeholder query: adjust table/columns to match Funcom's proprietary schema.
         query = """
-            SELECT currency_balance, experience_points
-            FROM player_progress_view
-            WHERE CAST(player_id AS TEXT) = $1
+            SELECT
+                COALESCE(SUM(pvcb.balance), 0) AS currency_balance
+            FROM dune.encrypted_accounts ea
+            JOIN dune.encrypted_player_state eps ON eps.account_id = ea.id
+            LEFT JOIN dune.player_virtual_currency_balances pvcb
+                ON pvcb.player_controller_id = eps.player_controller_id
+            WHERE ea."user" = $1
         """
         try:
             async with self.pool.acquire() as connection:
@@ -78,6 +85,32 @@ class PostgresService:
         except asyncpg.PostgresError:
             return {}
         return dict(row) if row else {}
+
+    async def get_all_players(self) -> list[Player]:
+        """Return all players (online and offline) with last login info."""
+        if self.pool is None:
+            return []
+
+        query = """
+            SELECT
+                CAST(ea."user" AS TEXT) AS steam_id,
+                CAST(eps.account_id AS TEXT) AS name,
+                eps.online_status,
+                eps.life_state,
+                eps.server_id,
+                eps.last_login_time AS session_start,
+                ea.platform_name
+            FROM dune.encrypted_player_state eps
+            JOIN dune.encrypted_accounts ea ON ea.id = eps.account_id
+            ORDER BY eps.last_login_time DESC
+        """
+        try:
+            async with self.pool.acquire() as connection:
+                rows = await connection.fetch(query)
+        except asyncpg.PostgresError as exc:
+            logger.warning("Postgres all-players query failed: %s", exc)
+            return []
+        return [self._row_to_player(row) for row in rows]
 
     def _row_to_player(self, row: asyncpg.Record) -> Player:
         position = None
@@ -89,9 +122,12 @@ class PostgresService:
             }
         return Player(
             steam_id=str(row.get("steam_id", "")),
-            name=row.get("name") or "Unknown",
+            name=row.get("name") or row.get("steam_id") or "Unknown",
             map_name=row.get("map_name"),
             position=position,
             session_start=row.get("session_start"),
-            is_online=bool(row.get("is_online", True)),
+            is_online=row.get("online_status") == "Online" if "online_status" in row.keys() else bool(row.get("is_online", True)),
+            life_state=row.get("life_state"),
+            server_id=row.get("server_id"),
+            platform=row.get("platform_name"),
         )

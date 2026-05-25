@@ -12,6 +12,9 @@ class Player(BaseModel):
     position: dict[str, float] | None = None
     session_start: datetime | None = None
     is_online: bool = True
+    life_state: str | None = None
+    server_id: str | None = None
+    platform: str | None = None
 
 
 class BanRequest(BaseModel):
