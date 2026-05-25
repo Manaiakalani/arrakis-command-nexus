@@ -50,14 +50,17 @@ class PostgresService:
             SELECT
                 CAST(ea."user" AS TEXT) AS steam_id,
                 CAST(eps.account_id AS TEXT) AS name,
-                eps.online_status,
-                eps.life_state,
+                eps.online_status::text AS online_status,
+                eps.life_state::text AS life_state,
                 eps.server_id,
                 eps.last_login_time AS session_start,
-                ea.platform_name
+                ea.platform_name,
+                a.map AS map_name,
+                a.transform
             FROM dune.encrypted_player_state eps
             JOIN dune.encrypted_accounts ea ON ea.id = eps.account_id
-            WHERE eps.online_status = 'Online'
+            LEFT JOIN dune.actors a ON a.id = eps.player_pawn_id
+            WHERE eps.online_status::text = 'Online'
             ORDER BY eps.last_login_time DESC
         """
         try:
@@ -100,13 +103,16 @@ class PostgresService:
             SELECT
                 CAST(ea."user" AS TEXT) AS steam_id,
                 CAST(eps.account_id AS TEXT) AS name,
-                eps.online_status,
-                eps.life_state,
+                eps.online_status::text AS online_status,
+                eps.life_state::text AS life_state,
                 eps.server_id,
                 eps.last_login_time AS session_start,
-                ea.platform_name
+                ea.platform_name,
+                a.map AS map_name,
+                a.transform
             FROM dune.encrypted_player_state eps
             JOIN dune.encrypted_accounts ea ON ea.id = eps.account_id
+            LEFT JOIN dune.actors a ON a.id = eps.player_pawn_id
             ORDER BY eps.last_login_time DESC
         """
         try:
@@ -125,6 +131,20 @@ class PostgresService:
                 "y": float(row["pos_y"]),
                 "z": float(row["pos_z"]),
             }
+        elif "transform" in row.keys() and row["transform"] is not None:
+            try:
+                import re
+                t_str = str(row["transform"])
+                nums = re.findall(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', t_str)
+                if len(nums) >= 3:
+                    position = {
+                        "x": float(nums[0]),
+                        "y": float(nums[1]),
+                        "z": float(nums[2]),
+                    }
+            except Exception:
+                pass
+
         return Player(
             steam_id=str(row.get("steam_id", "")),
             name=row.get("name") or row.get("steam_id") or "Unknown",

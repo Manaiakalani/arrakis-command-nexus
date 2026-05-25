@@ -35,11 +35,11 @@ EDITABLE_STATS = [
 
 
 class CharacterService:
-    TABLE_CANDIDATES = ("characters", "players", "accounts")
-    ID_COLUMNS = ("id", "character_id", "player_id", "account_id", "steam_id")
-    NAME_COLUMNS = ("name", "character_name", "player_name", "display_name", "username")
-    TIMESTAMP_COLUMNS = ("updated_at", "modified_at", "last_seen", "last_login", "created_at")
-    METADATA_COLUMNS = ("guild", "clan", "house", "faction", "level", "world_name", "map_name")
+    TABLE_CANDIDATES = ("encrypted_player_state", "encrypted_accounts", "characters", "players", "accounts")
+    ID_COLUMNS = ("id", "account_id", "character_id", "player_id", "steam_id")
+    NAME_COLUMNS = ("user", "name", "character_name", "player_name", "display_name", "username")
+    TIMESTAMP_COLUMNS = ("last_login_time", "last_avatar_activity", "updated_at", "modified_at", "last_seen", "last_login", "created_at")
+    METADATA_COLUMNS = ("online_status", "life_state", "server_id", "guild", "clan", "house", "faction", "level", "world_name", "map_name", "platform_name")
 
     def __init__(self, postgres_service: Any | None = None) -> None:
         self.postgres_service = postgres_service
@@ -61,12 +61,42 @@ class CharacterService:
         return await self._get_mock_characters()
 
     async def _query_game_characters(self) -> list[dict[str, Any]]:
-        """Query game database for character data using common table names and columns."""
+        """Query game database for character data from Funcom schema."""
         pool = getattr(self.postgres_service, "pool", None)
         if pool is None:
             raise LookupError("Game DB pool is not available")
 
         async with pool.acquire() as connection:
+            # Try direct Funcom schema query first
+            try:
+                rows = await connection.fetch("""
+                    SELECT
+                        CAST(ea.id AS TEXT) AS id,
+                        ea."user" AS funcom_id,
+                        eps.online_status::text AS online_status,
+                        eps.life_state::text AS life_state,
+                        eps.server_id,
+                        eps.last_login_time,
+                        eps.last_avatar_activity,
+                        a.map,
+                        a.transform,
+                        ea.platform_name,
+                        COALESCE(pvcb.balance, 0) AS solari
+                    FROM dune.encrypted_accounts ea
+                    JOIN dune.encrypted_player_state eps ON eps.account_id = ea.id
+                    LEFT JOIN dune.actors a ON a.id = eps.player_pawn_id
+                    LEFT JOIN dune.player_virtual_currency_balances pvcb
+                        ON pvcb.player_controller_id = eps.player_controller_id
+                        AND pvcb.currency_id = 1
+                    ORDER BY eps.last_login_time DESC NULLS LAST
+                    LIMIT 250
+                """)
+                if rows:
+                    return [self._funcom_row_to_character(row) for row in rows]
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Funcom schema query failed, falling back: %s", exc)
+
+            # Fallback to generic table discovery
             rows = await connection.fetch(
                 """
                 SELECT table_schema, table_name
@@ -94,6 +124,45 @@ class CharacterService:
                     return characters
 
         raise LookupError("No readable character data found")
+
+    def _funcom_row_to_character(self, row: Any) -> dict[str, Any]:
+        """Convert a Funcom DB row into our character format."""
+        pos = None
+        map_name = row.get("map")
+        transform = row.get("transform")
+        if transform is not None:
+            try:
+                # transform is a composite type: ((x,y,z),(qx,qy,qz,qw))
+                t_str = str(transform)
+                import re
+                nums = re.findall(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', t_str)
+                if len(nums) >= 3:
+                    pos = {"x": float(nums[0]), "y": float(nums[1]), "z": float(nums[2])}
+            except Exception:
+                pass
+
+        stats: dict[str, Any] = {"solari": int(row.get("solari", 0))}
+        metadata: dict[str, Any] = {}
+        if row.get("online_status"):
+            metadata["online_status"] = row["online_status"]
+        if row.get("life_state"):
+            metadata["life_state"] = row["life_state"]
+        if row.get("platform_name"):
+            metadata["platform"] = row["platform_name"]
+        if map_name:
+            metadata["map"] = map_name
+        if pos:
+            metadata["position"] = pos
+
+        return {
+            "id": str(row["id"]),
+            "name": f"Player {row['id']}" if not row.get("funcom_id") else row["funcom_id"],
+            "source": "funcom",
+            "table": "dune.encrypted_player_state",
+            "lastUpdated": self._serialize_value(row.get("last_login_time") or row.get("last_avatar_activity")),
+            "stats": stats,
+            "metadata": metadata,
+        }
 
     async def get_character(self, character_id: str) -> dict[str, Any] | None:
         """Get a specific character by ID."""
