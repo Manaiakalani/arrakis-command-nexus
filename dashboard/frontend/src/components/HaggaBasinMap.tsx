@@ -106,8 +106,8 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
         {viewMode === 'tactical' ? (
           <div
             className="relative overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
-            style={{ aspectRatio: '1 / 1' }}
             {...zoom.containerProps}
+            style={{ aspectRatio: '1 / 1', ...zoom.containerProps.style }}
           >
             <div style={zoom.transformStyle} className="absolute inset-0">
               {/* Map background - HD 2048x2048 from stitched CDN tiles */}
