@@ -82,10 +82,20 @@ async def _enforce_public_status_rate_limit(request: Request) -> None:
 async def get_status(request: Request) -> dict:
     docker_service = request.app.state.docker_service
     postgres_service = request.app.state.postgres_service
-    services, players = await asyncio.gather(
+
+    services_result, players_result = await asyncio.gather(
         docker_service.list_containers(),
         postgres_service.get_online_players(),
+        return_exceptions=True,
     )
+
+    services = services_result if isinstance(services_result, list) else []
+    players = players_result if isinstance(players_result, list) else []
+
+    if isinstance(services_result, Exception):
+        logger.warning("Failed to list containers for status: %s", services_result)
+    if isinstance(players_result, Exception):
+        logger.warning("Failed to get online players for status: %s", players_result)
     readiness = docker_service.evaluate_readiness(services)
     uptime = docker_service.calculate_uptime(services)
 
