@@ -122,6 +122,36 @@ export class ApiClient {
     });
   }
 
+  getCharacterInventory(id: string) {
+    return this.request<{ character_id: string; inventories: Record<string, { template_id: string; stack_size: number; position_index: number; quality_level: number }[]> }>(`/characters/${encodeURIComponent(id)}/inventory`);
+  }
+
+  grantItem(id: string, templateId: string, stackSize: number = 1, qualityLevel: number = 0) {
+    return this.request<{ success: boolean; item_id: number; template_id: string; stack_size: number }>(`/characters/${encodeURIComponent(id)}/grant-item`, {
+      method: 'POST',
+      body: JSON.stringify({ template_id: templateId, stack_size: stackSize, quality_level: qualityLevel }),
+    });
+  }
+
+  grantSolari(id: string, amount: number) {
+    return this.request<{ success: boolean; solari_added: number; new_total: number }>(`/characters/${encodeURIComponent(id)}/grant-solari`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    });
+  }
+
+  setHealth(id: string, maxHealth: number) {
+    return this.request<CharacterRecord>(`/characters/${encodeURIComponent(id)}/set-health`, {
+      method: 'POST',
+      body: JSON.stringify({ max_health: maxHealth }),
+    });
+  }
+
+  searchItemTemplates(search?: string) {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return this.request<{ templates: { id: string; count: number }[]; total: number }>(`/items/templates${query}`);
+  }
+
   getPlayerPositions() {
     return this.request<PlayerPosition[]>('/players/positions');
   }

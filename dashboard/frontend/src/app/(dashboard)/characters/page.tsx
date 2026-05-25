@@ -2,10 +2,13 @@
 
 import {
   AlertTriangle,
+  Backpack,
   Coins,
   Droplets,
   Flame,
+  Heart,
   Loader2,
+  Package,
   Pickaxe,
   RefreshCcw,
   Save,
@@ -99,6 +102,15 @@ export default function CharactersPage() {
   const [characterError, setCharacterError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>(null);
   const [saving, setSaving] = useState(false);
+  const [grantTemplate, setGrantTemplate] = useState('');
+  const [grantAmount, setGrantAmount] = useState('1');
+  const [grantSearch, setGrantSearch] = useState('');
+  const [grantResult, setGrantResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [granting, setGranting] = useState(false);
+  const [templateResults, setTemplateResults] = useState<{ id: string; count: number }[]>([]);
+  const [searchingTemplates, setSearchingTemplates] = useState(false);
+  const [inventoryData, setInventoryData] = useState<Record<string, { template_id: string; stack_size: number; position_index: number; quality_level: number }[]> | null>(null);
+  const [loadingInventory, setLoadingInventory] = useState(false);
 
   const filteredCharacters = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -237,6 +249,93 @@ export default function CharactersPage() {
       setSaving(false);
     }
   };
+
+  const handleGrantItem = async (templateId?: string, amount?: number) => {
+    if (!selectedId) return;
+    const tid = templateId ?? grantTemplate.trim();
+    const qty = amount ?? parseInt(grantAmount, 10) || 1;
+    if (!tid) {
+      setGrantResult({ tone: 'error', message: 'Enter an item template ID.' });
+      return;
+    }
+    setGranting(true);
+    setGrantResult(null);
+    try {
+      const result = await apiClient.grantItem(selectedId, tid, qty);
+      setGrantResult({ tone: 'success', message: `Granted ${qty}x ${tid} (item #${result.item_id}). Relog to pick up.` });
+      if (!templateId) { setGrantTemplate(''); setGrantAmount('1'); }
+      void loadInventory();
+    } catch (error) {
+      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  const handleGrantSolari = async (amount: number) => {
+    if (!selectedId) return;
+    setGranting(true);
+    setGrantResult(null);
+    try {
+      const result = await apiClient.grantSolari(selectedId, amount);
+      setGrantResult({ tone: 'success', message: `Added ${result.solari_added} Solari (total: ${result.new_total}). Relog to pick up.` });
+      void loadInventory();
+    } catch (error) {
+      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  const handleSetHealth = async (hp: number) => {
+    if (!selectedId) return;
+    setGranting(true);
+    setGrantResult(null);
+    try {
+      await apiClient.setHealth(selectedId, hp);
+      setGrantResult({ tone: 'success', message: `Max health set to ${hp}. Relog to apply.` });
+      void handleReset();
+    } catch (error) {
+      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Failed.' });
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  const handleSearchTemplates = async () => {
+    const term = grantSearch.trim();
+    if (!term) return;
+    setSearchingTemplates(true);
+    try {
+      const result = await apiClient.searchItemTemplates(term);
+      setTemplateResults(result.templates);
+    } catch {
+      setTemplateResults([]);
+    } finally {
+      setSearchingTemplates(false);
+    }
+  };
+
+  const loadInventory = async () => {
+    if (!selectedId) return;
+    setLoadingInventory(true);
+    try {
+      const result = await apiClient.getCharacterInventory(selectedId);
+      setInventoryData(result.inventories);
+    } catch {
+      setInventoryData(null);
+    } finally {
+      setLoadingInventory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedId) {
+      void loadInventory();
+      setGrantResult(null);
+      setTemplateResults([]);
+    }
+  }, [selectedId]);
 
   return (
     <div className="space-y-6">
@@ -509,6 +608,169 @@ export default function CharactersPage() {
               })}
             </div>
           </div>
+
+          {selectedCharacter && mutationsEnabled ? (
+            <div className="glass-panel p-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
+                  <Package className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="section-title">Grant Items and Resources</p>
+                  <h2 className="mt-1 text-xl font-semibold text-th-text">Quick Grant to {selectedCharacter.name}</h2>
+                </div>
+              </div>
+
+              {grantResult ? (
+                <div className={cn('mt-4 rounded-2xl border px-4 py-3 text-sm', grantResult.tone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200')}>
+                  {grantResult.message}
+                </div>
+              ) : null}
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-th-text">Quick Grants</p>
+                <p className="mt-1 text-xs text-th-text-m">One-click common items and resources. Player must relog to receive.</p>
+                <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-4">
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantSolari(1000)}>
+                    <Coins className="mr-1.5 h-3.5 w-3.5" /> +1,000 Solari
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantSolari(10000)}>
+                    <Coins className="mr-1.5 h-3.5 w-3.5" /> +10,000 Solari
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleSetHealth(300)}>
+                    <Heart className="mr-1.5 h-3.5 w-3.5" /> 300 HP
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleSetHealth(500)}>
+                    <Heart className="mr-1.5 h-3.5 w-3.5" /> 500 HP
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('ScrapMetal', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Scrap Metal
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('Stone', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Stone
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('PlantFiber', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Plant Fiber
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('Oil', 200)}>
+                    <Droplets className="mr-1.5 h-3.5 w-3.5" /> 200 Oil
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('AzuriteOre', 200)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 200 Azurite Ore
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FremenComponent1', 50)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Fremen Parts I
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FremenComponent2', 50)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Fremen Parts II
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('HealthPack', 10)}>
+                    <Heart className="mr-1.5 h-3.5 w-3.5" /> 10 Health Packs
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
+                <p className="text-sm font-semibold text-th-text">Custom Item Grant</p>
+                <p className="mt-1 text-xs text-th-text-m">Enter any item template ID. Search below to find valid IDs.</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                  <input
+                    className="dune-input"
+                    placeholder="Template ID (e.g. ScrapMetal)"
+                    value={grantTemplate}
+                    onChange={(e) => setGrantTemplate(e.target.value)}
+                    disabled={granting}
+                  />
+                  <input
+                    className="dune-input w-24"
+                    type="number"
+                    min={1}
+                    placeholder="Qty"
+                    value={grantAmount}
+                    onChange={(e) => setGrantAmount(e.target.value)}
+                    disabled={granting}
+                  />
+                  <button type="button" className="dune-button" disabled={granting || !grantTemplate.trim()} onClick={() => void handleGrantItem()}>
+                    {granting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Package className="mr-2 h-4 w-4" />}
+                    Grant
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
+                <p className="text-sm font-semibold text-th-text">Item Template Search</p>
+                <p className="mt-1 text-xs text-th-text-m">Search item IDs that exist in the game database.</p>
+                <div className="mt-3 flex gap-3">
+                  <input
+                    className="dune-input flex-1"
+                    placeholder="Search items (e.g. Knife, Armor, Oil)"
+                    value={grantSearch}
+                    onChange={(e) => setGrantSearch(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void handleSearchTemplates(); }}
+                  />
+                  <button type="button" className="dune-button-muted" disabled={searchingTemplates} onClick={() => void handleSearchTemplates()}>
+                    {searchingTemplates ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Search
+                  </button>
+                </div>
+                {templateResults.length > 0 ? (
+                  <div className="mt-3 max-h-60 overflow-y-auto rounded-2xl border border-th-border-m/80">
+                    {templateResults.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="flex w-full items-center justify-between border-b border-th-border-m/40 px-4 py-2.5 text-left text-sm hover:bg-th-surface-s/60 last:border-b-0 transition-colors"
+                        onClick={() => { setGrantTemplate(t.id); setTemplateResults([]); }}
+                      >
+                        <span className="font-medium text-th-text">{t.id}</span>
+                        <span className="text-xs text-th-text-m">{t.count} in DB</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Backpack className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+                    <div>
+                      <p className="text-sm font-semibold text-th-text">Current Inventory</p>
+                      <p className="text-xs text-th-text-m">{selectedCharacter.name}&apos;s items</p>
+                    </div>
+                  </div>
+                  <button type="button" className="dune-button-muted text-xs" onClick={() => void loadInventory()} disabled={loadingInventory}>
+                    <RefreshCcw className={cn('mr-1.5 h-3.5 w-3.5', loadingInventory && 'animate-spin')} /> Refresh
+                  </button>
+                </div>
+                {inventoryData ? (
+                  <div className="mt-4 space-y-4">
+                    {Object.entries(inventoryData).map(([invName, items]) => (
+                      <div key={invName}>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-th-text-m">{invName} ({items.length} items)</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {items.map((item, i) => (
+                            <span
+                              key={`${item.template_id}-${i}`}
+                              className="cursor-pointer rounded-full border border-th-border px-3 py-1 text-xs text-th-text-s hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors"
+                              title={`Slot ${item.position_index}, Quality ${item.quality_level}`}
+                              onClick={() => setGrantTemplate(item.template_id)}
+                            >
+                              {item.template_id} x{item.stack_size}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : loadingInventory ? (
+                  <div className="mt-4 flex items-center gap-2 text-sm text-th-text-m">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading inventory...
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     </div>
