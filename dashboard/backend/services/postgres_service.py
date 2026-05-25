@@ -26,8 +26,13 @@ class PostgresService:
         if not self.dsn:
             logger.info("Funcom Postgres DSN not configured; player queries disabled.")
             return
+        # asyncpg requires "postgresql://" scheme, but DATABASE_URL often uses "postgres://"
+        dsn = self.dsn
+        if dsn.startswith("postgres://"):
+            dsn = dsn.replace("postgres://", "postgresql://", 1)
         try:
-            self.pool = await asyncpg.create_pool(dsn=self.dsn, min_size=1, max_size=5, command_timeout=10)
+            self.pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=5, command_timeout=10)
+            logger.info("Connected to Funcom Postgres (player queries enabled).")
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not connect to Funcom Postgres: %s", exc)
             self.pool = None
