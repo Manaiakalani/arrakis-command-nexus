@@ -92,9 +92,9 @@ check_api() {
   local path="$1"
   local label="${2:-$path}"
   local code
-  code="$(curl -sf -o /dev/null -w '%{http_code}' \
+  code="$(curl -s -o /dev/null -w '%{http_code}' \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
-    "${DASHBOARD_URL}${path}" 2>/dev/null || echo "000")"
+    "${DASHBOARD_URL}${path}" 2>/dev/null)"
   if [[ "$code" == "200" ]]; then
     pass "$label (200)"
   else
@@ -102,12 +102,12 @@ check_api() {
   fi
 }
 
-check_api "/health" "Health endpoint"
+check_api "/api/health" "Health endpoint"
 check_api "/api/status" "Server status"
 check_api "/api/system/version" "System version"
 check_api "/api/system/resources" "System resources"
 check_api "/api/discord/webhooks" "Discord webhooks"
-check_api "/api/config/files" "Config files"
+check_api "/api/config" "Config files"
 check_api "/api/backups" "Backups list"
 check_api "/api/players" "Players list"
 check_api "/api/audit?limit=5" "Audit trail"
@@ -122,8 +122,8 @@ section "Frontend Routes"
 check_route() {
   local path="$1"
   local code
-  code="$(curl -sf -o /dev/null -w '%{http_code}' \
-    "${DASHBOARD_URL}${path}" 2>/dev/null || echo "000")"
+  code="$(curl -s -o /dev/null -w '%{http_code}' \
+    "${DASHBOARD_URL}${path}" 2>/dev/null)"
   if [[ "$code" == "200" ]]; then
     pass "$path (200)"
   else
@@ -135,7 +135,7 @@ ROUTES=(
   "/" "/maps" "/players" "/characters" "/config" "/resources"
   "/logs" "/system" "/economy" "/backups" "/moderation"
   "/discord" "/announcements" "/watchdog" "/audit" "/settings"
-  "/status-page"
+  "/public"
 )
 for route in "${ROUTES[@]}"; do
   check_route "$route"
