@@ -418,15 +418,90 @@ class CharacterService:
                 "note": "Player must relog for teleport to take effect.",
             }
 
+    # Known item template IDs derived from recipes and game data.
+    # These may not yet exist in dune.items but are valid for granting.
+    KNOWN_TEMPLATES: dict[str, str] = {
+        # Weapons
+        "ScrapMetalKnife": "Weapons",
+        "ChoamSda1": "Weapons",
+        "ChoamMaulaPistol": "Weapons",
+        "AssaultRifle": "Weapons",
+        "T1_MeleeKindjal0": "Weapons",
+        "T3_Tool_SurveyProbeLauncher": "Weapons",
+        "Ammo": "Weapons",
+        "T3_Tool_SurveyProbeAmmo": "Weapons",
+        # Tools
+        "MiningTool_1h_Standard": "Tools",
+        "Binoculars_1": "Tools",
+        "BasicBuildingTool": "Tools",
+        "BodyFluidExtractor": "Tools",
+        "PowerPack": "Tools",
+        "RepairTool": "Tools",
+        "WeldingMaterial": "Tools",
+        "PowerUnitVeryLight": "Tools",
+        # Resources
+        "ScrapMetal": "Resources",
+        "Stone": "Resources",
+        "PlantFiber": "Resources",
+        "Oil": "Resources",
+        "AzuriteOre": "Resources",
+        "FuelCanister": "Resources",
+        "T1UniqueComponent": "Resources",
+        "T2HeavyComponent": "Resources",
+        "FremenComponent1": "Resources",
+        "FremenComponent2": "Resources",
+        # Consumables
+        "HealthPack": "Consumables",
+        "healthpack_channeled": "Consumables",
+        "Bloodsack_01": "Consumables",
+        "Literjon": "Consumables",
+        "SolarisCoin": "Currency",
+        # Armor - Sandtrout Leathers
+        "Combat_Nati_SandtroutLeathers01_Helmet": "Armor",
+        "Combat_Nati_SandtroutLeathers01_Top": "Armor",
+        "Combat_Nati_SandtroutLeathers01_Bottom": "Armor",
+        "Combat_Nati_SandtroutLeathers01_Gloves": "Armor",
+        "Combat_Nati_SandtroutLeathers01_Boots": "Armor",
+        # Armor - Bandit Leathers
+        "T1_Armor_BanditLeathers_Head": "Armor",
+        "T1_Armor_BanditLeathers_Chest": "Armor",
+        "T1_Armor_BanditLeathers_Legs": "Armor",
+        "T1_Armor_BanditLeathers_Hands": "Armor",
+        "T1_Armor_BanditLeathers_Feet": "Armor",
+        # Armor - Scavenger Rags
+        "ScavengerRags_Helmet": "Armor",
+        "ScavengerRags_Top": "Armor",
+        "ScavengerRags_Bottom": "Armor",
+        "ScavengerRags_Gloves": "Armor",
+        "ScavengerRags_Boots": "Armor",
+        # Social / Cosmetics
+        "Social_Choam_MaulaCastOffs01_Bottom": "Cosmetics",
+        "Social_Choam_MaulaCastOffs01_Gloves": "Cosmetics",
+        "Social_Choam_MaulaCastOffs01_Shoes": "Cosmetics",
+        "Social_Choam_MaulaCastOffs01_Top_Fremkit": "Cosmetics",
+        # Vehicle Parts
+        "T2_Vehicle_Ground__SandBikeBodyHull": "Vehicle Parts",
+        "T2_Vehicle_Ground__SandBikeChassis": "Vehicle Parts",
+        "T2_SandbikeEngine": "Vehicle Parts",
+        "T2_Vehicle_Ground__SandBikeTreads": "Vehicle Parts",
+        "T2_Vehicle_Ground__SandBikeInventoryModule": "Vehicle Parts",
+        # Schematics
+        "SandbikeEngine_Unique_Speed_1_Schematic": "Schematics",
+        "Stillsuit_Unique_Armored_01_Gloves_Schematic": "Schematics",
+        # Structures
+        "T1_Structure_RespawnBeacon1": "Structures",
+    }
+
     async def list_item_templates(self, search: str | None = None) -> dict[str, Any]:
-        """List distinct item template_ids from the database."""
+        """List item template_ids from DB items, recipes, and known catalog."""
         pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None
         if pool is None:
             return {"templates": [], "total": 0}
 
         async with pool.acquire() as connection:
+            # Get templates from existing items
             if search:
-                rows = await connection.fetch("""
+                item_rows = await connection.fetch("""
                     SELECT DISTINCT template_id, COUNT(*) as count
                     FROM dune.items
                     WHERE template_id ILIKE $1
@@ -435,7 +510,7 @@ class CharacterService:
                     LIMIT 100
                 """, f"%{search}%")
             else:
-                rows = await connection.fetch("""
+                item_rows = await connection.fetch("""
                     SELECT DISTINCT template_id, COUNT(*) as count
                     FROM dune.items
                     GROUP BY template_id
@@ -443,8 +518,65 @@ class CharacterService:
                     LIMIT 200
                 """)
 
-        templates = [{"id": r["template_id"], "count": int(r["count"])} for r in rows]
-        return {"templates": templates, "total": len(templates)}
+            # Extract template IDs from recipe names (strip _Recipe suffix)
+            recipe_rows = await connection.fetch("""
+                SELECT DISTINCT
+                    regexp_replace(
+                        (elem->>'Name'),
+                        '(?:Recipe|_Recipe)$', ''
+                    ) as template_id
+                FROM dune.actors,
+                     jsonb_array_elements(
+                         properties->'CraftingRecipesLibraryActorComponent'->'m_KnownItemRecipes'
+                     ) recipe,
+                     jsonb_extract_path(recipe, 'BaseRecipeId') elem
+                WHERE properties ? 'CraftingRecipesLibraryActorComponent'
+                LIMIT 500
+            """)
+
+        # Merge all sources: DB items, recipes, and known catalog
+        seen: dict[str, dict[str, Any]] = {}
+
+        # DB items (with counts)
+        for r in item_rows:
+            tid = r["template_id"]
+            seen[tid] = {
+                "id": tid,
+                "count": int(r["count"]),
+                "source": "inventory",
+                "category": self.KNOWN_TEMPLATES.get(tid, "Unknown"),
+            }
+
+        # Recipe-derived templates
+        for r in recipe_rows:
+            tid = r["template_id"]
+            if tid and tid not in seen:
+                seen[tid] = {
+                    "id": tid,
+                    "count": 0,
+                    "source": "recipe",
+                    "category": self.KNOWN_TEMPLATES.get(tid, "Unknown"),
+                }
+
+        # Known catalog items not yet in DB or recipes
+        for tid, category in self.KNOWN_TEMPLATES.items():
+            if tid not in seen:
+                seen[tid] = {
+                    "id": tid,
+                    "count": 0,
+                    "source": "catalog",
+                    "category": category,
+                }
+
+        # Filter by search if provided
+        templates = list(seen.values())
+        if search:
+            s = search.lower()
+            templates = [t for t in templates if s in t["id"].lower() or s in t["category"].lower()]
+
+        # Sort: items with counts first, then alphabetically
+        templates.sort(key=lambda t: (-t["count"], t["category"], t["id"]))
+        return {"templates": templates[:300], "total": len(templates)}
 
     def get_editable_stats(self) -> list[dict[str, str]]:
         return EDITABLE_STATS

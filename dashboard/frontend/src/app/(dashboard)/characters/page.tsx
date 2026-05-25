@@ -108,7 +108,7 @@ export default function CharactersPage() {
   const [grantSearch, setGrantSearch] = useState('');
   const [grantResult, setGrantResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const [granting, setGranting] = useState(false);
-  const [templateResults, setTemplateResults] = useState<{ id: string; count: number }[]>([]);
+  const [templateResults, setTemplateResults] = useState<{ id: string; count: number; source?: string; category?: string }[]>([]);
   const [searchingTemplates, setSearchingTemplates] = useState(false);
   const [inventoryData, setInventoryData] = useState<Record<string, { template_id: string; stack_size: number; position_index: number; quality_level: number }[]> | null>(null);
   const [loadingInventory, setLoadingInventory] = useState(false);
@@ -883,7 +883,7 @@ export default function CharactersPage() {
 
               <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
                 <p className="text-sm font-semibold text-th-text">Item Template Search</p>
-                <p className="mt-1 text-xs text-th-text-m">Search item IDs that exist in the game database.</p>
+                <p className="mt-1 text-xs text-th-text-m">Search items from inventory, recipes, and the known catalog. Leave empty to browse all.</p>
                 <div className="mt-3 flex gap-3">
                   <input
                     className="dune-input flex-1"
@@ -907,7 +907,10 @@ export default function CharactersPage() {
                         onClick={() => { setGrantTemplate(t.id); setTemplateResults([]); }}
                       >
                         <span className="font-medium text-th-text">{t.id}</span>
-                        <span className="text-xs text-th-text-m">{t.count} in DB</span>
+                        <span className="flex items-center gap-2 text-xs text-th-text-m">
+                          {t.category && <span className="rounded-full bg-th-surface-s px-2 py-0.5">{t.category}</span>}
+                          {t.source === 'inventory' ? `${t.count} in DB` : t.source === 'recipe' ? 'from recipe' : 'catalog'}
+                        </span>
                       </button>
                     ))}
                   </div>
