@@ -282,8 +282,11 @@ services:
       Database__port: "5432"
       Database__user: dune
       Database__password: ${POSTGRES_DUNE_PASSWORD}
+      Database__name: dune_sb_1_4_0_0
       RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      BATTLEGROUP: ${WORLD_UNIQUE_NAME}
       BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
+      BATTLEGROUP_TITLE: ${WORLD_NAME}
       WORLD_NAME: ${WORLD_NAME}
       OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
       OPT_DISPLAY_NAME: ${WORLD_NAME}
@@ -293,6 +296,18 @@ services:
       HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
       FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
+      # BackendLogin authentication secrets (must match game servers)
+      DUNE_SERVER_LOGIN_PASSWORD_SECRET: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      DUNE_USERNAME_SERVER_LOGIN_SECRET: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      DUNE_LOGIN_PASSWORD_SKEW_SECONDS: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__DefaultScheme: BackendLogin
+      AuthenticationConfiguration__DefaultAuthenticateScheme: BackendLogin
+      AuthenticationConfiguration__DefaultChallengeScheme: BackendLogin
+      AuthenticationConfiguration__RequireAuthenticatedSignIn: "false"
+      BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE: "false"
     mem_limit: ${MEM_LIMIT_DIRECTOR}
     cpus: 1
     volumes:

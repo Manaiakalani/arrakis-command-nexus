@@ -39,6 +39,15 @@ services:
       DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
       BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
       WORLD_NAME: ${WORLD_NAME}
+      # BackendLogin authentication secrets (must match director)
+      DUNE_SERVER_LOGIN_PASSWORD_SECRET: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      DUNE_USERNAME_SERVER_LOGIN_SECRET: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      DUNE_LOGIN_PASSWORD_SKEW_SECONDS: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
     mem_limit: ${MEM_LIMIT_SURVIVAL}
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     ports:
@@ -109,6 +118,15 @@ services:
       DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
       BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
       WORLD_NAME: ${WORLD_NAME}
+      # BackendLogin authentication secrets (must match director)
+      DUNE_SERVER_LOGIN_PASSWORD_SECRET: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      DUNE_USERNAME_SERVER_LOGIN_SECRET: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      DUNE_LOGIN_PASSWORD_SKEW_SECONDS: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
     mem_limit: ${MEM_LIMIT_OVERMAP}
     cpus: ${CPU_LIMIT_OVERMAP:-2}
     ports:
