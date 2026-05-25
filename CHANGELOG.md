@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0] - 2026-05-25
+
+### Added
+- **Server power management** with Stop, Start, and Restart buttons on the System page for bulk game server control
+- **Post-deploy smoke test** (`scripts/smoke-test.sh`) with 42 checks across 7 categories (containers, API, routes, volumes, config, database, logs)
+- `make smoke` target for quick regression testing after deploys
+- `deps` option to `useApi` hook for automatic re-fetching when dependencies change
+
+### Changed
+- System telemetry charts now respond immediately to time range switching (15m, 1h, 6h, 24h, 7d, 30d)
+- Uptime chart also re-fetches on range change
+- Dashboard SQLite database persisted via bind mount (`./dashboard-data/`) to survive container rebuilds
+
+### Fixed
+- Overview page crash when PostgreSQL is temporarily unreachable (DNS resolution failure in `asyncio.gather`)
+- Dashboard SQLite database wiped on every container rebuild (no persistent volume)
+- CSS build failure from invalid Tailwind arbitrary opacity value (`bg-th-surface/78` to `bg-th-surface/[0.78]`)
+- Discord webhook data lost on redeploy (same root cause as DB persistence)
+- `.env` parsing failure in smoke test when values contain unquoted spaces (e.g., `WORLD_REGION=North America`)
+
 ## [1.3.0] - 2026-05-25
 
 ### Added

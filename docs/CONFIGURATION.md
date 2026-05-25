@@ -70,6 +70,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | `DUNE_ADMIN_BIND_ADDRESS` | `127.0.0.1` | Host bind address for the dashboard frontend. Keep it local-only unless you need LAN or WAN access. |
 | `DUNE_ADMIN_HOST_PORT` | `18080` | Host port for the dashboard UI and API. |
 | `DUNE_ADMIN_ALLOWED_HOSTS` | `127.0.0.1:18080,localhost:18080` | Allowed dashboard origins for CORS, such as `your-server-ip:18080` or `dashboard.your-domain.com`. |
+| `DUNE_DASHBOARD_DB_URL` | `sqlite+aiosqlite:///dashboard.db` | SQLite connection URL for dashboard settings (webhooks, schedules). Persisted at `./dashboard-data/` via bind mount. |
 
 ### Discord Notifications
 

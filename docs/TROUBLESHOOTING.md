@@ -297,3 +297,36 @@ When filing a bug report or asking for help, collect a snapshot:
 
 This creates a tarball with system info, container state, logs, database status, and network
 config. All credentials are automatically redacted before packaging.
+
+## Dashboard Data Lost After Container Rebuild
+
+**Cause:** The dashboard SQLite database was stored inside the container at `/app/dashboard.db` with no persistent volume mount.
+
+**Fix (already applied in v1.4.0):**
+
+The `docker-compose.yml` now mounts `./dashboard-data:/workspace/data` and sets `DUNE_DASHBOARD_DB_URL` to use that path. After upgrading:
+
+```bash
+mkdir -p dashboard-data && chmod 777 dashboard-data
+docker compose up -d dashboard-api
+```
+
+Discord webhooks, scheduled announcements, and other dashboard settings will persist across rebuilds.
+
+## Overview Page Stuck Loading
+
+**Cause:** The `/api/status` endpoint crashes with a 500 error when PostgreSQL is temporarily unreachable (DNS resolution failure, container restarting, etc.).
+
+**Fix (applied in v1.4.0):** The status endpoint now uses `return_exceptions=True` in `asyncio.gather` so a PostgreSQL failure degrades gracefully (shows 0 players) instead of crashing the entire page.
+
+## Post-Deploy Smoke Test
+
+Run the smoke test after any deployment to catch regressions:
+
+```bash
+make smoke
+# or directly:
+bash scripts/smoke-test.sh
+```
+
+The test checks 42 items across 7 categories: container health, API endpoints, frontend routes, volume persistence, configuration, database connectivity, and recent error logs.
