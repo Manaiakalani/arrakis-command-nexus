@@ -903,6 +903,7 @@ FINALE
   printf '    %b./dune stop%b        Gracefully stop all services\n' "$AMBER" "$RESET"
   printf '    %b./dune restart%b     Restart the stack\n' "$AMBER" "$RESET"
   printf '    %b./dune update%b      Download latest game server files\n' "$AMBER" "$RESET"
+  printf '    %bmake smoke%b        Post-deploy smoke test\n' "$AMBER" "$RESET"
   printf '\n'
   print_separator '='
   printf '\n  %b"He who controls the spice controls the universe."%b\n' "$ITALIC$SAND" "$RESET"

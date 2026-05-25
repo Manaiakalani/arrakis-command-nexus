@@ -1,4 +1,4 @@
-.PHONY: help init start stop restart status logs backup restore update dashboard doctor preflight clean
+.PHONY: help init start stop restart status logs backup restore update dashboard doctor preflight smoke clean
 
 PROFILE ?= basic
 COMPOSE_FILES := -f docker-compose.yml -f docker-compose.$(PROFILE).yml
@@ -44,6 +44,9 @@ doctor: ## Run diagnostics
 
 preflight: ## Pre-start validation
 	@./scripts/preflight.sh
+
+smoke: ## Post-deploy smoke test (API, volumes, DB, routes)
+	@./scripts/smoke-test.sh
 
 build-dashboard: ## Build dashboard images
 	docker compose -f docker-compose.dashboard.yml build
