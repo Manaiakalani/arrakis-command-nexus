@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Container-compatible restore script for the dashboard-api container.
-set -euo pipefail
+set -eu
 
 POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"

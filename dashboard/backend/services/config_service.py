@@ -103,6 +103,158 @@ class ConfigService:
                     description="Network tick rate for the game server. Higher values mean smoother gameplay but more CPU/bandwidth usage.",
                     default_value="60",
                 ),
+                # --- Sandworm Settings ---
+                "m_bGiantWormSystemEnabled": ConfigField(
+                    key="m_bGiantWormSystemEnabled",
+                    type="bool",
+                    description="Enable Shai-Hulud (giant worm) spawns. Disable to remove the biggest threat.",
+                    default_value="True",
+                ),
+                "m_GiantWormSpawningCooldown": ConfigField(
+                    key="m_GiantWormSpawningCooldown",
+                    type="float",
+                    description="Seconds between giant worm spawn attempts. Higher = fewer worms.",
+                    default_value="7200",
+                    options=[
+                        {"value": "1800", "label": "30 minutes (frequent)"},
+                        {"value": "3600", "label": "1 hour"},
+                        {"value": "5400", "label": "1.5 hours"},
+                        {"value": "7200", "label": "2 hours (default)"},
+                        {"value": "14400", "label": "4 hours (rare)"},
+                        {"value": "28800", "label": "8 hours (very rare)"},
+                    ],
+                ),
+                "m_GiantWormMinimumPlayersOnSpiceField": ConfigField(
+                    key="m_GiantWormMinimumPlayersOnSpiceField",
+                    type="int",
+                    description="Minimum players harvesting spice before Shai-Hulud can spawn. Higher = safer solo play.",
+                    default_value="4",
+                    options=[
+                        {"value": "1", "label": "1 (always dangerous)"},
+                        {"value": "2", "label": "2"},
+                        {"value": "4", "label": "4 (default)"},
+                        {"value": "8", "label": "8 (group only)"},
+                        {"value": "99", "label": "99 (effectively disabled)"},
+                    ],
+                ),
+                "ThreatScale": ConfigField(
+                    key="ThreatScale",
+                    type="float",
+                    description="Global worm threat multiplier. Higher = worms detect players faster.",
+                    default_value="1.0",
+                    options=[
+                        {"value": "0.25", "label": "0.25x (very passive)"},
+                        {"value": "0.5", "label": "0.5x (relaxed)"},
+                        {"value": "1.0", "label": "1.0x (default)"},
+                        {"value": "1.5", "label": "1.5x (aggressive)"},
+                        {"value": "2.0", "label": "2.0x (very aggressive)"},
+                    ],
+                ),
+                # --- Enemy/NPC Settings ---
+                "m_MaxReinforcementSize": ConfigField(
+                    key="m_MaxReinforcementSize",
+                    type="int",
+                    description="Maximum NPC reinforcement group size. Lower = fewer enemies per encounter.",
+                    default_value="150",
+                    options=[
+                        {"value": "50", "label": "50 (easy encounters)"},
+                        {"value": "100", "label": "100 (moderate)"},
+                        {"value": "150", "label": "150 (default)"},
+                        {"value": "200", "label": "200 (challenging)"},
+                        {"value": "300", "label": "300 (brutal)"},
+                    ],
+                ),
+                "m_ThreatDecayPerSecond": ConfigField(
+                    key="m_ThreatDecayPerSecond",
+                    type="float",
+                    description="How fast NPC aggro decays per second. Lower = enemies stay angry longer.",
+                    default_value="0.1",
+                    options=[
+                        {"value": "0.05", "label": "0.05 (persistent aggro)"},
+                        {"value": "0.1", "label": "0.1 (default)"},
+                        {"value": "0.2", "label": "0.2 (forgetful)"},
+                        {"value": "0.5", "label": "0.5 (very forgetful)"},
+                    ],
+                ),
+                # --- Loot Settings ---
+                "m_bShouldPlayersDropLootOnDeath": ConfigField(
+                    key="m_bShouldPlayersDropLootOnDeath",
+                    type="bool",
+                    description="Whether players drop their gear on death. Disable for a more casual experience.",
+                    default_value="False",
+                ),
+                "m_bShouldPlayersLoseItemsOnDeath": ConfigField(
+                    key="m_bShouldPlayersLoseItemsOnDeath",
+                    type="bool",
+                    description="Whether players permanently lose items on death. Disable to keep all items.",
+                    default_value="True",
+                ),
+                "m_bShouldNpcDropLootOnDeath": ConfigField(
+                    key="m_bShouldNpcDropLootOnDeath",
+                    type="bool",
+                    description="Whether NPCs drop loot when killed. Disable to remove NPC loot drops entirely.",
+                    default_value="True",
+                ),
+                # --- Day/Night & Weather ---
+                "m_DayLengthMinutes": ConfigField(
+                    key="m_DayLengthMinutes",
+                    type="float",
+                    description="Length of one full in-game day in real minutes. Higher = slower day/night cycle.",
+                    default_value="30",
+                    options=[
+                        {"value": "15", "label": "15 min (fast cycle)"},
+                        {"value": "30", "label": "30 min (default)"},
+                        {"value": "45", "label": "45 min (relaxed)"},
+                        {"value": "60", "label": "60 min (slow)"},
+                        {"value": "120", "label": "2 hours (very slow)"},
+                    ],
+                ),
+                "m_bAutoSpawnEnabled": ConfigField(
+                    key="m_bAutoSpawnEnabled",
+                    type="bool",
+                    description="Enable automatic sandstorm spawning. Disable for calm weather.",
+                    default_value="True",
+                ),
+                "m_bMitigateAllSandstormDamage": ConfigField(
+                    key="m_bMitigateAllSandstormDamage",
+                    type="bool",
+                    description="When enabled, buildings and placeables are immune to sandstorm damage.",
+                    default_value="False",
+                ),
+                # --- Crafting ---
+                "m_RepairCostWeight": ConfigField(
+                    key="m_RepairCostWeight",
+                    type="float",
+                    description="Repair cost as fraction of crafting cost. Lower = cheaper repairs.",
+                    default_value="0.5",
+                    options=[
+                        {"value": "0.1", "label": "10% (very cheap)"},
+                        {"value": "0.25", "label": "25% (cheap)"},
+                        {"value": "0.5", "label": "50% (default)"},
+                        {"value": "0.75", "label": "75% (expensive)"},
+                        {"value": "1.0", "label": "100% (full price)"},
+                    ],
+                ),
+                "m_RecyclerOutputWeight": ConfigField(
+                    key="m_RecyclerOutputWeight",
+                    type="float",
+                    description="Recycler/dismantler output as fraction of original materials. Higher = more materials back.",
+                    default_value="0.25",
+                    options=[
+                        {"value": "0.1", "label": "10% (minimal return)"},
+                        {"value": "0.25", "label": "25% (default)"},
+                        {"value": "0.5", "label": "50% (generous)"},
+                        {"value": "0.75", "label": "75% (very generous)"},
+                        {"value": "1.0", "label": "100% (full return)"},
+                    ],
+                ),
+                # --- Hydration ---
+                "m_bHydrationEnabled": ConfigField(
+                    key="m_bHydrationEnabled",
+                    type="bool",
+                    description="Enable the hydration/thirst system. Disable for a more relaxed survival experience.",
+                    default_value="True",
+                ),
             },
             "UserEngine.ini": {
                 "NetServerMaxTickRate": ConfigField(
@@ -138,6 +290,76 @@ class ConfigService:
                         {"value": "100000", "label": "100,000 (default)"},
                         {"value": "200000", "label": "200,000 (high bandwidth)"},
                         {"value": "500000", "label": "500,000 (very high)"},
+                    ],
+                ),
+                # --- Game Tweaks (ConsoleVariables) ---
+                "sandworm.dune.Enabled": ConfigField(
+                    key="sandworm.dune.Enabled",
+                    type="int",
+                    description="Master toggle for sandworms. Set to 0 to completely disable worm spawns.",
+                    default_value="1",
+                    options=[
+                        {"value": "0", "label": "Disabled"},
+                        {"value": "1", "label": "Enabled (default)"},
+                    ],
+                ),
+                "Vehicle.SandwormCollisionInteraction": ConfigField(
+                    key="Vehicle.SandwormCollisionInteraction",
+                    type="bool",
+                    description="Whether sandworms can damage and push vehicles. Disable for safer vehicle travel.",
+                    default_value="false",
+                ),
+                "Dune.GlobalMiningOutputMultiplier": ConfigField(
+                    key="Dune.GlobalMiningOutputMultiplier",
+                    type="float",
+                    description="Multiplier for hand-mining resource output. Higher = more resources per swing.",
+                    default_value="1.0",
+                    options=[
+                        {"value": "0.5", "label": "0.5x (scarce)"},
+                        {"value": "1.0", "label": "1.0x (default)"},
+                        {"value": "1.5", "label": "1.5x (boosted)"},
+                        {"value": "2.0", "label": "2.0x (generous)"},
+                        {"value": "2.5", "label": "2.5x (very generous)"},
+                        {"value": "5.0", "label": "5.0x (abundant)"},
+                    ],
+                ),
+                "Dune.GlobalVehicleMiningOutputMultiplier": ConfigField(
+                    key="Dune.GlobalVehicleMiningOutputMultiplier",
+                    type="float",
+                    description="Multiplier for vehicle mining output (harvester yield).",
+                    default_value="1.0",
+                    options=[
+                        {"value": "0.5", "label": "0.5x (scarce)"},
+                        {"value": "1.0", "label": "1.0x (default)"},
+                        {"value": "2.0", "label": "2.0x (generous)"},
+                        {"value": "2.5", "label": "2.5x (very generous)"},
+                        {"value": "5.0", "label": "5.0x (abundant)"},
+                    ],
+                ),
+                "SecurityZones.PvpResourceMultiplier": ConfigField(
+                    key="SecurityZones.PvpResourceMultiplier",
+                    type="float",
+                    description="Resource bonus multiplier in PvP zones. Rewards risk-taking in dangerous areas.",
+                    default_value="2.5",
+                    options=[
+                        {"value": "1.0", "label": "1.0x (no bonus)"},
+                        {"value": "1.5", "label": "1.5x"},
+                        {"value": "2.0", "label": "2.0x"},
+                        {"value": "2.5", "label": "2.5x (default)"},
+                        {"value": "5.0", "label": "5.0x (high reward)"},
+                    ],
+                ),
+                "dw.VehicleDurabilityDamageMultiplier": ConfigField(
+                    key="dw.VehicleDurabilityDamageMultiplier",
+                    type="float",
+                    description="Vehicle durability damage multiplier. Lower values make vehicles last longer. 0 = indestructible.",
+                    default_value="1.0",
+                    options=[
+                        {"value": "0.0", "label": "0 (indestructible)"},
+                        {"value": "0.5", "label": "0.5x (durable)"},
+                        {"value": "0.75", "label": "0.75x (sturdy)"},
+                        {"value": "1.0", "label": "1.0x (default)"},
+                        {"value": "2.0", "label": "2.0x (fragile)"},
                     ],
                 ),
             },
@@ -378,14 +600,14 @@ class ConfigService:
         # Human-readable file descriptions
         self.file_descriptions: dict[str, dict[str, str]] = {
             "UserGame.ini": {
-                "title": "Game Rules",
-                "subtitle": "Gameplay, PvP, storms, and base building",
-                "description": "Controls core gameplay mechanics like PvP rules, security zones, storm spawning, reconnect behavior, and land claims. These settings apply to all maps in the battlegroup.",
+                "title": "Game Rules & Tweaks",
+                "subtitle": "PvP, worms, enemies, loot, weather, and survival",
+                "description": "Controls core gameplay: PvP rules, sandworm behavior, NPC difficulty, loot drops, day/night cycle, crafting costs, hydration, and land claims. These settings apply to all maps in the battlegroup.",
             },
             "UserEngine.ini": {
-                "title": "Engine Performance",
-                "subtitle": "Network tick rate and bandwidth limits",
-                "description": "Low-level engine settings for network performance. Adjust tick rate and bandwidth caps to balance smoothness vs. server resource usage.",
+                "title": "Engine & Game Tweaks",
+                "subtitle": "Network, mining rates, worms, and vehicle durability",
+                "description": "Engine-level settings including network performance, resource gathering multipliers, sandworm controls, and vehicle durability. These console variables apply server-wide.",
             },
             "director.ini": {
                 "title": "Battlegroup Director",
