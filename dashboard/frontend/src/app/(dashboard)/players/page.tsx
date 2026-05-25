@@ -53,9 +53,13 @@ export default function PlayersPage() {
       return;
     }
 
-    await apiClient.banPlayer(selectedPlayer.steamId, reason, duration ? Number(duration) : undefined);
-    setSelectedPlayer(null);
-    await Promise.all([players.refetch(), playerPositions.refetch(), bans.refetch()]);
+    try {
+      await apiClient.banPlayer(selectedPlayer.steamId, reason, duration ? Number(duration) : undefined);
+      setSelectedPlayer(null);
+      await Promise.all([players.refetch(), playerPositions.refetch(), bans.refetch()]);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Failed to ban player.');
+    }
   };
 
   const handleKick = async (player: Player) => {

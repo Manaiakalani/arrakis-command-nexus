@@ -21,8 +21,12 @@ export default function ModerationPage() {
     if (!window.confirm('Clear all chat guard violations? This action cannot be undone.')) {
       return;
     }
-    await apiClient.clearChatGuardViolations();
-    await Promise.all([settings.refetch(), violations.refetch()]);
+    try {
+      await apiClient.clearChatGuardViolations();
+      await Promise.all([settings.refetch(), violations.refetch()]);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Failed to clear violations.');
+    }
   };
 
   const isLoading = settings.loading && !settings.data;

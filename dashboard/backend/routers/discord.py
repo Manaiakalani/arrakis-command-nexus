@@ -94,10 +94,14 @@ async def create_webhook(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    flags = _events_to_flags(payload.events)
-    create_data = DiscordWebhookCreate(url=payload.url, **flags)
-    entry = await request.app.state.discord_service.create_webhook(session, create_data)
-    return _webhook_to_frontend(entry)
+    try:
+        flags = _events_to_flags(payload.events)
+        create_data = DiscordWebhookCreate(url=payload.url, **flags)
+        entry = await request.app.state.discord_service.create_webhook(session, create_data)
+        return _webhook_to_frontend(entry)
+    except Exception as exc:
+        logger.exception("Failed to create Discord webhook")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.put("/discord/webhooks/{webhook_id}")
@@ -150,5 +154,9 @@ async def send_announcement(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    count = await request.app.state.discord_service.announce(session, "Announcement", payload.text, "announcement")
+    try:
+        count = await request.app.state.discord_service.announce(session, "Announcement", payload.text, "announcement")
+    except Exception:
+        logger.exception("Discord announcement dispatch failed")
+        return {"success": False, "message": "Failed to send announcement"}
     return {"success": True, "message": f"Queued {count} notification(s)"}

@@ -151,7 +151,7 @@ async def add_ban(
     if existing is not None:
         raise HTTPException(status_code=409, detail="Player is already banned.")
 
-    ban_until = datetime.utcnow() + timedelta(hours=dur) if dur else None
+    ban_until = datetime.now(timezone.utc) + timedelta(hours=dur) if dur else None
     entry = BannedPlayer(
         steam_id=sid,
         reason=payload.reason,

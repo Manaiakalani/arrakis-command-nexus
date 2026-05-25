@@ -35,7 +35,11 @@ class BackupService:
             return []
 
         entries: list[BackupEntry] = []
-        for candidate in sorted(self.backup_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
+        try:
+            candidates = sorted(self.backup_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True)
+        except (FileNotFoundError, OSError):
+            candidates = []
+        for candidate in candidates:
             if candidate.name.endswith(".meta"):
                 continue
             try:
@@ -43,8 +47,12 @@ class BackupService:
             except FileNotFoundError:
                 logger.warning("Skipping backup outside backup directory: %s", candidate)
                 continue
-            meta = self._read_metadata(path)
-            stat = path.stat()
+            try:
+                meta = self._read_metadata(path)
+                stat = path.stat()
+            except (FileNotFoundError, OSError):
+                logger.warning("Backup file disappeared during listing: %s", path)
+                continue
             entries.append(
                 BackupEntry(
                     id=path.stem,

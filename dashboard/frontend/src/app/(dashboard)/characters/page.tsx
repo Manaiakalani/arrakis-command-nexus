@@ -116,6 +116,7 @@ export default function CharactersPage() {
   const [teleportY, setTeleportY] = useState('');
   const [teleportZ, setTeleportZ] = useState('');
   const [teleporting, setTeleporting] = useState(false);
+  const [teleportResult, setTeleportResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
   const filteredCharacters = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -362,18 +363,18 @@ export default function CharactersPage() {
     const py = y ?? parseFloat(teleportY);
     const pz = z ?? parseFloat(teleportZ);
     if (isNaN(px) || isNaN(py) || isNaN(pz)) {
-      setGrantResult({ tone: 'error', message: 'Enter valid X, Y, Z coordinates.' });
+      setTeleportResult({ tone: 'error', message: 'Enter valid X, Y, Z coordinates.' });
       return;
     }
     setTeleporting(true);
-    setGrantResult(null);
+    setTeleportResult(null);
     try {
       await apiClient.teleportCharacter(selectedId, px, py, pz);
-      setGrantResult({ tone: 'success', message: `Teleport set to (${px.toFixed(0)}, ${py.toFixed(0)}, ${pz.toFixed(0)}). Relog to move.` });
+      setTeleportResult({ tone: 'success', message: `Teleport set to (${px.toFixed(0)}, ${py.toFixed(0)}, ${pz.toFixed(0)}). Relog to move.` });
       setTeleportX(''); setTeleportY(''); setTeleportZ('');
       void handleReset();
     } catch (error) {
-      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Teleport failed.' });
+      setTeleportResult({ tone: 'error', message: error instanceof Error ? error.message : 'Teleport failed.' });
     } finally {
       setTeleporting(false);
     }
@@ -381,8 +382,10 @@ export default function CharactersPage() {
 
   useEffect(() => {
     if (selectedId) {
+      setInventoryData(null);
       void loadInventory();
       setGrantResult(null);
+      setTeleportResult(null);
       setTemplateResults([]);
     }
   }, [selectedId]);
@@ -1029,6 +1032,11 @@ export default function CharactersPage() {
                     </button>
                   </div>
                   <p className="mt-2 text-xs text-th-text-m">Player must relog for teleport to take effect. Rotation is preserved.</p>
+                  {teleportResult ? (
+                    <div className={cn('mt-3 rounded-2xl border px-4 py-3 text-sm', teleportResult.tone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200')}>
+                      {teleportResult.message}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

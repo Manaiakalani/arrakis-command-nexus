@@ -23,13 +23,23 @@ export default function ConfigPage() {
   }, [configs, driftStatus]);
 
   const handleSave = useCallback(async (filename: string, data: Record<string, string | number | boolean>) => {
-    await apiClient.updateConfig(filename, data);
-    await refreshConfigs();
+    try {
+      await apiClient.updateConfig(filename, data);
+      await refreshConfigs();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save config.';
+      window.alert(message);
+    }
   }, [refreshConfigs]);
 
   const handleAcceptDrift = useCallback(async (filename: string) => {
-    await apiClient.acceptConfigDrift(filename);
-    await refreshConfigs();
+    try {
+      await apiClient.acceptConfigDrift(filename);
+      await refreshConfigs();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to accept drift.';
+      window.alert(message);
+    }
   }, [refreshConfigs]);
 
   const isLoading = configs.loading || driftStatus.loading;

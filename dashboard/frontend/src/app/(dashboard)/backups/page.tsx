@@ -142,14 +142,28 @@ export default function BackupsPage() {
       <BackupList
         backups={backups.data ?? []}
         onCreate={async (scope) => {
-          await apiClient.createBackup(scope);
-          await backups.refetch();
-          await scheduleApi.refetch();
+          try {
+            await apiClient.createBackup(scope);
+            await backups.refetch();
+            await scheduleApi.refetch();
+          } catch (error) {
+            window.alert(error instanceof Error ? error.message : 'Backup creation failed.');
+          }
         }}
-        onRestore={(id) => apiClient.restoreBackup(id)}
+        onRestore={async (id) => {
+          try {
+            await apiClient.restoreBackup(id);
+          } catch (error) {
+            window.alert(error instanceof Error ? error.message : 'Restore failed.');
+          }
+        }}
         onDelete={async (id) => {
-          await apiClient.deleteBackup(id);
-          await backups.refetch();
+          try {
+            await apiClient.deleteBackup(id);
+            await backups.refetch();
+          } catch (error) {
+            window.alert(error instanceof Error ? error.message : 'Delete failed.');
+          }
         }}
       />
     </div>

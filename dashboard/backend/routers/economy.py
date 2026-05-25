@@ -1,6 +1,9 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["economy"])
 
 
@@ -18,12 +21,20 @@ def _alert_to_frontend(alert) -> dict:
 
 @router.get("/economy/summary")
 async def get_summary(request: Request) -> dict:
-    return request.app.state.economy_service.get_summary()
+    try:
+        return request.app.state.economy_service.get_summary()
+    except Exception as exc:
+        logger.exception("Failed to get economy summary")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/economy/alerts")
 async def get_alerts(request: Request) -> list[dict]:
-    return [_alert_to_frontend(alert) for alert in request.app.state.economy_service.get_alerts()]
+    try:
+        return [_alert_to_frontend(alert) for alert in request.app.state.economy_service.get_alerts()]
+    except Exception as exc:
+        logger.exception("Failed to get economy alerts")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.post("/economy/alerts/{alert_id}/acknowledge")
@@ -43,10 +54,14 @@ class ManualAlertRequest(BaseModel):
 
 @router.post("/economy/alerts")
 async def create_manual_alert(payload: ManualAlertRequest, request: Request) -> dict:
-    alert = request.app.state.economy_service.add_alert(
-        payload.type,
-        payload.severity,
-        payload.message,
-        payload.details,
-    )
-    return _alert_to_frontend(alert)
+    try:
+        alert = request.app.state.economy_service.add_alert(
+            payload.type,
+            payload.severity,
+            payload.message,
+            payload.details,
+        )
+        return _alert_to_frontend(alert)
+    except Exception as exc:
+        logger.exception("Failed to create economy alert")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
