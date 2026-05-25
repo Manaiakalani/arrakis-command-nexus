@@ -269,12 +269,35 @@ export default function CharactersPage() {
       const result = await apiClient.grantItem(selectedId, tid, qty);
       setGrantResult({ tone: 'success', message: `Granted ${qty}x ${tid} (item #${result.item_id}). Relog to pick up.` });
       if (!templateId) { setGrantTemplate(''); setGrantAmount('1'); }
-      void loadInventory();
     } catch (error) {
       setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
     } finally {
       setGranting(false);
     }
+  };
+
+  const handleGrantBatch = async (items: { templateId: string; quantity: number }[]) => {
+    if (!selectedId || items.length === 0) return;
+    setGranting(true);
+    setGrantResult(null);
+    let granted = 0;
+    let lastError = '';
+    for (const item of items) {
+      try {
+        await apiClient.grantItem(selectedId, item.templateId, item.quantity);
+        granted++;
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : 'Grant failed.';
+      }
+    }
+    if (granted === items.length) {
+      setGrantResult({ tone: 'success', message: `Granted ${granted} items. Relog to pick up.` });
+    } else if (granted > 0) {
+      setGrantResult({ tone: 'error', message: `Granted ${granted}/${items.length}. Last error: ${lastError}` });
+    } else {
+      setGrantResult({ tone: 'error', message: lastError || 'All grants failed.' });
+    }
+    setGranting(false);
   };
 
   const handleGrantSolari = async (amount: number) => {
@@ -284,7 +307,6 @@ export default function CharactersPage() {
     try {
       const result = await apiClient.grantSolari(selectedId, amount);
       setGrantResult({ tone: 'success', message: `Added ${result.solari_added} Solari (total: ${result.new_total}). Relog to pick up.` });
-      void loadInventory();
     } catch (error) {
       setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
     } finally {
@@ -821,31 +843,31 @@ export default function CharactersPage() {
                 <p className="text-sm font-semibold text-th-text">Armor Sets</p>
                 <p className="mt-1 text-xs text-th-text-m">Full armor sets (grants all pieces in one click).</p>
                 <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => {
-                    void handleGrantItem('Combat_Nati_SandtroutLeathers01_Helmet', 1);
-                    setTimeout(() => void handleGrantItem('Combat_Nati_SandtroutLeathers01_Top', 1), 300);
-                    setTimeout(() => void handleGrantItem('Combat_Nati_SandtroutLeathers01_Bottom', 1), 600);
-                    setTimeout(() => void handleGrantItem('Combat_Nati_SandtroutLeathers01_Gloves', 1), 900);
-                    setTimeout(() => void handleGrantItem('Combat_Nati_SandtroutLeathers01_Boots', 1), 1200);
-                  }}>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'Combat_Nati_SandtroutLeathers01_Helmet', quantity: 1 },
+                    { templateId: 'Combat_Nati_SandtroutLeathers01_Top', quantity: 1 },
+                    { templateId: 'Combat_Nati_SandtroutLeathers01_Bottom', quantity: 1 },
+                    { templateId: 'Combat_Nati_SandtroutLeathers01_Gloves', quantity: 1 },
+                    { templateId: 'Combat_Nati_SandtroutLeathers01_Boots', quantity: 1 },
+                  ])}>
                     <Shield className="mr-1.5 h-3.5 w-3.5" /> Sandtrout Leathers (Full)
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => {
-                    void handleGrantItem('T1_Armor_BanditLeathers_Head', 1);
-                    setTimeout(() => void handleGrantItem('T1_Armor_BanditLeathers_Chest', 1), 300);
-                    setTimeout(() => void handleGrantItem('T1_Armor_BanditLeathers_Legs', 1), 600);
-                    setTimeout(() => void handleGrantItem('T1_Armor_BanditLeathers_Hands', 1), 900);
-                    setTimeout(() => void handleGrantItem('T1_Armor_BanditLeathers_Feet', 1), 1200);
-                  }}>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'T1_Armor_BanditLeathers_Head', quantity: 1 },
+                    { templateId: 'T1_Armor_BanditLeathers_Chest', quantity: 1 },
+                    { templateId: 'T1_Armor_BanditLeathers_Legs', quantity: 1 },
+                    { templateId: 'T1_Armor_BanditLeathers_Hands', quantity: 1 },
+                    { templateId: 'T1_Armor_BanditLeathers_Feet', quantity: 1 },
+                  ])}>
                     <Shield className="mr-1.5 h-3.5 w-3.5" /> Bandit Leathers (Full)
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => {
-                    void handleGrantItem('ScavengerRags_Helmet', 1);
-                    setTimeout(() => void handleGrantItem('ScavengerRags_Top', 1), 300);
-                    setTimeout(() => void handleGrantItem('ScavengerRags_Bottom', 1), 600);
-                    setTimeout(() => void handleGrantItem('ScavengerRags_Gloves', 1), 900);
-                    setTimeout(() => void handleGrantItem('ScavengerRags_Boots', 1), 1200);
-                  }}>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'ScavengerRags_Helmet', quantity: 1 },
+                    { templateId: 'ScavengerRags_Top', quantity: 1 },
+                    { templateId: 'ScavengerRags_Bottom', quantity: 1 },
+                    { templateId: 'ScavengerRags_Gloves', quantity: 1 },
+                    { templateId: 'ScavengerRags_Boots', quantity: 1 },
+                  ])}>
                     <Shield className="mr-1.5 h-3.5 w-3.5" /> Scavenger Rags (Full)
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('Stillsuit_Unique_Armored_01_Gloves_Schematic', 1)}>
