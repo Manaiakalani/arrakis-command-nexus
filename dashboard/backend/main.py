@@ -91,15 +91,31 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
     from db.database import SessionLocal
     from db.models import AuditLog, ConnectionLog
 
+    tracker_log = logging.getLogger("player_tracker")
+    tracker_log.info("Connection tracker started (discord_service=%s)", "enabled" if discord_service else "disabled")
+
     previous_ids: set[str] = set()
+    first_poll = True
     while True:
         try:
             current_players = await postgres_service.get_online_players()
             current_ids = {p.steam_id for p in current_players}
+
+            if first_poll:
+                tracker_log.info("Initial poll: %d player(s) online", len(current_ids))
+                first_poll = False
+                previous_ids = current_ids
+                await asyncio.sleep(15)
+                continue
+
             joined = current_ids - previous_ids
             left = previous_ids - current_ids
 
-            if (joined or left) and previous_ids:  # skip first poll
+            if joined or left:
+                tracker_log.info(
+                    "Player change detected: +%d joined, -%d left (total: %d)",
+                    len(joined), len(left), len(current_ids),
+                )
                 async with SessionLocal() as session:
                     for sid in joined:
                         player = next((p for p in current_players if p.steam_id == sid), None)
@@ -116,6 +132,7 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                             details={"steam_id": sid, "player_name": pname, "map": mname},
                             performed_by="system",
                         ))
+                        tracker_log.info("Player connected: %s (%s) on %s", pname, sid, mname)
                     for sid in left:
                         session.add(ConnectionLog(
                             steam_id=sid,
@@ -126,6 +143,7 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                             details={"steam_id": sid},
                             performed_by="system",
                         ))
+                        tracker_log.info("Player disconnected: %s", sid)
                     await session.commit()
 
                 # Send Discord notifications outside the DB session
@@ -134,17 +152,19 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                         player = next((p for p in current_players if p.steam_id == sid), None)
                         pname = getattr(player, "name", None) or sid
                         mname = getattr(player, "map_name", None) or "Unknown"
-                        await discord_service.enqueue(
+                        count = await discord_service.enqueue(
                             "player_join",
                             f"**{pname}** connected to **{mname}** ({len(current_ids)} online)",
                             title="Player Connected",
                         )
+                        tracker_log.info("Discord join notification queued to %d webhook(s)", count)
                     for sid in left:
-                        await discord_service.enqueue(
+                        count = await discord_service.enqueue(
                             "player_leave",
                             f"**{sid}** disconnected ({len(current_ids)} online)",
                             title="Player Disconnected",
                         )
+                        tracker_log.info("Discord leave notification queued to %d webhook(s)", count)
 
             previous_ids = current_ids
         except Exception:  # noqa: BLE001
