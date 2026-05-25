@@ -31,10 +31,12 @@ DASHBOARD_PORT="${DUNE_ADMIN_HOST_PORT:-18080}"
 DASHBOARD_URL="http://localhost:${DASHBOARD_PORT}"
 
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  . "$PROJECT_ROOT/.env"
-  set +a
+  # Source .env safely: export lines, skip comments, handle unquoted spaces
+  while IFS='=' read -r key value; do
+    [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+    key="$(echo "$key" | xargs)"
+    export "$key=$value"
+  done < "$PROJECT_ROOT/.env"
 fi
 
 ADMIN_TOKEN="${DUNE_ADMIN_TOKEN:-}"
