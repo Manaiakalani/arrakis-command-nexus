@@ -290,7 +290,7 @@ export interface CharacterStatField {
   key: string;
   label: string;
   type: 'number' | 'string' | 'boolean';
-  category: 'stats' | 'economy' | 'specialization' | 'faction';
+  category: 'stats' | 'spice' | 'economy' | 'specialization';
 }
 
 export interface CharacterSummary {
