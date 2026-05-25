@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   Backpack,
+  BookOpen,
   Coins,
   Droplets,
   Flame,
@@ -117,6 +118,9 @@ export default function CharactersPage() {
   const [teleportZ, setTeleportZ] = useState('');
   const [teleporting, setTeleporting] = useState(false);
   const [teleportResult, setTeleportResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogData, setCatalogData] = useState<{ id: string; count: number; source?: string; category?: string }[] | null>(null);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
 
   const filteredCharacters = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -332,7 +336,10 @@ export default function CharactersPage() {
 
   const handleSearchTemplates = async () => {
     const term = grantSearch.trim();
-    if (!term) return;
+    if (!term) {
+      void handleBrowseCatalog();
+      return;
+    }
     setSearchingTemplates(true);
     try {
       const result = await apiClient.searchItemTemplates(term);
@@ -341,6 +348,23 @@ export default function CharactersPage() {
       setTemplateResults([]);
     } finally {
       setSearchingTemplates(false);
+    }
+  };
+
+  const handleBrowseCatalog = async () => {
+    if (catalogData) {
+      setCatalogOpen(!catalogOpen);
+      return;
+    }
+    setLoadingCatalog(true);
+    try {
+      const result = await apiClient.searchItemTemplates('*');
+      setCatalogData(result.templates);
+      setCatalogOpen(true);
+    } catch {
+      setCatalogData([]);
+    } finally {
+      setLoadingCatalog(false);
     }
   };
 
@@ -876,6 +900,14 @@ export default function CharactersPage() {
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('Stillsuit_Unique_Armored_01_Gloves_Schematic', 1)}>
                     <Shield className="mr-1.5 h-3.5 w-3.5" /> Unique Stillsuit Schematic
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'Stillsuit_Neut_Leaking01_Mask', quantity: 1 },
+                    { templateId: 'Stillsuit_Neut_Leaking01_Top', quantity: 1 },
+                    { templateId: 'Stillsuit_Neut_Leaking01_Gloves', quantity: 1 },
+                    { templateId: 'Stillsuit_Neut_Leaking01_Boots', quantity: 1 },
+                  ])}>
+                    <Shield className="mr-1.5 h-3.5 w-3.5" /> Leaky Stillsuit (Full)
+                  </button>
                 </div>
               </div>
 
@@ -907,12 +939,20 @@ export default function CharactersPage() {
               </div>
 
               <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
-                <p className="text-sm font-semibold text-th-text">Item Template Search</p>
-                <p className="mt-1 text-xs text-th-text-m">Search items from inventory, recipes, and the known catalog. Leave empty to browse all.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-th-text">Item Template Search</p>
+                    <p className="mt-1 text-xs text-th-text-m">Search items from inventory, recipes, and the known catalog. Press Enter or click Search with empty field to browse all.</p>
+                  </div>
+                  <button type="button" className="dune-button-muted text-xs" disabled={loadingCatalog} onClick={() => void handleBrowseCatalog()}>
+                    {loadingCatalog ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <BookOpen className="mr-1.5 h-3.5 w-3.5" />}
+                    {catalogOpen ? 'Hide Catalog' : 'Browse All'}
+                  </button>
+                </div>
                 <div className="mt-3 flex gap-3">
                   <input
                     className="dune-input flex-1"
-                    placeholder="Search items (e.g. Knife, Armor, Oil)"
+                    placeholder="Search items (e.g. Knife, Armor, Oil) or press Enter for all"
                     value={grantSearch}
                     onChange={(e) => setGrantSearch(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') void handleSearchTemplates(); }}
@@ -923,21 +963,65 @@ export default function CharactersPage() {
                   </button>
                 </div>
                 {templateResults.length > 0 ? (
-                  <div className="mt-3 max-h-60 overflow-y-auto rounded-2xl border border-th-border-m/80">
+                  <div className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-th-border-m/80">
                     {templateResults.map((t) => (
-                      <button
+                      <div
                         key={t.id}
-                        type="button"
-                        className="flex w-full items-center justify-between border-b border-th-border-m/40 px-4 py-2.5 text-left text-sm hover:bg-th-surface-s/60 last:border-b-0 transition-colors"
-                        onClick={() => { setGrantTemplate(t.id); setTemplateResults([]); }}
+                        className="flex w-full items-center justify-between border-b border-th-border-m/40 px-4 py-2.5 text-left text-sm last:border-b-0 transition-colors hover:bg-th-surface-s/60"
                       >
-                        <span className="font-medium text-th-text">{t.id}</span>
+                        <button type="button" className="flex-1 text-left" onClick={() => { setGrantTemplate(t.id); setTemplateResults([]); }}>
+                          <span className="font-medium text-th-text">{t.id}</span>
+                        </button>
                         <span className="flex items-center gap-2 text-xs text-th-text-m">
                           {t.category && <span className="rounded-full bg-th-surface-s px-2 py-0.5">{t.category}</span>}
                           {t.source === 'inventory' ? `${t.count} in DB` : t.source === 'recipe' ? 'from recipe' : 'catalog'}
+                          <button type="button" className="ml-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-amber-600 hover:bg-amber-500/30 dark:text-amber-300" disabled={granting} onClick={() => void handleGrantItem(t.id, 1)}>
+                            +1
+                          </button>
                         </span>
-                      </button>
+                      </div>
                     ))}
+                  </div>
+                ) : null}
+
+                {catalogOpen && catalogData ? (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-th-text-m mb-3">
+                      Item Catalog ({catalogData.length} items)
+                    </p>
+                    {(() => {
+                      const grouped: Record<string, typeof catalogData> = {};
+                      for (const item of catalogData) {
+                        const cat = item.category || 'Unknown';
+                        (grouped[cat] ??= []).push(item);
+                      }
+                      const categoryOrder = ['Weapons', 'Tools', 'Resources', 'Consumables', 'Currency', 'Armor', 'Cosmetics', 'Vehicle Parts', 'Schematics', 'Structures', 'Contracts', 'Emotes', 'Unknown'];
+                      const sorted = Object.entries(grouped).sort(([a], [b]) => {
+                        const ai = categoryOrder.indexOf(a);
+                        const bi = categoryOrder.indexOf(b);
+                        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                      });
+                      return sorted.map(([category, items]) => (
+                        <div key={category} className="mb-4">
+                          <p className="text-xs font-semibold text-th-text mb-2">{category} ({items.length})</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {items.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className="group relative rounded-full border border-th-border px-3 py-1 text-xs text-th-text-s hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors"
+                                title={`${item.id} (${item.source}${item.count > 0 ? `, ${item.count} in DB` : ''})`}
+                                disabled={granting}
+                                onClick={() => { setGrantTemplate(item.id); setCatalogOpen(false); }}
+                              >
+                                {item.id}
+                                {item.count > 0 && <span className="ml-1 text-th-text-m">({item.count})</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 ) : null}
               </div>
