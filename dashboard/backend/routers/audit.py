@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db.database import get_session
+from db.models import AuditLog
+
+router = APIRouter(tags=["audit"])
+
+# Action categories for UI filtering
+ACTION_CATEGORIES = {
+    "player": ["player_kick", "player_ban_add", "player_ban_remove", "allowlist_add", "allowlist_remove"],
+    "character": ["item_grant", "solari_grant", "teleport", "character_update", "health_set"],
+    "config": ["config_update", "config_drift_accept"],
+    "system": ["backup_create", "backup_restore", "announcement_send", "discord_webhook_add"],
+}
+
+
+@router.get("/audit")
+async def list_audit_logs(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    action: str | None = Query(None),
+    category: str | None = Query(None),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    query = select(AuditLog).order_by(AuditLog.created_at.desc())
+
+    if action:
+        query = query.where(AuditLog.action == action)
+    elif category and category in ACTION_CATEGORIES:
+        query = query.where(AuditLog.action.in_(ACTION_CATEGORIES[category]))
+
+    count_query = select(func.count(AuditLog.id))
+    if action:
+        count_query = count_query.where(AuditLog.action == action)
+    elif category and category in ACTION_CATEGORIES:
+        count_query = count_query.where(AuditLog.action.in_(ACTION_CATEGORIES[category]))
+
+    total = (await session.execute(count_query)).scalar_one()
+    result = await session.execute(query.offset(offset).limit(limit))
+    entries = result.scalars().all()
+
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "categories": ACTION_CATEGORIES,
+        "entries": [
+            {
+                "id": e.id,
+                "action": e.action,
+                "details": e.details,
+                "performed_by": e.performed_by,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in entries
+        ],
+    }
+
+
+@router.get("/audit/summary")
+async def audit_summary(session: AsyncSession = Depends(get_session)) -> dict:
+    total = (await session.execute(select(func.count(AuditLog.id)))).scalar_one()
+    result = await session.execute(
+        select(AuditLog.action, func.count(AuditLog.id))
+        .group_by(AuditLog.action)
+        .order_by(func.count(AuditLog.id).desc())
+    )
+    by_action = {row[0]: row[1] for row in result.all()}
+    return {"total": total, "by_action": by_action}

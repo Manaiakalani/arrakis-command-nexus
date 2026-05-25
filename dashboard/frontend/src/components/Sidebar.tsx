@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Coins,
   Cpu,
   Database,
@@ -43,6 +44,7 @@ const navigation = [
   { href: '/discord', label: 'Discord', icon: MessageSquare },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
+  { href: '/audit', label: 'Audit Trail', icon: ClipboardList },
   { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
   { href: '/public', label: 'Public Status', icon: Globe },
 ];

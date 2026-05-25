@@ -1,9 +1,23 @@
+from __future__ import annotations
+
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db.database import get_session
+from db.models import AuditLog
 
 router = APIRouter(tags=["characters"])
+
+
+async def _write_audit(session: AsyncSession, action: str, details: dict, request: Request) -> None:
+    session.add(AuditLog(
+        action=action,
+        details=details,
+        performed_by=request.headers.get("X-Admin-User", "dashboard"),
+    ))
 
 
 @router.get("/characters")
@@ -60,15 +74,27 @@ class GrantItemRequest(BaseModel):
 
 
 @router.post("/characters/{character_id}/grant-item")
-async def grant_item(character_id: str, payload: GrantItemRequest, request: Request) -> dict:
+async def grant_item(
+    character_id: str,
+    payload: GrantItemRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     """Grant an item to a character's main inventory."""
     try:
-        return await request.app.state.character_service.grant_item(
+        result = await request.app.state.character_service.grant_item(
             character_id,
             template_id=payload.template_id,
             stack_size=payload.stack_size,
             quality_level=payload.quality_level,
         )
+        await _write_audit(session, "item_grant", {
+            "character_id": character_id,
+            "template_id": payload.template_id,
+            "stack_size": payload.stack_size,
+        }, request)
+        await session.commit()
+        return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
     except PermissionError as exc:
@@ -80,12 +106,23 @@ class GrantSolariRequest(BaseModel):
 
 
 @router.post("/characters/{character_id}/grant-solari")
-async def grant_solari(character_id: str, payload: GrantSolariRequest, request: Request) -> dict:
+async def grant_solari(
+    character_id: str,
+    payload: GrantSolariRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     """Add solari to a character (adds to existing, does not replace)."""
     try:
-        return await request.app.state.character_service.grant_solari(
+        result = await request.app.state.character_service.grant_solari(
             character_id, amount=payload.amount,
         )
+        await _write_audit(session, "solari_grant", {
+            "character_id": character_id,
+            "amount": payload.amount,
+        }, request)
+        await session.commit()
+        return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
     except PermissionError as exc:
@@ -118,12 +155,23 @@ class TeleportRequest(BaseModel):
 
 
 @router.post("/characters/{character_id}/teleport")
-async def teleport_character(character_id: str, payload: TeleportRequest, request: Request) -> dict:
+async def teleport_character(
+    character_id: str,
+    payload: TeleportRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     """Teleport a character to specific coordinates. Takes effect on relog."""
     try:
-        return await request.app.state.character_service.teleport(
+        result = await request.app.state.character_service.teleport(
             character_id, x=payload.x, y=payload.y, z=payload.z,
         )
+        await _write_audit(session, "teleport", {
+            "character_id": character_id,
+            "x": payload.x, "y": payload.y, "z": payload.z,
+        }, request)
+        await session.commit()
+        return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
     except PermissionError as exc:

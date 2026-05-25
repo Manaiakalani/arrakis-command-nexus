@@ -11,9 +11,19 @@ from models.config import ConfigUpdate
 from services.backup_service import BackupService
 from services.config_service import ConfigService
 
+from db.models import AuditLog
+
 import re
 
 logger = logging.getLogger(__name__)
+
+
+async def _write_audit(session: AsyncSession, action: str, details: dict, request: Request) -> None:
+    session.add(AuditLog(
+        action=action,
+        details=details,
+        performed_by=request.headers.get("X-Admin-User", "dashboard"),
+    ))
 
 router = APIRouter(tags=["config"])
 
@@ -181,6 +191,11 @@ async def update_config(
             section, key = compound_key.split(".", 1)
             update = ConfigUpdate(filename=filename, section=section, key=key, value=str(value))
             await service.update_config(filename, update, session)
+        await _write_audit(session, "config_update", {
+            "filename": filename,
+            "changes": {k: v for k, v in payload.items() if "." in k},
+        }, request)
+        await session.commit()
         config = await service.read_config(filename)
         return _config_to_frontend(config)
     except FileNotFoundError as exc:
