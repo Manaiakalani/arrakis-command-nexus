@@ -884,7 +884,7 @@ export default function CharactersPage() {
                     <p className="text-sm font-semibold text-th-text">Teleport</p>
                     <p className="text-xs text-th-text-m">
                       Move {selectedCharacter.name} to any coordinates.
-                      {selectedCharacter.metadata?.position ? ` Current: (${Math.round(Number(selectedCharacter.metadata.position.x))}, ${Math.round(Number(selectedCharacter.metadata.position.y))}, ${Math.round(Number(selectedCharacter.metadata.position.z))})` : ''}
+                      {selectedCharacter.metadata?.position ? (() => { const p = selectedCharacter.metadata.position as {x: number; y: number; z: number}; return ` Current: (${Math.round(p.x)}, ${Math.round(p.y)}, ${Math.round(p.z)})`; })() : ''}
                     </p>
                   </div>
                 </div>
@@ -898,21 +898,20 @@ export default function CharactersPage() {
                     <button type="button" className="dune-button-muted text-xs" disabled={teleporting} onClick={() => void handleTeleport(230651, 224403, 1006)}>
                       <MapPin className="mr-1.5 h-3.5 w-3.5" /> Hagga Basin Center
                     </button>
-                    {(characters.data ?? []).filter(c => c.id !== selectedId && c.metadata?.position).map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className="dune-button-muted text-xs"
-                        disabled={teleporting}
-                        onClick={() => void handleTeleport(
-                          Number(c.metadata!.position!.x),
-                          Number(c.metadata!.position!.y),
-                          Number(c.metadata!.position!.z),
-                        )}
-                      >
-                        <MapPin className="mr-1.5 h-3.5 w-3.5" /> To {c.name}
-                      </button>
-                    ))}
+                    {(characters.data ?? []).filter(c => c.id !== selectedId && c.metadata?.position).map(c => {
+                      const pos = c.metadata!.position as {x: number; y: number; z: number};
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="dune-button-muted text-xs"
+                          disabled={teleporting}
+                          onClick={() => void handleTeleport(pos.x, pos.y, pos.z)}
+                        >
+                          <MapPin className="mr-1.5 h-3.5 w-3.5" /> To {c.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
