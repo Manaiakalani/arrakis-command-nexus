@@ -315,7 +315,7 @@ class DockerService:
             health=health,
             container_id=container.short_id,
             image=image_name,
-            created=attrs.get("Created"),
+            created=state.get("StartedAt") or attrs.get("Created"),
             ports=ports,
             latency_ms=latency_ms,
         )
