@@ -249,6 +249,12 @@ appear under the Experimental tab in the game's server browser.
 4. **Port forwarding incomplete.** Players need:
    - `7777-7810 UDP` for game traffic
    - `31982 TCP` for RabbitMQ (login/auth)
+   - `31983 TCP` for RabbitMQ HTTP API
+
+5. **Missing BackendLogin auth secrets.** If `DUNE_SERVER_LOGIN_PASSWORD_SECRET` and
+   `DUNE_USERNAME_SERVER_LOGIN_SECRET` are blank, player authentication will fail.
+   Generate them with `openssl rand -hex 32` and ensure the same values are set for
+   the director and all game servers.
 
 ## Performance Tuning
 

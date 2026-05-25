@@ -14,6 +14,7 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 - UDP `7777-7778`
 - UDP `7888-7889`
 - TCP `31982`
+- TCP `31983`
 
 **Recommended RAM:** ~20 GB
 
@@ -36,6 +37,7 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 - UDP `7777-7785`
 - UDP `7888-7896`
 - TCP `31982`
+- TCP `31983`
 
 **Recommended RAM:** ~30-40 GB
 
@@ -53,6 +55,7 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 - UDP `7777-7810`
 - UDP `7888-7921`
 - TCP `31982`
+- TCP `31983`
 
 **Recommended RAM:** ~40 GB+
 

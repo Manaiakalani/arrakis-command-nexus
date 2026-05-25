@@ -9,6 +9,7 @@ This project uses a mix of public player ports, internal local-only management p
 | Profile | Protocol | Ports | Purpose |
 | --- | --- | --- | --- |
 | all | TCP | `31982` | Game-facing RabbitMQ endpoint used by clients/services |
+| all | TCP | `31983` | RabbitMQ HTTP API endpoint for game authentication |
 | basic | UDP | `7777-7778` | Gameplay traffic for Overmap and Survival |
 | basic | UDP | `7888-7889` | Server-to-server / IGW traffic for Overmap and Survival |
 | standard | UDP | `7777-7785` | Gameplay traffic for Overmap, Survival, Deep Desert, hubs, and story shards |

@@ -13,16 +13,35 @@ write_default_env_template() {
 DEPLOYMENT_PROFILE=basic
 WORLD_NAME='Dune Awakening Server'
 WORLD_UNIQUE_NAME='sh-my-dune-server'
+WORLD_REGION='North America'
+WORLD_DATACENTER_ID='North America'
+DUNE_FLS_ENV='retail'
 EXTERNAL_ADDRESS='auto'
-DUNE_IMAGE_TAG='latest' # Pin to a specific tag after first setup
+DUNE_IMAGE_TAG='latest'
+STEAM_APP_ID='4754530'
 POSTGRES_SUPER_PASSWORD='change-me-postgres-super'
 POSTGRES_DUNE_PASSWORD='change-me-dune-db'
 DUNE_RMQ_MANAGEMENT_USER='dune-admin'
 DUNE_RMQ_MANAGEMENT_PASSWORD='change-me-rmq-management-password'
 RMQ_HTTP_TOKEN_AUTH_SECRET='change-me-rmq-http-token'
+GAME_RMQ_PUBLIC_PORT='31982'
+GAME_RMQ_PUBLIC_HTTP_PORT='31983'
 DUNE_ADMIN_BIND_ADDRESS='127.0.0.1'
 DUNE_ADMIN_HOST_PORT='18080'
 DUNE_ADMIN_TOKEN='change-me-admin-token'
+DUNE_SERVER_LOGIN_PASSWORD=''
+DUNE_SERVER_LOGIN_PASSWORD_SECRET=''
+DUNE_USERNAME_SERVER_LOGIN_SECRET=''
+DUNE_LOGIN_PASSWORD_SKEW_SECONDS='300'
+MEM_LIMIT_SURVIVAL='12g'
+MEM_LIMIT_OVERMAP='2g'
+MEM_LIMIT_DEEP_DESERT='10g'
+MEM_LIMIT_DEFAULT_MAP='8g'
+MEM_LIMIT_POSTGRES='1g'
+MEM_LIMIT_RMQ='512m'
+MEM_LIMIT_DIRECTOR='512m'
+MEM_LIMIT_TEXT_ROUTER='256m'
+MEM_LIMIT_GATEWAY='256m'
 EOF
 }
 
@@ -134,6 +153,27 @@ if [[ -z "$dashboard_token" || "$dashboard_token" == 'change-me'* ]]; then
   dashboard_token="$(random_token 24)"
   set_env_value DUNE_ADMIN_TOKEN "$dashboard_token"
   log_success 'Generated a dashboard admin token.'
+fi
+
+rmq_http_secret="$(strip_wrapping_quotes "${RMQ_HTTP_TOKEN_AUTH_SECRET:-}")"
+if [[ -z "$rmq_http_secret" || "$rmq_http_secret" == 'change-me'* ]]; then
+  rmq_http_secret="$(random_token 24)"
+  set_env_value RMQ_HTTP_TOKEN_AUTH_SECRET "$rmq_http_secret"
+  log_success 'Generated a RMQ HTTP auth secret.'
+fi
+
+login_pw_secret="$(strip_wrapping_quotes "${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}")"
+if [[ -z "$login_pw_secret" ]]; then
+  login_pw_secret="$(openssl rand -hex 32)"
+  set_env_value DUNE_SERVER_LOGIN_PASSWORD_SECRET "$login_pw_secret"
+  log_success 'Generated BackendLogin server password secret.'
+fi
+
+username_secret="$(strip_wrapping_quotes "${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}")"
+if [[ -z "$username_secret" ]]; then
+  username_secret="$(openssl rand -hex 32)"
+  set_env_value DUNE_USERNAME_SERVER_LOGIN_SECRET "$username_secret"
+  log_success 'Generated BackendLogin username secret.'
 fi
 
 log_step 'Loading Funcom Docker images from the Steam server package.'

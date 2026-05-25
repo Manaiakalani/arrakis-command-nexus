@@ -12,9 +12,19 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | --- | --- | --- |
 | `WORLD_NAME` | `My Dune Awakening Server` | Friendly server name shown to players. |
 | `WORLD_UNIQUE_NAME` | `sh-my-dune-server` | Unique battlegroup identifier used across services. |
-| `BATTLEGROUP_ID` | blank | Optional explicit battlegroup ID if Funcom requires one. |
 | `FLS_SECRET` | blank | Funcom Live Services token. Prefer `secrets/funcom-token.txt` instead of inline values. |
+| `DUNE_FLS_ENV` | `retail` | FLS environment. Use `retail` for live servers, `beta` for public test. |
 | `DUNE_SERVER_LOGIN_PASSWORD` | blank | Optional join password for the battlegroup. |
+| `WORLD_REGION` | `North America` | Region name shown to players and reported to FLS. |
+| `WORLD_DATACENTER_ID` | `North America` | Datacenter identifier reported to FLS. |
+
+### Authentication Secrets
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DUNE_SERVER_LOGIN_PASSWORD_SECRET` | blank | 32-byte hex secret for BackendLogin player authentication. Generate with `openssl rand -hex 32`. Must match across director and game servers. |
+| `DUNE_USERNAME_SERVER_LOGIN_SECRET` | blank | 32-byte hex secret for username-based server login. Generate with `openssl rand -hex 32`. Must match across director and game servers. |
+| `DUNE_LOGIN_PASSWORD_SKEW_SECONDS` | `300` | Allowed clock skew in seconds for login password validation. |
 
 ### Network Configuration
 

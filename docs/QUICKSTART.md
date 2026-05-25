@@ -42,7 +42,7 @@ If you are running on Windows, use WSL2 with Docker Desktop:
 Install SteamCMD, then pull the Funcom package:
 
 ```bash
-steamcmd +login anonymous +app_update 3104830 validate +quit
+steamcmd +login anonymous +app_update 4754530 validate +quit
 ```
 
 Keep note of the folder that contains the downloaded tarballs or extracted server files. The setup wizard will ask for it.
@@ -91,6 +91,7 @@ Visit:
 At minimum, forward the public game ports from your router to the Linux host:
 
 - `31982/tcp` for game RabbitMQ traffic
+- `31983/tcp` for RabbitMQ HTTP API authentication
 - profile-specific UDP game ports
   - basic: `7777-7778/udp` and `7888-7889/udp`
   - standard: `7777-7785/udp` and `7888-7896/udp`
