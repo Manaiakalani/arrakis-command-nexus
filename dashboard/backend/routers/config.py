@@ -11,17 +11,68 @@ from models.config import ConfigUpdate
 from services.backup_service import BackupService
 from services.config_service import ConfigService
 
+import re
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["config"])
 
+# Human-friendly labels for Unreal-style keys
+_LABEL_OVERRIDES: dict[str, str] = {
+    "m_bShouldForceEnablePvpOnAllPartitions": "Force PvP on All Partitions",
+    "m_bAreSecurityZonesEnabled": "Security Zones Enabled",
+    "m_bCoriolisAutoSpawnEnabled": "Auto-Spawn Coriolis Storms",
+    "m_DefaultReconnectGracePeriodSeconds": "Reconnect Grace Period (seconds)",
+    "m_MaxNumLandclaimSegments": "Max Land Claim Segments",
+    "m_BaseBackupToolTimeRestrictionInSeconds": "Base Backup Cooldown (seconds)",
+    "NetServerMaxTickRate": "Network Tick Rate",
+    "MaxClientRate": "Max Client Rate (bytes/sec)",
+    "MaxInternetClientRate": "Max Internet Client Rate (bytes/sec)",
+    "ShouldUpdatePlayerCountOnFls": "Report Player Count to FLS",
+    "PlayerHardCap": "Player Hard Cap",
+    "ForceLock": "Force Lock Server",
+    "DauCap": "Daily Active User Cap",
+    "WauCap": "Weekly Active User Cap",
+    "HbsCap": "Hagga Basin Server Cap",
+    "AllowGroupTravel": "Allow Group Travel",
+    "NpeGrantDurationInMinutes": "New Player Protection (minutes)",
+    "MinServers": "Minimum Server Instances",
+    "NumExtraServers": "Extra Pre-Provisioned Servers",
+    "QueueFailMap": "Queue Fail Redirect Map",
+    "AuthorizationPreset": "Authorization Preset",
+    "DefaultScheme": "Default Auth Scheme",
+    "DefaultAuthenticateScheme": "Default Authenticate Scheme",
+    "DefaultChallengeScheme": "Default Challenge Scheme",
+    "AuthenticationScheme": "Authentication Scheme",
+    "RequireAuthenticatedSignIn": "Require Authenticated Sign-In",
+    "IGWPort": "IGW Port",
+    "LogLevel": "Log Level",
+    "Overmap": "Overmap Mode",
+    "Survival_1": "Survival (Hagga Basin) Mode",
+    "DeepDesert_1": "Deep Desert Mode",
+    "Provider": "Provider Name",
+    "ListenPort": "Listen Port",
+    "Port": "Game Server Port",
+}
 
-def _config_to_frontend(config) -> dict:
+
+def _pascal_to_label(key: str) -> str:
+    """Convert PascalCase / camelCase to 'Pascal Case'."""
+    if key in _LABEL_OVERRIDES:
+        return _LABEL_OVERRIDES[key]
+    spaced = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", key)
+    spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", spaced)
+    return spaced.replace("_", " ").strip()
+
+
+def _config_to_frontend(config, definitions: dict | None = None) -> dict:
     """Convert backend ConfigFile (sections dict) to frontend expected shape."""
+    definitions = definitions or {}
     fields = []
     sections = getattr(config, "sections", {}) or {}
     for section_name, keys in sections.items():
         for key, value in keys.items():
+            defn = definitions.get(key)
             field_type = "string"
             parsed_value: str | int | float | bool = value
             low = value.lower() if isinstance(value, str) else ""
@@ -32,14 +83,17 @@ def _config_to_frontend(config) -> dict:
                 field_type = "number"
                 parsed_value = float(value) if "." in value else int(value)
 
-            label = key.replace("_", " ").replace("-", " ").title()
+            label = _pascal_to_label(key)
+            description = defn.description if defn else ""
+            default_value = defn.default_value if defn else None
             fields.append({
                 "key": key,
                 "label": label,
                 "section": section_name,
                 "type": field_type,
                 "value": parsed_value,
-                "description": "",
+                "description": description,
+                "defaultValue": default_value,
             })
     filename = getattr(config, "filename", "")
     title = filename.replace(".ini", "").replace("User", "").replace("_", " ").title() or filename
@@ -55,7 +109,11 @@ def _config_to_frontend(config) -> dict:
 async def list_configs(request: Request) -> dict[str, object]:
     service: ConfigService = request.app.state.config_service
     files = await service.list_configs()
-    return {"files": files, "definitions": {name: defs for name, defs in ((file, service.get_field_definitions(file)) for file in files)}}
+    return {
+        "files": files,
+        "definitions": {name: defs for name, defs in ((file, service.get_field_definitions(file)) for file in files)},
+        "fileDescriptions": getattr(service, "file_descriptions", {}),
+    }
 
 
 @router.get("/config/drift")
@@ -82,8 +140,14 @@ async def get_config(filename: str, request: Request) -> dict:
     try:
         service: ConfigService = request.app.state.config_service
         config = await service.read_config(filename)
-        result = _config_to_frontend(config)
+        definitions = service.get_field_definitions(filename)
+        result = _config_to_frontend(config, definitions)
         result["drift"] = await asyncio.to_thread(service.check_drift, filename)
+        file_desc = getattr(service, "file_descriptions", {}).get(filename, {})
+        if file_desc:
+            result["title"] = file_desc.get("title", result["title"])
+            result["subtitle"] = file_desc.get("subtitle", "")
+            result["description"] = file_desc.get("description", result["description"])
         return result
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

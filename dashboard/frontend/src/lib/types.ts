@@ -96,6 +96,7 @@ export interface ConfigField {
   value: string | number | boolean;
   description?: string;
   placeholder?: string;
+  defaultValue?: string | null;
   options?: Array<{ label: string; value: string }>;
 }
 
@@ -109,6 +110,7 @@ export interface ConfigDriftStatus {
 export interface ConfigFile {
   filename: string;
   title: string;
+  subtitle?: string;
   description?: string;
   fields: ConfigField[];
   drift?: ConfigDriftStatus;

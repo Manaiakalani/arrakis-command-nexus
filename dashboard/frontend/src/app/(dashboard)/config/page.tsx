@@ -38,22 +38,34 @@ export default function ConfigPage() {
     return <ConfigPageSkeleton />;
   }
 
+  const totalSettings = (configs.data ?? []).reduce((sum, f) => sum + f.fields.length, 0);
+
   return (
     <div className="space-y-6">
-      <div className="glass-panel border-amber-500/20 bg-amber-500/10 p-5">
-        <p className="section-title text-amber-700/80 dark:text-amber-200/80">Configuration changes</p>
-        <h2 className="mt-1 text-xl font-semibold text-amber-900 dark:text-amber-100">Changes Require Restart</h2>
-        <p className="mt-2 max-w-3xl text-sm text-amber-800/80 dark:text-amber-100/80">Edit server settings below, then click <strong>Save changes</strong>. Restart the affected service from the <em>Map orchestration</em> page to apply.</p>
-      </div>
-      <div className="glass-panel p-5 text-th-text">
-        <p className="section-title">Drift summary</p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h3 className="text-lg font-semibold">{driftedCount} config file{driftedCount === 1 ? '' : 's'} drifted</h3>
-          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-200">
-            {driftedCount > 0 ? 'Review recommended' : 'All baselines current'}
+      {/* Header */}
+      <div className="glass-panel p-5">
+        <p className="section-title">Server configuration</p>
+        <h2 className="mt-1 text-xl font-semibold text-th-text">Battlegroup Settings</h2>
+        <p className="mt-2 max-w-3xl text-sm text-th-text-m">
+          Edit server settings below, then click <strong className="text-th-text-s">Save</strong> to write changes to the config file. A service restart is required for changes to take effect.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/60 px-3 py-1.5 text-xs font-medium text-th-text-m">
+            {configFiles.length} config files
           </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/60 px-3 py-1.5 text-xs font-medium text-th-text-m">
+            {totalSettings} settings
+          </span>
+          {driftedCount > 0 ? (
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-200">
+              {driftedCount} drifted
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
+              All baselines current
+            </span>
+          )}
         </div>
-        <p className="mt-2 text-sm text-th-text-m">Drift compares each config file to its last accepted baseline so manual edits stand out before your next restart.</p>
       </div>
       <ConfigEditor files={configs.data ?? []} onSave={handleSave} onAcceptDrift={handleAcceptDrift} />
     </div>
@@ -63,15 +75,10 @@ export default function ConfigPage() {
 function ConfigPageSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="glass-panel border-amber-500/20 bg-amber-500/10 p-5 space-y-2">
-        <Skeleton className="h-3 w-32 bg-amber-500/20" />
-        <Skeleton className="h-8 w-64 bg-amber-500/20" />
-        <Skeleton className="h-4 w-full max-w-3xl bg-amber-500/20" />
-      </div>
-      <div className="glass-panel p-5 space-y-3 text-th-text">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-full max-w-2xl" />
+      <div className="glass-panel p-5 space-y-2">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-full max-w-3xl" />
       </div>
       <div className="glass-panel overflow-hidden">
         <div className="border-b border-th-border-m/80 p-4 sm:p-5 space-y-4">
@@ -80,7 +87,6 @@ function ConfigPageSkeleton() {
               <Skeleton key={index} className="h-10 w-32 rounded-full" />
             ))}
           </div>
-          <Skeleton className="h-14 w-full rounded-2xl" />
         </div>
         <div className="space-y-6 p-4 sm:p-5">
           {Array.from({ length: 2 }).map((_, index) => (
