@@ -416,9 +416,13 @@ services:
       FuncomLiveServices__BattlegroupAuthorizationPreset: BattlegroupInternal
       FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
       BATTLEGROUP_DISPLAY_NAME: ${WORLD_NAME}
+      BATTLEGROUP_TITLE: ${WORLD_NAME}
       OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
       OPT_DISPLAY_NAME: ${WORLD_NAME}
       gateway_farm_api_key: ${FLS_SECRET}
+      gateway_display_name: ${WORLD_NAME}
+      OnlineSubsystem_ServerName: ${WORLD_UNIQUE_NAME}
+      OnlineSubsystem_DatacenterId: ${WORLD_DATACENTER_ID:-North America}
       RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
       HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
