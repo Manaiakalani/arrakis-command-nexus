@@ -103,26 +103,24 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       <div className="p-5">
         {viewMode === 'tactical' ? (
           <div
-            className="relative min-h-[420px] overflow-hidden rounded-3xl border border-amber-500/15 bg-th-bg sand-glow"
+            className="relative min-h-[420px] overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
             style={{
-              backgroundImage: [
-                'radial-gradient(circle at 20% 18%, rgba(251, 191, 36, 0.14), transparent 22%)',
-                'radial-gradient(circle at 78% 30%, rgba(251, 146, 60, 0.16), transparent 24%)',
-                'radial-gradient(circle at 55% 72%, rgba(180, 83, 9, 0.2), transparent 28%)',
-                'linear-gradient(180deg, rgba(51, 26, 11, 0.96) 0%, rgba(23, 14, 10, 0.94) 45%, rgba(7, 10, 18, 0.98) 100%)',
-              ].join(','),
+              backgroundImage: 'url(/maps/hagga-basin.webp)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
             }}
           >
+            {/* Darken overlay for dot visibility */}
+            <div className="absolute inset-0 bg-black/40" />
             <div
               aria-hidden="true"
-              className="absolute inset-0 opacity-35"
+              className="absolute inset-0 opacity-25"
               style={{
-                backgroundImage: 'linear-gradient(rgba(251, 191, 36, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.1) 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(rgba(251, 191, 36, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.15) 1px, transparent 1px)',
                 backgroundSize: `${100 / GRID_DIVISIONS}% ${100 / GRID_DIVISIONS}%`,
               }}
             />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-amber-300/10 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-th-bg/80 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
 
             <div className="absolute left-4 top-4 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
               Hagga Basin
