@@ -23,3 +23,4 @@ class ConfigField(BaseModel):
     type: Literal["bool", "int", "float", "string"] = "string"
     description: str = ""
     default_value: str | None = None
+    options: list[dict[str, str]] | None = None

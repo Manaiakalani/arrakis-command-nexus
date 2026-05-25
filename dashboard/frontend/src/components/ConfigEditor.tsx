@@ -152,6 +152,9 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
     }
 
     if (field.type === 'select') {
+      const options = field.options ?? [];
+      const currentStr = String(value);
+      const hasCurrentValue = options.some((o) => o.value === currentStr);
       return (
         <div className={cn(
           'rounded-2xl border bg-th-surface-s/60 px-4 py-3 transition-colors',
@@ -161,8 +164,11 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
             {field.label}
             {modified ? <span className="ml-2 text-xs text-amber-600 dark:text-amber-300">modified</span> : null}
           </label>
-          <select className="dune-input" value={String(value)} onChange={(event) => updateField(field, event.target.value)}>
-            {(field.options ?? []).map((option) => (
+          <select className="dune-input" value={currentStr} onChange={(event) => updateField(field, event.target.value)}>
+            {!hasCurrentValue ? (
+              <option value={currentStr}>{currentStr} (custom)</option>
+            ) : null}
+            {options.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>

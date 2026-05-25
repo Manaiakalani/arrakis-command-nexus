@@ -86,6 +86,12 @@ def _config_to_frontend(config, definitions: dict | None = None) -> dict:
             label = _pascal_to_label(key)
             description = defn.description if defn else ""
             default_value = defn.default_value if defn else None
+            options = defn.options if defn and defn.options else None
+
+            # If definition has options, render as select dropdown
+            if options:
+                field_type = "select"
+
             fields.append({
                 "key": key,
                 "label": label,
@@ -94,6 +100,7 @@ def _config_to_frontend(config, definitions: dict | None = None) -> dict:
                 "value": parsed_value,
                 "description": description,
                 "defaultValue": default_value,
+                "options": options,
             })
     filename = getattr(config, "filename", "")
     title = filename.replace(".ini", "").replace("User", "").replace("_", " ").title() or filename
