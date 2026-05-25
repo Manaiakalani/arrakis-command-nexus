@@ -119,7 +119,7 @@ body {
 
 @layer components {
   .glass-panel {
-    @apply rounded-2xl border border-th-border/70 bg-th-surface/78 backdrop-blur-xl;
+    @apply rounded-2xl border border-th-border/70 bg-th-surface/[0.78] backdrop-blur-xl;
     box-shadow: var(--glass-shadow);
   }
 
