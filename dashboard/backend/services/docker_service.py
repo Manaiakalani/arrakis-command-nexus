@@ -233,7 +233,13 @@ class DockerService:
             return False
 
     def calculate_uptime(self, services: list[ServiceStatus]) -> float | None:
-        running = [service for service in services if service.status == "running" and service.created]
+        """Calculate uptime from game-server containers (maps + battlegroup services)."""
+        game_roles = {"overmap", "survival", "gateway", "director"}
+        running = [
+            service for service in services
+            if service.status == "running" and service.created
+            and self._map_role(service.name) in game_roles
+        ]
         if not running:
             return None
         starts: list[datetime] = []
