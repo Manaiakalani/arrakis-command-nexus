@@ -13,8 +13,13 @@ EDITABLE_STATS = [
     {"key": "max_health", "label": "Max Health", "type": "number", "category": "stats"},
     {"key": "current_hydration", "label": "Hydration", "type": "number", "category": "stats"},
     {"key": "heat_exhaustion", "label": "Heat Exhaustion", "type": "number", "category": "stats"},
-    {"key": "current_spice", "label": "Spice", "type": "number", "category": "stats"},
-    {"key": "eyes_of_ibad", "label": "Eyes of Ibad", "type": "number", "category": "stats"},
+    {"key": "dehydration_penalty", "label": "Dehydration Penalty", "type": "number", "category": "stats"},
+    {"key": "clothing_captured_water", "label": "Clothing Captured Water", "type": "number", "category": "stats"},
+    {"key": "current_spice", "label": "Spice", "type": "number", "category": "spice"},
+    {"key": "spice_exposure", "label": "Spice Exposure", "type": "number", "category": "spice"},
+    {"key": "spice_tolerance", "label": "Spice Tolerance", "type": "number", "category": "spice"},
+    {"key": "spice_addiction_level", "label": "Spice Addiction Level", "type": "number", "category": "spice"},
+    {"key": "eyes_of_ibad", "label": "Eyes of Ibad", "type": "number", "category": "spice"},
     {"key": "solari", "label": "Solari (Currency)", "type": "number", "category": "economy"},
     {"key": "tech_knowledge_points", "label": "Tech Knowledge Points", "type": "number", "category": "specialization"},
 ]
@@ -151,9 +156,14 @@ class CharacterService:
             hydration_set = gas.get("DuneHydrationAttributeSet", {})
             stats["current_hydration"] = hydration_set.get("CurrentHydration", {}).get("CurrentValue", 0)
             stats["heat_exhaustion"] = hydration_set.get("HeatExhaustion", {}).get("CurrentValue", 0)
+            stats["dehydration_penalty"] = hydration_set.get("DehydrationPenalty", {}).get("CurrentValue", 0)
+            stats["clothing_captured_water"] = hydration_set.get("ClothingCapturedWater", {}).get("CurrentValue", 0)
 
             spice_set = gas.get("DuneSpiceAddictionAttributeSet", {})
             stats["current_spice"] = spice_set.get("CurrentSpice", {}).get("CurrentValue", 0)
+            stats["spice_exposure"] = spice_set.get("SpiceExposure", {}).get("CurrentValue", 0)
+            stats["spice_tolerance"] = spice_set.get("SpiceTolerance", {}).get("CurrentValue", 0)
+            stats["spice_addiction_level"] = spice_set.get("SpiceAddictionLevel", {}).get("CurrentValue", 0)
 
         # Character properties (eyes of ibad, etc)
         char_data = row.get("character_data")
@@ -404,7 +414,7 @@ class CharacterService:
         return {
             "mutationsEnabled": self.mutations_enabled,
             "editableStats": len(EDITABLE_STATS),
-            "categories": ["stats", "economy", "specialization"],
+            "categories": ["stats", "spice", "economy", "specialization"],
         }
 
     async def _query_table_characters(self, connection: Any, schema: str, table: str) -> list[dict[str, Any]]:
@@ -514,6 +524,51 @@ class CharacterService:
                             jsonb_set(gas_attributes,
                                 '{DuneSpiceAddictionAttributeSet,CurrentSpice,BaseValue}', $2::jsonb),
                             '{DuneSpiceAddictionAttributeSet,CurrentSpice,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "spice_exposure":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneSpiceAddictionAttributeSet,SpiceExposure,BaseValue}', $2::jsonb),
+                            '{DuneSpiceAddictionAttributeSet,SpiceExposure,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "spice_tolerance":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneSpiceAddictionAttributeSet,SpiceTolerance,BaseValue}', $2::jsonb),
+                            '{DuneSpiceAddictionAttributeSet,SpiceTolerance,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "spice_addiction_level":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneSpiceAddictionAttributeSet,SpiceAddictionLevel,BaseValue}', $2::jsonb),
+                            '{DuneSpiceAddictionAttributeSet,SpiceAddictionLevel,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "dehydration_penalty":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneHydrationAttributeSet,DehydrationPenalty,BaseValue}', $2::jsonb),
+                            '{DuneHydrationAttributeSet,DehydrationPenalty,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "clothing_captured_water":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneHydrationAttributeSet,ClothingCapturedWater,BaseValue}', $2::jsonb),
+                            '{DuneHydrationAttributeSet,ClothingCapturedWater,CurrentValue}', $2::jsonb)
                         WHERE id = $1
                     """, pawn_id, json.dumps(numeric_value))
 

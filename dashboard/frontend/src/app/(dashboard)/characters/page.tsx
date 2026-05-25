@@ -29,28 +29,28 @@ type SaveState = {
   message: string;
 } | null;
 
-type CategoryKey = 'stats' | 'economy' | 'specialization' | 'faction';
+type CategoryKey = 'stats' | 'spice' | 'economy' | 'specialization';
 
 const categoryMeta: Record<CategoryKey, { label: string; icon: typeof Droplets; description: string }> = {
   stats: {
-    label: 'Stats',
+    label: 'Vitals',
     icon: Droplets,
-    description: 'Survival vitals and spice exposure.',
+    description: 'Health, hydration, and survival stats.',
+  },
+  spice: {
+    label: 'Spice',
+    icon: Flame,
+    description: 'Spice levels, addiction, tolerance, and Eyes of Ibad.',
   },
   economy: {
     label: 'Economy',
     icon: Coins,
-    description: 'Wallet balances and house-backed resources.',
+    description: 'Solari currency and wallet balances.',
   },
   specialization: {
     label: 'Specialization',
     icon: Pickaxe,
-    description: 'Combat, crafting, scouting, and field training.',
-  },
-  faction: {
-    label: 'Faction',
-    icon: Shield,
-    description: 'Standing with Arrakis power blocs.',
+    description: 'Tech knowledge and specialization points.',
   },
 };
 
@@ -59,7 +59,7 @@ const initialSchema: CharacterStatsSchema = {
   summary: {
     mutationsEnabled: false,
     editableStats: 0,
-    categories: ['stats', 'economy', 'specialization', 'faction'],
+    categories: ['stats', 'spice', 'economy', 'specialization'],
   },
 };
 
@@ -139,9 +139,9 @@ export default function CharactersPage() {
       },
       {
         stats: [],
+        spice: [],
         economy: [],
         specialization: [],
-        faction: [],
       },
     );
   }, [schema.data?.stats]);
