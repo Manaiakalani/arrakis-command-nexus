@@ -73,6 +73,7 @@ class CharacterService:
                     SELECT
                         CAST(ea.id AS TEXT) AS id,
                         ea."user" AS funcom_id,
+                        encode(eps.encrypted_character_name, 'escape') AS character_name,
                         eps.online_status::text AS online_status,
                         eps.life_state::text AS life_state,
                         eps.server_id,
@@ -156,7 +157,7 @@ class CharacterService:
 
         return {
             "id": str(row["id"]),
-            "name": f"Player {row['id']}" if not row.get("funcom_id") else row["funcom_id"],
+            "name": row.get("character_name") or row.get("funcom_id") or f"Player {row['id']}",
             "source": "funcom",
             "table": "dune.encrypted_player_state",
             "lastUpdated": self._serialize_value(row.get("last_login_time") or row.get("last_avatar_activity")),
