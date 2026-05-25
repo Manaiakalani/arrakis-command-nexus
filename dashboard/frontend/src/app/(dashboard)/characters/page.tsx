@@ -253,7 +253,7 @@ export default function CharactersPage() {
   const handleGrantItem = async (templateId?: string, amount?: number) => {
     if (!selectedId) return;
     const tid = templateId ?? grantTemplate.trim();
-    const qty = amount ?? parseInt(grantAmount, 10) || 1;
+    const qty = amount ?? (parseInt(grantAmount, 10) || 1);
     if (!tid) {
       setGrantResult({ tone: 'error', message: 'Enter an item template ID.' });
       return;
