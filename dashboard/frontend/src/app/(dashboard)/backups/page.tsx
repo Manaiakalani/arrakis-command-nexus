@@ -140,7 +140,7 @@ export default function BackupsPage() {
               }
             }}
           >
-            {savingSchedule ? 'Saving…' : 'Save schedule'}
+            {savingSchedule ? 'Saving...' : 'Save schedule'}
           </button>
         </div>
       </div>

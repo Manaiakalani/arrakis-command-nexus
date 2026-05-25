@@ -29,24 +29,53 @@ import {
 import { cn } from '@/lib/utils';
 import type { HealthState, SystemVersion } from '@/lib/types';
 
-const navigation = [
-  { href: '/', label: 'Overview', icon: Home },
-  { href: '/maps', label: 'Maps', icon: Map },
-  { href: '/players', label: 'Players', icon: Users },
-  { href: '/characters', label: 'Characters', icon: UserCog },
-  { href: '/config', label: 'Configuration', icon: Settings },
-  { href: '/resources', label: 'Resources', icon: Gauge },
-  { href: '/logs', label: 'Logs', icon: Terminal },
-  { href: '/system', label: 'System', icon: Cpu },
-  { href: '/economy', label: 'Economy', icon: Coins },
-  { href: '/backups', label: 'Backups', icon: Database },
-  { href: '/moderation', label: 'Moderation', icon: Shield },
-  { href: '/discord', label: 'Discord', icon: MessageSquare },
-  { href: '/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
-  { href: '/audit', label: 'Audit Trail', icon: ClipboardList },
-  { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
-  { href: '/public', label: 'Public Status', icon: Globe },
+const navigationSections = [
+  {
+    items: [
+      { href: '/', label: 'Overview', icon: Home },
+      { href: '/maps', label: 'Maps', icon: Map },
+    ],
+  },
+  {
+    header: 'Players',
+    items: [
+      { href: '/players', label: 'Players', icon: Users },
+      { href: '/characters', label: 'Characters', icon: UserCog },
+    ],
+  },
+  {
+    header: 'Server',
+    items: [
+      { href: '/config', label: 'Configuration', icon: Settings },
+      { href: '/resources', label: 'Resources', icon: Gauge },
+      { href: '/logs', label: 'Logs', icon: Terminal },
+      { href: '/system', label: 'System', icon: Cpu },
+    ],
+  },
+  {
+    header: 'Operations',
+    items: [
+      { href: '/economy', label: 'Economy', icon: Coins },
+      { href: '/backups', label: 'Backups', icon: Database },
+      { href: '/moderation', label: 'Moderation', icon: Shield },
+    ],
+  },
+  {
+    header: 'Communication',
+    items: [
+      { href: '/discord', label: 'Discord', icon: MessageSquare },
+      { href: '/announcements', label: 'Announcements', icon: Megaphone },
+    ],
+  },
+  {
+    header: 'Admin',
+    items: [
+      { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
+      { href: '/audit', label: 'Audit Trail', icon: ClipboardList },
+      { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
+      { href: '/public', label: 'Public Status', icon: Globe },
+    ],
+  },
 ];
 
 const statusMap: Record<HealthState, string> = {
@@ -154,35 +183,48 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
         </div>
 
         {/* Navigation */}
-        <nav className="mx-3 mt-4 flex-1 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                title={collapsed ? item.label : undefined}
-                className={cn(
-                  'group flex items-center rounded-xl border text-sm font-medium',
-                  'transition-[color,background-color,border-color,box-shadow,padding] duration-200',
-                  collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
-                  active
-                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200 shadow-dune'
-                    : 'border-transparent text-th-text-s hover:border-th-border hover:bg-th-surface-s/70 hover:text-th-text',
-                )}
-              >
-                <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-600 dark:text-amber-300' : 'text-th-text-m group-hover:text-th-text-s')} />
-                <span className={cn(
-                  'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
-                  collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
-                )}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
+        <nav className="mx-3 mt-4 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
+          {navigationSections.map((section, index) => (
+            <div key={section.header ?? `core-${index}`} className={cn(index > 0 && collapsed && 'mt-4')}>
+              {section.header && !collapsed && (
+                <div className="mt-4 mb-1 border-t border-th-border-m/40 pt-4">
+                  <p className="px-3 text-th-text-m text-[0.65rem] uppercase tracking-[0.2em] font-medium">
+                    {section.header}
+                  </p>
+                </div>
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      title={collapsed ? item.label : undefined}
+                      className={cn(
+                        'group flex items-center rounded-xl border text-sm font-medium',
+                        'transition-[color,background-color,border-color,box-shadow,padding] duration-200',
+                        collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
+                        active
+                          ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200 shadow-dune'
+                          : 'border-transparent text-th-text-s hover:border-th-border hover:bg-th-surface-s/70 hover:text-th-text',
+                      )}
+                    >
+                      <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-600 dark:text-amber-300' : 'text-th-text-m group-hover:text-th-text-s')} />
+                      <span className={cn(
+                        'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
+                        collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
+                      )}>
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Footer info panel */}

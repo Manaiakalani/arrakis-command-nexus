@@ -16,12 +16,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
+    postgresql-client \
+    gzip \
     && groupadd --system app \
     && useradd --system --gid app --create-home --home-dir /home/app --shell /usr/sbin/nologin app \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /install /usr/local
 COPY . .
-RUN chown -R app:app /app
+RUN chmod +x /app/scripts/*.sh 2>/dev/null || true \
+    && chown -R app:app /app
 USER app
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
