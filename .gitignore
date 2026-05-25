@@ -10,7 +10,7 @@ secrets/
 *.dump
 
 # Backups and generated data
-backups/
+/backups/
 data/
 volumes/
 steam/
