@@ -1,10 +1,11 @@
 'use client';
 
-import { LocateFixed, Users } from 'lucide-react';
+import { LocateFixed, Minus, Plus, RotateCcw, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts';
 
 import { useApi } from '@/hooks/useApi';
+import { useMapZoom } from '@/hooks/useMapZoom';
 import { apiClient } from '@/lib/api';
 import { formatSessionDuration, getPlayerMapBounds, normalizePlayerMapData, type PlayerMapSource } from '@/lib/player-map';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ function PlayerPositionTooltip({ active, payload }: { active?: boolean; payload?
 
 export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasinMapProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('tactical');
+  const zoom = useMapZoom();
   const { data: polledPlayers } = useApi(() => apiClient.getPlayerPositions(), {
     enabled: refreshIntervalMs > 0,
     refreshInterval: refreshIntervalMs || undefined,
@@ -104,28 +106,70 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
         {viewMode === 'tactical' ? (
           <div
             className="relative min-h-[420px] overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
-            style={{
-              backgroundImage: 'url(/maps/hagga-basin.webp)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
+            {...zoom.containerProps}
           >
-            {/* Darken overlay for dot visibility */}
-            <div className="absolute inset-0 bg-black/40" />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 opacity-25"
-              style={{
-                backgroundImage: 'linear-gradient(rgba(251, 191, 36, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.15) 1px, transparent 1px)',
-                backgroundSize: `${100 / GRID_DIVISIONS}% ${100 / GRID_DIVISIONS}%`,
-              }}
-            />
-            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+            <div style={zoom.transformStyle}>
+              <div
+                className="relative min-h-[420px]"
+                style={{
+                  backgroundImage: 'url(/maps/hagga-basin.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              >
+                {/* Darken overlay for dot visibility */}
+                <div className="absolute inset-0 bg-black/40" />
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 opacity-25"
+                  style={{
+                    backgroundImage: 'linear-gradient(rgba(251, 191, 36, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.15) 1px, transparent 1px)',
+                    backgroundSize: `${100 / GRID_DIVISIONS}% ${100 / GRID_DIVISIONS}%`,
+                  }}
+                />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
 
-            <div className="absolute left-4 top-4 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
+                {plottedPlayers.length === 0 ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                    <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
+                      <LocateFixed className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
+                      <p className="mt-2 max-w-md text-sm text-th-text-m">
+                        Player dots appear here as soon as the dashboard receives live position updates from the game services.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {plottedPlayers.map((player, index) => (
+                  <button
+                    key={`${player.steamId}-${index}`}
+                    type="button"
+                    className="group absolute -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `${player.left}%`, top: `${player.top}%` }}
+                    aria-label={`${player.name} on ${player.mapLabel}`}
+                  >
+                    <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-md" />
+                    <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition-transform duration-150 ease-[var(--ease-out-expo)] group-hover:scale-125" />
+                    <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
+                      <span className="block font-semibold text-amber-700 dark:text-amber-200">{player.name}</span>
+                      <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
+                      <span className="mt-1 block font-mono text-[10px] text-th-text-m">
+                        X: {Math.round(player.x).toLocaleString()} &bull; Y: {Math.round(player.y).toLocaleString()}{player.z !== null ? ` • Z: ${Math.round(player.z).toLocaleString()}` : ''}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Fixed overlay labels (not affected by zoom) */}
+            <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
               Hagga Basin
             </div>
-            <div className="absolute right-4 top-4 flex flex-col items-end gap-1 text-[10px] text-th-text-m">
+            <div className="pointer-events-none absolute right-4 top-4 flex flex-col items-end gap-1 text-[10px] text-th-text-m">
               <span className="rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-0.5">
                 X: {Math.round(bounds.minX).toLocaleString()} to {Math.round(bounds.maxX).toLocaleString()}
               </span>
@@ -134,39 +178,25 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
               </span>
             </div>
 
-            {plottedPlayers.length === 0 ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-                <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
-                  <LocateFixed className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
-                  <p className="mt-2 max-w-md text-sm text-th-text-m">
-                    Player dots appear here as soon as the dashboard receives live position updates from the game services.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            {plottedPlayers.map((player, index) => (
-              <button
-                key={`${player.steamId}-${index}`}
-                type="button"
-                className="group absolute -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${player.left}%`, top: `${player.top}%` }}
-                aria-label={`${player.name} on ${player.mapLabel}`}
-              >
-                <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-md" />
-                <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition-transform duration-150 ease-[var(--ease-out-expo)] group-hover:scale-125" />
-                <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
-                  <span className="block font-semibold text-amber-700 dark:text-amber-200">{player.name}</span>
-                  <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
-                  <span className="mt-1 block font-mono text-[10px] text-th-text-m">
-                    X: {Math.round(player.x).toLocaleString()} &bull; Y: {Math.round(player.y).toLocaleString()}{player.z !== null ? ` • Z: ${Math.round(player.z).toLocaleString()}` : ''}
-                  </span>
+            {/* Zoom controls */}
+            <div className="absolute bottom-4 right-4 flex items-center gap-1">
+              {zoom.scale > 1 ? (
+                <span className="mr-1 rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-1 text-[10px] text-th-text-m">
+                  {Math.round(zoom.scale * 100)}%
                 </span>
+              ) : null}
+              <button type="button" onClick={zoom.zoomIn} className="rounded-full border border-th-border/80 bg-th-bg/70 p-1.5 text-th-text-m hover:bg-th-bg hover:text-th-text transition-colors" aria-label="Zoom in">
+                <Plus className="h-3.5 w-3.5" />
               </button>
-            ))}
+              <button type="button" onClick={zoom.zoomOut} className="rounded-full border border-th-border/80 bg-th-bg/70 p-1.5 text-th-text-m hover:bg-th-bg hover:text-th-text transition-colors" aria-label="Zoom out">
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              {zoom.scale > 1 ? (
+                <button type="button" onClick={zoom.resetZoom} className="rounded-full border border-th-border/80 bg-th-bg/70 p-1.5 text-th-text-m hover:bg-th-bg hover:text-th-text transition-colors" aria-label="Reset zoom">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="relative h-[420px] overflow-hidden rounded-3xl border border-amber-500/15 bg-[linear-gradient(180deg,rgba(51,26,11,0.78)_0%,rgba(15,23,42,0.96)_100%)] p-2">
