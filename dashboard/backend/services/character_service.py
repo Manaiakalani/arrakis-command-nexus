@@ -319,16 +319,20 @@ class CharacterService:
                 FROM dune.items WHERE inventory_id = $1
             """, inventory_id)
 
-            # Insert the item directly
+            # Insert the item with proper stats JSON that the game engine expects.
+            # Without FItemStackAndDurabilityStats the game silently skips the item.
+            import json
             import time
+
+            item_stats = {"FItemStackAndDurabilityStats": [[], {"DecayedMaxDurability": 0.0}]}
             new_item_id = await connection.fetchval("""
                 INSERT INTO dune.items
                     (inventory_id, template_id, stack_size, position_index,
                      quality_level, is_new, acquisition_time, stats)
-                VALUES ($1, $2, $3, $4, $5, true, $6, '{}'::jsonb)
+                VALUES ($1, $2, $3, $4, $5, true, $6, $7::jsonb)
                 RETURNING id
             """, inventory_id, template_id, stack_size, max_pos,
-                quality_level, int(time.time()))
+                quality_level, int(time.time()), json.dumps(item_stats))
 
             logger.info(
                 "Granted item %s (x%d) to account %d, item_id=%d",
