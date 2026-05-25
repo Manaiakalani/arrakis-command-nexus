@@ -49,6 +49,30 @@ services:
       LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
       BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
       BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      EXTERNAL_ADDRESS_OVERRIDE: ${EXTERNAL_ADDRESS}
+      fls-apikey: ${FLS_APIKEY:-}
     mem_limit: ${MEM_LIMIT_SURVIVAL}
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     ports:
@@ -129,6 +153,30 @@ services:
       LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
       BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
       BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      EXTERNAL_ADDRESS_OVERRIDE: ${EXTERNAL_ADDRESS}
+      fls-apikey: ${FLS_APIKEY:-}
     mem_limit: ${MEM_LIMIT_OVERMAP}
     cpus: ${CPU_LIMIT_OVERMAP:-2}
     ports:

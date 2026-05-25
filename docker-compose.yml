@@ -303,10 +303,39 @@ services:
       AuthenticationConfiguration__DefaultScheme: BackendLogin
       AuthenticationConfiguration__DefaultAuthenticateScheme: BackendLogin
       AuthenticationConfiguration__DefaultChallengeScheme: BackendLogin
+      AuthenticationConfiguration__AuthenticationScheme: BackendLogin
       AuthenticationConfiguration__RequireAuthenticatedSignIn: "false"
+      BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
       BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
       BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
       BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      # Nested auth configuration variants (.NET config binding)
+      AuthenticationConfiguration__BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      # SchemeMap variants
+      AuthenticationConfiguration__SchemeMap__BackendLogin__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      fls-apikey: ${FLS_APIKEY:-}
       DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE: "false"
     mem_limit: ${MEM_LIMIT_DIRECTOR}
     cpus: 1
