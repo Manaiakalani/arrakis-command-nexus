@@ -423,6 +423,30 @@ export class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // Resource Tuning
+  getResourceLimits() {
+    return this.request<{
+      resources: Array<{
+        key: string;
+        label: string;
+        description: string;
+        category: string;
+        value: string;
+        default: string;
+        options: Array<{ value: string; label: string }>;
+      }>;
+      envFile: string;
+      requiresRestart: boolean;
+    }>('/system/resources');
+  }
+
+  updateResourceLimits(values: Record<string, string>) {
+    return this.request<{ status: string; changed: string[]; message: string }>('/system/resources', {
+      method: 'PUT',
+      body: JSON.stringify({ values }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

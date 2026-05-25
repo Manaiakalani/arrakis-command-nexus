@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import time
@@ -7,12 +8,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse, Response
+from pydantic import BaseModel
 
 from middleware.auth import verify_admin_token
 
 router = APIRouter(tags=["system"])
+logger = logging.getLogger(__name__)
 
 _BOOT_TIME: float | None = None
 _PROCESS_START_TIME = time.monotonic()
@@ -317,4 +320,182 @@ async def get_version(request: Request) -> dict[str, str]:
         "version": version,
         "profile": os.getenv("DEPLOYMENT_PROFILE", "basic"),
         "environment": os.getenv("DUNE_FLS_ENV", "retail"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Resource Tuning: read/write .env resource limits
+# ---------------------------------------------------------------------------
+
+_ENV_FILE = Path(os.getenv("DUNE_PROJECT_ROOT", "/workspace")) / ".env"
+
+_RESOURCE_VARS: dict[str, dict[str, str]] = {
+    "MEM_LIMIT_SURVIVAL": {
+        "label": "Survival Map Memory",
+        "description": "RAM limit for each Survival partition server (Hagga Basin). The largest memory consumer.",
+        "category": "game-servers",
+        "default": "12g",
+    },
+    "MEM_LIMIT_OVERMAP": {
+        "label": "Overmap Memory",
+        "description": "RAM limit for the Overmap (lobby/travel hub). Lightweight, needs far less than game maps.",
+        "category": "game-servers",
+        "default": "2g",
+    },
+    "MEM_LIMIT_DEEP_DESERT": {
+        "label": "Deep Desert Memory",
+        "description": "RAM limit for the Deep Desert map server. Second largest consumer after Survival.",
+        "category": "game-servers",
+        "default": "10g",
+    },
+    "MEM_LIMIT_DEFAULT_MAP": {
+        "label": "Default Map Memory",
+        "description": "RAM limit for any additional map servers (story maps, labs, etc).",
+        "category": "game-servers",
+        "default": "8g",
+    },
+    "CPU_LIMIT_SURVIVAL": {
+        "label": "Survival Map CPU Cores",
+        "description": "Max CPU cores allocated to each Survival server. Higher = smoother gameplay.",
+        "category": "game-servers",
+        "default": "4",
+    },
+    "CPU_LIMIT_OVERMAP": {
+        "label": "Overmap CPU Cores",
+        "description": "Max CPU cores for the Overmap server.",
+        "category": "game-servers",
+        "default": "2",
+    },
+    "MEM_LIMIT_POSTGRES": {
+        "label": "PostgreSQL Memory",
+        "description": "RAM limit for the PostgreSQL database. Stores player data, sessions, and analytics.",
+        "category": "infrastructure",
+        "default": "1g",
+    },
+    "MEM_LIMIT_RMQ": {
+        "label": "RabbitMQ Memory",
+        "description": "RAM limit for the RabbitMQ message broker. Handles inter-service communication.",
+        "category": "infrastructure",
+        "default": "512m",
+    },
+    "MEM_LIMIT_DIRECTOR": {
+        "label": "Director Memory",
+        "description": "RAM limit for the Battlegroup Director service.",
+        "category": "infrastructure",
+        "default": "512m",
+    },
+    "MEM_LIMIT_TEXT_ROUTER": {
+        "label": "Text Router Memory",
+        "description": "RAM limit for the text/chat routing service.",
+        "category": "infrastructure",
+        "default": "256m",
+    },
+    "MEM_LIMIT_GATEWAY": {
+        "label": "Gateway Memory",
+        "description": "RAM limit for the API gateway service.",
+        "category": "infrastructure",
+        "default": "256m",
+    },
+}
+
+_MEM_OPTIONS = [
+    {"value": "256m", "label": "256 MB"},
+    {"value": "512m", "label": "512 MB"},
+    {"value": "1g", "label": "1 GB"},
+    {"value": "2g", "label": "2 GB"},
+    {"value": "4g", "label": "4 GB"},
+    {"value": "6g", "label": "6 GB"},
+    {"value": "8g", "label": "8 GB"},
+    {"value": "10g", "label": "10 GB"},
+    {"value": "12g", "label": "12 GB"},
+    {"value": "16g", "label": "16 GB"},
+    {"value": "20g", "label": "20 GB"},
+    {"value": "24g", "label": "24 GB"},
+    {"value": "32g", "label": "32 GB"},
+]
+
+_CPU_OPTIONS = [
+    {"value": "1", "label": "1 core"},
+    {"value": "2", "label": "2 cores"},
+    {"value": "3", "label": "3 cores"},
+    {"value": "4", "label": "4 cores"},
+    {"value": "6", "label": "6 cores"},
+    {"value": "8", "label": "8 cores"},
+]
+
+
+def _read_env_file() -> dict[str, str]:
+    """Read .env file and return key=value pairs."""
+    values: dict[str, str] = {}
+    if not _ENV_FILE.exists():
+        return values
+    for line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line:
+            key, _, val = line.partition("=")
+            values[key.strip()] = val.strip()
+    return values
+
+
+def _write_env_value(key: str, value: str) -> None:
+    """Update a single key in the .env file, preserving comments and order."""
+    if not _ENV_FILE.exists():
+        _ENV_FILE.write_text(f"{key}={value}\n", encoding="utf-8")
+        return
+    lines = _ENV_FILE.read_text(encoding="utf-8").splitlines()
+    found = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("#") or "=" not in stripped:
+            continue
+        k, _, _ = stripped.partition("=")
+        if k.strip() == key:
+            lines[i] = f"{key}={value}"
+            found = True
+            break
+    if not found:
+        lines.append(f"{key}={value}")
+    _ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+class ResourceUpdateRequest(BaseModel):
+    values: dict[str, str]
+
+
+@router.get("/system/resources")
+async def get_resource_limits() -> dict[str, Any]:
+    """Get current Docker resource limits from .env file."""
+    env_values = _read_env_file()
+    resources = []
+    for var_name, meta in _RESOURCE_VARS.items():
+        current = env_values.get(var_name, meta["default"])
+        is_cpu = "CPU" in var_name
+        resources.append({
+            "key": var_name,
+            "label": meta["label"],
+            "description": meta["description"],
+            "category": meta["category"],
+            "value": current,
+            "default": meta["default"],
+            "options": _CPU_OPTIONS if is_cpu else _MEM_OPTIONS,
+        })
+    return {"resources": resources, "envFile": str(_ENV_FILE), "requiresRestart": True}
+
+
+@router.put("/system/resources")
+async def update_resource_limits(payload: ResourceUpdateRequest) -> dict[str, Any]:
+    """Update Docker resource limits in .env file. Requires container restart to apply."""
+    changed: list[str] = []
+    for key, value in payload.values.items():
+        if key not in _RESOURCE_VARS:
+            raise HTTPException(status_code=400, detail=f"Unknown resource variable: {key}")
+        _write_env_value(key, value)
+        changed.append(key)
+        logger.info("Resource limit updated: %s = %s", key, value)
+    return {
+        "status": "ok",
+        "changed": changed,
+        "message": f"Updated {len(changed)} resource limit(s). Restart affected containers to apply.",
     }
