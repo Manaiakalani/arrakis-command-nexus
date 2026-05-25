@@ -105,64 +105,64 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       <div className="p-5">
         {viewMode === 'tactical' ? (
           <div
-            className="relative min-h-[420px] overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
+            className="relative overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
+            style={{ aspectRatio: '1 / 1' }}
             {...zoom.containerProps}
           >
-            <div style={zoom.transformStyle}>
+            <div style={zoom.transformStyle} className="absolute inset-0">
+              {/* Map background - HD 2048x2048 from stitched CDN tiles */}
               <div
-                className="relative min-h-[420px]"
+                className="absolute inset-0"
                 style={{
-                  backgroundImage: 'url(/maps/hagga-basin.webp)',
-                  backgroundSize: 'cover',
+                  backgroundImage: 'url(/maps/hagga-basin-hd.webp)',
+                  backgroundSize: '100% 100%',
                   backgroundPosition: 'center',
                 }}
-              >
-                {/* Darken overlay for dot visibility */}
-                <div className="absolute inset-0 bg-black/40" />
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 opacity-25"
-                  style={{
-                    backgroundImage: 'linear-gradient(rgba(251, 191, 36, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.15) 1px, transparent 1px)',
-                    backgroundSize: `${100 / GRID_DIVISIONS}% ${100 / GRID_DIVISIONS}%`,
-                  }}
-                />
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+              />
+              {/* Darken overlay for dot visibility */}
+              <div className="absolute inset-0 bg-black/40" />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 opacity-25"
+                style={{
+                  backgroundImage: 'linear-gradient(rgba(251, 191, 36, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(251, 191, 36, 0.15) 1px, transparent 1px)',
+                  backgroundSize: `${100 / GRID_DIVISIONS}% ${100 / GRID_DIVISIONS}%`,
+                }}
+              />
 
-                {plottedPlayers.length === 0 ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-                    <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
-                      <LocateFixed className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
-                      <p className="mt-2 max-w-md text-sm text-th-text-m">
-                        Player dots appear here as soon as the dashboard receives live position updates from the game services.
-                      </p>
-                    </div>
+              {plottedPlayers.length === 0 ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                  <div className="rounded-full border border-amber-500/20 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-300">
+                    <LocateFixed className="h-6 w-6" />
                   </div>
-                ) : null}
+                  <div>
+                    <p className="text-lg font-semibold text-th-text">{emptyMessage}</p>
+                    <p className="mt-2 max-w-md text-sm text-th-text-m">
+                      Player dots appear here as soon as the dashboard receives live position updates from the game services.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
 
-                {plottedPlayers.map((player, index) => (
-                  <button
-                    key={`${player.steamId}-${index}`}
-                    type="button"
-                    className="group absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `${player.left}%`, top: `${player.top}%` }}
-                    aria-label={`${player.name} on ${player.mapLabel}`}
-                  >
-                    <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-md" />
-                    <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition-transform duration-150 ease-[var(--ease-out-expo)] group-hover:scale-125" />
-                    <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
-                      <span className="block font-semibold text-amber-700 dark:text-amber-200">{player.name}</span>
-                      <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
-                      <span className="mt-1 block font-mono text-[10px] text-th-text-m">
-                        X: {Math.round(player.x).toLocaleString()} &bull; Y: {Math.round(player.y).toLocaleString()}{player.z !== null ? ` • Z: ${Math.round(player.z).toLocaleString()}` : ''}
-                      </span>
+              {plottedPlayers.map((player, index) => (
+                <button
+                  key={`${player.steamId}-${index}`}
+                  type="button"
+                  className="group absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${player.left}%`, top: `${player.top}%` }}
+                  aria-label={`${player.name} on ${player.mapLabel}`}
+                >
+                  <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-md" />
+                  <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-amber-100 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.75)] transition-transform duration-150 ease-[var(--ease-out-expo)] group-hover:scale-125" />
+                  <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-amber-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
+                    <span className="block font-semibold text-amber-700 dark:text-amber-200">{player.name}</span>
+                    <span className="mt-1 block text-th-text-m">{player.mapLabel}</span>
+                    <span className="mt-1 block font-mono text-[10px] text-th-text-m">
+                      X: {Math.round(player.x).toLocaleString()} &bull; Y: {Math.round(player.y).toLocaleString()}{player.z !== null ? ` • Z: ${Math.round(player.z).toLocaleString()}` : ''}
                     </span>
-                  </button>
-                ))}
-              </div>
+                  </span>
+                </button>
+              ))}
             </div>
 
             {/* Fixed overlay labels (not affected by zoom) */}

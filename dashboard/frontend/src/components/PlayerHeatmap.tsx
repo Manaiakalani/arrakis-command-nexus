@@ -111,20 +111,22 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
 
       <div className="p-5">
         <div
-          className="relative min-h-[400px] overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
+          className="relative overflow-hidden rounded-3xl border border-amber-500/15 sand-glow"
+          style={{ aspectRatio: '1 / 1' }}
           {...zoom.containerProps}
         >
-          <div style={zoom.transformStyle}>
+          <div style={zoom.transformStyle} className="absolute inset-0">
+            {/* Map background - HD 2048x2048 */}
             <div
-              className="relative min-h-[400px]"
+              className="absolute inset-0"
               style={{
-                backgroundImage: 'url(/maps/hagga-basin.webp)',
-                backgroundSize: 'cover',
+                backgroundImage: 'url(/maps/hagga-basin-hd.webp)',
+                backgroundSize: '100% 100%',
                 backgroundPosition: 'center',
               }}
-            >
-              {/* Dark overlay */}
-              <div className="absolute inset-0 bg-black/55" />
+            />
+            {/* Dark overlay */}
+            <div className="absolute inset-0 bg-black/55" />
 
               {/* Grid lines */}
               <div
@@ -193,9 +195,8 @@ export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHea
                 </div>
               ) : null}
             </div>
-          </div>
 
-          {/* Fixed overlay labels */}
+            {/* Fixed overlay labels */}
           <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full border border-amber-400/20 bg-th-bg/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-amber-700/90 dark:text-amber-200/90">
             <Flame className="h-3.5 w-3.5" /> Weighted density
           </div>

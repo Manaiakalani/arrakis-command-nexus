@@ -1,10 +1,11 @@
 import type { Player, PlayerPosition } from '@/lib/types';
 
+// Real Hagga Basin bounds from cdn.th.gl/dune-awakening/config/tiles.json
 export const DEFAULT_HAGGA_BASIN_BOUNDS = {
-  minX: -500_000,
-  maxX: 500_000,
-  minY: -500_000,
-  maxY: 500_000,
+  minX: -457_599,
+  maxX: 355_199,
+  minY: -457_599,
+  maxY: 355_199,
 };
 
 export type PlayerMapSource = Player | PlayerPosition;
