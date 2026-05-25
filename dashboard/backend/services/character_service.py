@@ -11,26 +11,12 @@ logger = logging.getLogger(__name__)
 # Known Dune Awakening character stats
 EDITABLE_STATS = [
     {"key": "max_health", "label": "Max Health", "type": "number", "category": "stats"},
-    {"key": "hydration", "label": "Hydration", "type": "number", "category": "stats"},
+    {"key": "current_hydration", "label": "Hydration", "type": "number", "category": "stats"},
     {"key": "heat_exhaustion", "label": "Heat Exhaustion", "type": "number", "category": "stats"},
-    {"key": "spice_level", "label": "Spice Level", "type": "number", "category": "stats"},
+    {"key": "current_spice", "label": "Spice", "type": "number", "category": "stats"},
     {"key": "eyes_of_ibad", "label": "Eyes of Ibad", "type": "number", "category": "stats"},
-    {"key": "addiction", "label": "Spice Addiction", "type": "number", "category": "stats"},
-    {"key": "solari", "label": "Solari", "type": "number", "category": "economy"},
-    {"key": "house_scrip", "label": "House Scrip", "type": "number", "category": "economy"},
-    {"key": "combat_level", "label": "Combat Level", "type": "number", "category": "specialization"},
-    {"key": "combat_xp", "label": "Combat XP", "type": "number", "category": "specialization"},
-    {"key": "crafting_level", "label": "Crafting Level", "type": "number", "category": "specialization"},
-    {"key": "crafting_xp", "label": "Crafting XP", "type": "number", "category": "specialization"},
-    {"key": "exploration_level", "label": "Exploration Level", "type": "number", "category": "specialization"},
-    {"key": "exploration_xp", "label": "Exploration XP", "type": "number", "category": "specialization"},
-    {"key": "gathering_level", "label": "Gathering Level", "type": "number", "category": "specialization"},
-    {"key": "gathering_xp", "label": "Gathering XP", "type": "number", "category": "specialization"},
-    {"key": "sabotage_level", "label": "Sabotage Level", "type": "number", "category": "specialization"},
-    {"key": "sabotage_xp", "label": "Sabotage XP", "type": "number", "category": "specialization"},
-    {"key": "atreides_rep", "label": "Atreides Reputation", "type": "number", "category": "faction"},
-    {"key": "harkonnen_rep", "label": "Harkonnen Reputation", "type": "number", "category": "faction"},
-    {"key": "smuggler_rep", "label": "Smuggler Reputation", "type": "number", "category": "faction"},
+    {"key": "solari", "label": "Solari (Currency)", "type": "number", "category": "economy"},
+    {"key": "tech_knowledge_points", "label": "Tech Knowledge Points", "type": "number", "category": "specialization"},
 ]
 
 
@@ -82,7 +68,11 @@ class CharacterService:
                         a.map,
                         a.transform,
                         ea.platform_name,
-                        COALESCE(pvcb.balance, 0) AS solari
+                        COALESCE(pvcb.balance, 0) AS solari,
+                        a.gas_attributes,
+                        a.properties->'DamageableActorComponent' AS health_data,
+                        a.properties->'BP_DunePlayerCharacter_C' AS character_data,
+                        a.properties->'TechKnowledgePlayerComponent' AS tech_data
                     FROM dune.encrypted_accounts ea
                     JOIN dune.encrypted_player_state eps ON eps.account_id = ea.id
                     LEFT JOIN dune.actors a ON a.id = eps.player_pawn_id
@@ -128,21 +118,57 @@ class CharacterService:
 
     def _funcom_row_to_character(self, row: Any) -> dict[str, Any]:
         """Convert a Funcom DB row into our character format."""
+        import json
+        import re
+
         pos = None
         map_name = row.get("map")
         transform = row.get("transform")
         if transform is not None:
             try:
-                # transform is a composite type: ((x,y,z),(qx,qy,qz,qw))
                 t_str = str(transform)
-                import re
                 nums = re.findall(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', t_str)
                 if len(nums) >= 3:
                     pos = {"x": float(nums[0]), "y": float(nums[1]), "z": float(nums[2])}
             except Exception:
                 pass
 
+        # Extract stats from gas_attributes and properties JSON
         stats: dict[str, Any] = {"solari": int(row.get("solari", 0))}
+
+        # Health from DamageableActorComponent
+        health_data = row.get("health_data")
+        if health_data:
+            if isinstance(health_data, str):
+                health_data = json.loads(health_data)
+            stats["max_health"] = health_data.get("m_TotalMaxHealth", 0)
+
+        # Gas attributes (hydration, spice, etc)
+        gas = row.get("gas_attributes")
+        if gas:
+            if isinstance(gas, str):
+                gas = json.loads(gas)
+            hydration_set = gas.get("DuneHydrationAttributeSet", {})
+            stats["current_hydration"] = hydration_set.get("CurrentHydration", {}).get("CurrentValue", 0)
+            stats["heat_exhaustion"] = hydration_set.get("HeatExhaustion", {}).get("CurrentValue", 0)
+
+            spice_set = gas.get("DuneSpiceAddictionAttributeSet", {})
+            stats["current_spice"] = spice_set.get("CurrentSpice", {}).get("CurrentValue", 0)
+
+        # Character properties (eyes of ibad, etc)
+        char_data = row.get("character_data")
+        if char_data:
+            if isinstance(char_data, str):
+                char_data = json.loads(char_data)
+            stats["eyes_of_ibad"] = char_data.get("m_EyesOfIbadValue", 0)
+
+        # Tech knowledge points
+        tech_data = row.get("tech_data")
+        if tech_data:
+            if isinstance(tech_data, str):
+                tech_data = json.loads(tech_data)
+            stats["tech_knowledge_points"] = tech_data.get("m_TechKnowledgePoints", 0)
+
         metadata: dict[str, Any] = {}
         if row.get("online_status"):
             metadata["online_status"] = row["online_status"]
@@ -209,7 +235,7 @@ class CharacterService:
         return {
             "mutationsEnabled": self.mutations_enabled,
             "editableStats": len(EDITABLE_STATS),
-            "categories": ["stats", "economy", "specialization", "faction"],
+            "categories": ["stats", "economy", "specialization"],
         }
 
     async def _query_table_characters(self, connection: Any, schema: str, table: str) -> list[dict[str, Any]]:
@@ -247,6 +273,9 @@ class CharacterService:
         return [self._row_to_character(dict(row), schema, table, index + 1) for index, row in enumerate(rows)]
 
     async def _update_game_character(self, character_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+        """Update a character in the Funcom DB. character_id is ea.id (text)."""
+        import json
+
         if not updates:
             character = await self.get_character(character_id)
             if character is None:
@@ -257,46 +286,88 @@ class CharacterService:
         if pool is None:
             return None
 
+        account_id = int(character_id)
+
         async with pool.acquire() as connection:
-            rows = await connection.fetch(
-                """
-                SELECT table_schema, table_name
-                FROM information_schema.tables
-                WHERE table_type = 'BASE TABLE'
-                  AND table_schema NOT IN ('information_schema', 'pg_catalog')
-                  AND lower(table_name) = ANY($1::text[])
-                """,
-                list(self.TABLE_CANDIDATES),
-            )
-            for row in rows:
-                columns = await self._get_table_columns(connection, row["table_schema"], row["table_name"])
-                normalized = {column.lower(): column for column in columns}
-                id_column = self._pick_column(normalized, self.ID_COLUMNS)
-                if not id_column:
-                    continue
+            pawn = await connection.fetchrow("""
+                SELECT eps.player_pawn_id, eps.player_controller_id
+                FROM dune.encrypted_player_state eps
+                WHERE eps.account_id = $1
+            """, account_id)
+            if pawn is None:
+                raise KeyError(character_id)
 
-                matched_updates = {key: updates[key] for key in updates if key in normalized}
-                if not matched_updates:
-                    continue
+            pawn_id = pawn["player_pawn_id"]
+            controller_id = pawn["player_controller_id"]
 
-                set_parts = []
-                values: list[Any] = []
-                for key, value in matched_updates.items():
-                    values.append(value)
-                    set_parts.append(f"{self._quote_ident(normalized[key])} = ${len(values)}")
-                values.append(character_id)
+            for key, value in updates.items():
+                numeric_value = float(value)
 
-                query = (
-                    f"UPDATE {self._table_ref(row['table_schema'], row['table_name'])} "
-                    f"SET {', '.join(set_parts)} "
-                    f"WHERE CAST({self._quote_ident(id_column)} AS TEXT) = ${len(values)}"
-                )
-                status = await connection.execute(query, *values)
-                if status.startswith("UPDATE 1"):
-                    refreshed = await self._query_table_characters(connection, row["table_schema"], row["table_name"])
-                    return next((item for item in refreshed if item.get("id") == character_id), None)
+                if key == "solari":
+                    await connection.execute("""
+                        INSERT INTO dune.player_virtual_currency_balances
+                            (player_controller_id, currency_id, balance)
+                        VALUES ($1, 1, $2)
+                        ON CONFLICT (player_controller_id, currency_id)
+                        DO UPDATE SET balance = $2
+                    """, controller_id, int(numeric_value))
 
-        raise NotImplementedError("Character mutations require game DB schema mapping")
+                elif key == "max_health":
+                    await connection.execute("""
+                        UPDATE dune.actors SET properties = jsonb_set(
+                            jsonb_set(properties,
+                                '{DamageableActorComponent,m_TotalMaxHealth}', $2::jsonb),
+                            '{DamageableActorComponent,m_CurrentMaxHealth}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "current_hydration":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneHydrationAttributeSet,CurrentHydration,BaseValue}', $2::jsonb),
+                            '{DuneHydrationAttributeSet,CurrentHydration,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "heat_exhaustion":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneHydrationAttributeSet,HeatExhaustion,BaseValue}', $2::jsonb),
+                            '{DuneHydrationAttributeSet,HeatExhaustion,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "current_spice":
+                    await connection.execute("""
+                        UPDATE dune.actors SET gas_attributes = jsonb_set(
+                            jsonb_set(gas_attributes,
+                                '{DuneSpiceAddictionAttributeSet,CurrentSpice,BaseValue}', $2::jsonb),
+                            '{DuneSpiceAddictionAttributeSet,CurrentSpice,CurrentValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "eyes_of_ibad":
+                    await connection.execute("""
+                        UPDATE dune.actors SET properties = jsonb_set(
+                            properties,
+                            '{BP_DunePlayerCharacter_C,m_EyesOfIbadValue}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(numeric_value))
+
+                elif key == "tech_knowledge_points":
+                    await connection.execute("""
+                        UPDATE dune.actors SET properties = jsonb_set(
+                            properties,
+                            '{TechKnowledgePlayerComponent,m_TechKnowledgePoints}', $2::jsonb)
+                        WHERE id = $1
+                    """, pawn_id, json.dumps(int(numeric_value)))
+
+                else:
+                    logger.warning("Unknown editable stat key: %s", key)
+
+        return await self.get_character(character_id)
 
     async def _get_mock_characters(self) -> list[dict[str, Any]]:
         async with self._mock_lock:
