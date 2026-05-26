@@ -790,6 +790,9 @@ export default function CharactersPage() {
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('PowerPack', 1)}>
                     <Flame className="mr-1.5 h-3.5 w-3.5" /> Power Pack
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('PowerPack5', 1)}>
+                    <Flame className="mr-1.5 h-3.5 w-3.5" /> Power Pack 5
+                  </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('RepairTool', 1)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> Repair Tool
                   </button>
@@ -853,7 +856,7 @@ export default function CharactersPage() {
 
               <div className="mt-5">
                 <p className="text-sm font-semibold text-th-text">Raw Materials</p>
-                <p className="mt-1 text-xs text-th-text-m">Crafting resources and building materials.</p>
+                <p className="mt-1 text-xs text-th-text-m">Crafting resources, metals, and building materials.</p>
                 <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-4">
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('ScrapMetal', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Scrap Metal
@@ -873,8 +876,17 @@ export default function CharactersPage() {
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FuelCanister', 10)}>
                     <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Fuel Canisters
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('CopperBar', 50)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Copper Bars
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('IronBar', 50)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Iron Bars
+                  </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T1UniqueComponent', 20)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 20 T1 Unique Parts
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T1ExplorationComponent', 20)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 20 Exploration Parts
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2HeavyComponent', 20)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 20 T2 Heavy Parts
@@ -884,6 +896,24 @@ export default function CharactersPage() {
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FremenComponent2', 50)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Fremen Parts II
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OldImperialComponent1', 20)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 20 Imperial Parts I
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OldImperialComponent2', 20)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 20 Imperial Parts II
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('GreatHouseComponent1', 20)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 20 Great House I
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('GreatHouseComponent2', 20)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 20 Great House II
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WeldingMaterial', 50)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Welding Material
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('PowerUnitVeryLight', 10)}>
+                    <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Light Power Units
                   </button>
                 </div>
               </div>
@@ -948,6 +978,33 @@ export default function CharactersPage() {
                     { templateId: 'Stillsuit_Neut_Leaking01_Boots', quantity: 1 },
                   ])}>
                     <Shield className="mr-1.5 h-3.5 w-3.5" /> Leaky Stillsuit (Full)
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-th-text">Cosmetics and Schematics</p>
+                <p className="mt-1 text-xs text-th-text-m">Social outfits, schematics, and other unique items.</p>
+                <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'Social_Choam_MaulaCastOffs01_Top_Fremkit', quantity: 1 },
+                    { templateId: 'Social_Choam_MaulaCastOffs01_Bottom', quantity: 1 },
+                    { templateId: 'Social_Choam_MaulaCastOffs01_Gloves', quantity: 1 },
+                    { templateId: 'Social_Choam_MaulaCastOffs01_Shoes', quantity: 1 },
+                  ])}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Maula Cast-Offs (Full)
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('PowerPack_Unique_Regen_01_Schematic', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Regen PowerPack Schematic
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('Schematic_UniqueSuspensor', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Suspensor Schematic
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('Schematic_UniqueLiterjon', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Unique Literjon Schematic
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('ContractItem', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Contract Item
                   </button>
                 </div>
               </div>

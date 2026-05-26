@@ -491,6 +491,8 @@ class CharacterService:
         "FremenComponent2": "Resources",
         "OldImperialComponent1": "Resources",
         "OldImperialComponent2": "Resources",
+        "GreatHouseComponent1": "Resources",
+        "GreatHouseComponent2": "Resources",
         "IronBar": "Resources",
         "CopperBar": "Resources",
         "T3_Material_CopperBar": "Resources",
