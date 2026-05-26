@@ -52,6 +52,10 @@ class AnnounceService:
             os.getenv("DUNE_ANNOUNCE_ROUTING_KEYS", ",Survival_1.dim_0,HaggaBasin.0").split(",")
         ]
         self.routing_key = ""
+        # Dedicated announcer AMQP credentials: must be a valid 16-hex-char
+        # "player" account so the auth-shim accepts it and user_id matches
+        self.chat_user = os.getenv("DUNE_ANNOUNCE_CHAT_USER", "A000000000000001")
+        self.chat_password = os.getenv("DUNE_ANNOUNCE_CHAT_PASSWORD", "announce")
         self.history: list[dict] = []
 
     # ------------------------------------------------------------------
@@ -83,10 +87,11 @@ class AnnounceService:
                 logger.warning("No online player queues found; message may not be delivered")
 
             body = self._build_textchat_payload(message, sender)
-            connection = pika.BlockingConnection(self._connection_parameters())
+            connection = pika.BlockingConnection(self._chat_connection_parameters())
             channel = connection.channel()
 
-            # Publish to chat.map with each routing key
+            # Publish to chat.map with each routing key, setting user_id
+            # to match the authenticated AMQP user (required by RabbitMQ)
             for rk in self.routing_keys:
                 channel.basic_publish(
                     exchange="chat.map",
@@ -97,6 +102,7 @@ class AnnounceService:
                         delivery_mode=1,
                         timestamp=int(time.time()),
                         type="text_chat",
+                        user_id=self.chat_user,
                         message_id=secrets.token_urlsafe(16),
                     ),
                     mandatory=False,
@@ -211,6 +217,7 @@ class AnnounceService:
     # ------------------------------------------------------------------
 
     def _connection_parameters(self) -> pika.ConnectionParameters:
+        """Management connection (used for queue binding via mgmt API fallback)."""
         credentials = None
         if self.username:
             credentials = pika.PlainCredentials(self.username, self.password or "")
@@ -227,6 +234,22 @@ class AnnounceService:
             kwargs["ssl_options"] = pika.SSLOptions(self._ssl_context(), self.host)
         if credentials is None:
             kwargs.pop("credentials")
+        return pika.ConnectionParameters(**kwargs)
+
+    def _chat_connection_parameters(self) -> pika.ConnectionParameters:
+        """Announcer connection: authenticates as the chat user (A000000000000001)
+        so that user_id in published messages matches the authenticated user."""
+        credentials = pika.PlainCredentials(self.chat_user, self.chat_password)
+        kwargs = {
+            "host": self.host,
+            "port": self.port,
+            "virtual_host": self.virtual_host,
+            "heartbeat": 0,
+            "blocked_connection_timeout": 10,
+            "credentials": credentials,
+        }
+        if self.tls_enabled:
+            kwargs["ssl_options"] = pika.SSLOptions(self._ssl_context(), self.host)
         return pika.ConnectionParameters(**kwargs)
 
     def _ssl_context(self) -> ssl.SSLContext:
