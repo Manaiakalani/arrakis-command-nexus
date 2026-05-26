@@ -95,11 +95,19 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
     tracker_log.info("Connection tracker started (discord_service=%s)", "enabled" if discord_service else "disabled")
 
     previous_ids: set[str] = set()
+    # Cache steam_id -> (name, map) so disconnect messages show player names
+    known_players: dict[str, tuple[str, str]] = {}
     first_poll = True
     while True:
         try:
             current_players = await postgres_service.get_online_players()
             current_ids = {p.steam_id for p in current_players}
+
+            # Always update the name cache with current data
+            for p in current_players:
+                pname = getattr(p, "name", None) or p.steam_id
+                mname = getattr(p, "map_name", None) or "Unknown"
+                known_players[p.steam_id] = (pname, mname)
 
             if first_poll:
                 tracker_log.info("Initial poll: %d player(s) online", len(current_ids))
@@ -118,9 +126,7 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                 )
                 async with SessionLocal() as session:
                     for sid in joined:
-                        player = next((p for p in current_players if p.steam_id == sid), None)
-                        pname = getattr(player, "name", None)
-                        mname = getattr(player, "map_name", None)
+                        pname, mname = known_players.get(sid, (sid, "Unknown"))
                         session.add(ConnectionLog(
                             steam_id=sid,
                             player_name=pname,
@@ -134,24 +140,25 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                         ))
                         tracker_log.info("Player connected: %s (%s) on %s", pname, sid, mname)
                     for sid in left:
+                        pname, mname = known_players.get(sid, (sid, "Unknown"))
                         session.add(ConnectionLog(
                             steam_id=sid,
+                            player_name=pname,
                             event="disconnect",
+                            map_name=mname,
                         ))
                         session.add(AuditLog(
                             action="player_logout",
-                            details={"steam_id": sid},
+                            details={"steam_id": sid, "player_name": pname, "map": mname},
                             performed_by="system",
                         ))
-                        tracker_log.info("Player disconnected: %s", sid)
+                        tracker_log.info("Player disconnected: %s (%s) from %s", pname, sid, mname)
                     await session.commit()
 
                 # Send Discord notifications outside the DB session
                 if discord_service is not None:
                     for sid in joined:
-                        player = next((p for p in current_players if p.steam_id == sid), None)
-                        pname = getattr(player, "name", None) or sid
-                        mname = getattr(player, "map_name", None) or "Unknown"
+                        pname, mname = known_players.get(sid, (sid, "Unknown"))
                         count = await discord_service.enqueue(
                             "player_join",
                             f"**{pname}** connected to **{mname}** ({len(current_ids)} online)",
@@ -159,9 +166,10 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                         )
                         tracker_log.info("Discord join notification queued to %d webhook(s)", count)
                     for sid in left:
+                        pname, mname = known_players.get(sid, (sid, "Unknown"))
                         count = await discord_service.enqueue(
                             "player_leave",
-                            f"**{sid}** disconnected ({len(current_ids)} online)",
+                            f"**{pname}** disconnected from **{mname}** ({len(current_ids)} online)",
                             title="Player Disconnected",
                         )
                         tracker_log.info("Discord leave notification queued to %d webhook(s)", count)
