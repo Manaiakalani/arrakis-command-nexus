@@ -96,7 +96,7 @@ See [docs/PROFILES.md](./docs/PROFILES.md) for the exact shard layouts.
 steamcmd +login anonymous +app_update 4754530 validate +quit
 
 # 2. Clone and configure
-git clone https://github.com/Manaiakalani/arrakis-command-nexus.git
+git clone https://github.com/Manaiakalani/dune-server-docker.git
 cd dune-server-docker
 ./dune init
 
@@ -222,7 +222,7 @@ sudo ./scripts/host-tuning.sh --swap 8
 ### Local setup
 
 ```bash
-git clone https://github.com/Manaiakalani/arrakis-command-nexus.git
+git clone https://github.com/Manaiakalani/dune-server-docker.git
 cd dune-server-docker
 
 # Backend

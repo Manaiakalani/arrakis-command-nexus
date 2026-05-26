@@ -30,7 +30,11 @@ Maintainers should acknowledge receipt within 3 business days, provide status up
 When rotating credentials, follow this sequence to avoid downtime:
 
 ### Admin API Token (`DUNE_ADMIN_TOKEN`)
-1. Generate a new token: `openssl rand -hex 32`
+
+> **Important:** The dashboard will refuse to start if this is set to a placeholder
+> value (e.g., `change-me-admin-token`). Generate a real token before first deploy.
+
+1. Generate a new token: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
 2. Update `.env` with the new value.
 3. Restart the dashboard API: `docker compose up -d dashboard-api`
 4. Update any saved tokens in browser bookmarks or scripts.

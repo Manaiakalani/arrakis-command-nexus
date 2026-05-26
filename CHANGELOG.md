@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0] - 2026-05-25
+
+### Added
+- **Item catalog** expanded to 188 templates with human-readable display names (e.g., `GreatHouseComponent2` shows as "Mechanical Parts")
+- **Stack size warnings** on item grants when requested quantity exceeds the game's observed max
+- **Startup guard** that fails fast with a clear error if `DUNE_ADMIN_TOKEN` is still a placeholder
+- Visible template ID subtitles in the item catalog (no hover required)
+- Search now matches on display names, not just template IDs
+- `DUNE_DASHBOARD_DB_URL` documented in `.env.example`
+
+### Changed
+- `DUNE_ADMIN_READ_AUTH` now defaults to `true` (all GET endpoints require auth)
+- `MEM_LIMIT_OVERMAP` default increased from 2g to 8g
+- Grant logging now includes inventory ID and position index for debugging
+- Player connection tracker uses backoff on repeated failures
+
+### Fixed
+- `mktemp -u` race condition in `survival-pre-start.sh` (now uses `mktemp -d`)
+- Swallowed database errors in `postgres_service.get_player_progress()` now logged
+- Economy service stub methods no longer wrap no-ops in misleading try/except
+- `farm_state` cleanup shows informative message instead of silent `|| true`
+- CONFIGURATION.md defaults synced with `.env.example` (STEAM_APP_ID, IMAGE_TAG, MEM_LIMIT_OVERMAP)
+- README clone URLs and Steam App ID corrected
+- `setup.sh` defaults synced (IMAGE_TAG, MEM_LIMIT_OVERMAP)
+- System settings UI shows correct 8g default for Overmap memory
+
+### Security
+- Read endpoints now require authentication by default
+- Placeholder token detection prevents insecure deployments
+- FIFO creation hardened against symlink races
+
 ## [1.4.0] - 2026-05-25
 
 ### Added

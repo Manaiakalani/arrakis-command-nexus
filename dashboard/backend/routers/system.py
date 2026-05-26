@@ -340,7 +340,7 @@ _RESOURCE_VARS: dict[str, dict[str, str]] = {
         "label": "Overmap Memory",
         "description": "RAM limit for the Overmap (lobby/travel hub). Lightweight, needs far less than game maps.",
         "category": "game-servers",
-        "default": "2g",
+        "default": "8g",
     },
     "MEM_LIMIT_DEEP_DESERT": {
         "label": "Deep Desert Memory",
