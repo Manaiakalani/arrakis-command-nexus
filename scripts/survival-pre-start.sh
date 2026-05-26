@@ -20,13 +20,11 @@ fi
 # Record current time as potential crash marker (removed on clean shutdown)
 date +%s > "$CRASH_MARKER"
 
-echo "[pre-start] Clearing stale server_id for map=$MAP_NAME..."
-if [[ "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
-  psql -h postgres -p 5432 -U dune -d "$DB_NAME" \
-    -c "UPDATE dune.world_partition SET server_id = NULL WHERE map = '$MAP_NAME';" 2>&1 || true
-else
-  echo "[pre-start] Skipping stale server cleanup because PARTITION_MAP_NAME is invalid." >&2
-fi
+# NOTE: We intentionally do NOT clear server_id from dune.world_partition.
+# The game binary generates a new server_id each startup and registers it
+# via the director. Clearing it causes "Partition's ServerId is null or
+# empty!" errors in the director and "Local partition is not found" crashes
+# in S2sController.cpp.
 
-echo "[pre-start] Done, starting game server..."
+echo "[pre-start] Starting game server for map=$MAP_NAME..."
 exec /home/dune/run.sh "$@"
