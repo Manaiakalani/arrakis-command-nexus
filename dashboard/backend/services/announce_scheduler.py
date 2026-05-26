@@ -198,9 +198,15 @@ class AnnounceScheduler:
             ]
 
         for item in due_announcements:
+            message = item["message"]
+            # Wisdom mode: pick a random quote from the pool
+            if message == "__WISDOM__":
+                from routers.announce import WISDOM_POOL
+                message = WISDOM_POOL[hash(item["id"] + str(datetime.now(timezone.utc))) % len(WISDOM_POOL)]
+
             success = await asyncio.to_thread(
                 self.announce_service.send_announcement,
-                item["message"],
+                message,
                 item.get("sender"),
             )
             await self._write_audit(item, success)

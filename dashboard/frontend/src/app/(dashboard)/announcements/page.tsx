@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarClock, Megaphone, Repeat, RotateCcw, Trash2 } from 'lucide-react';
+import { CalendarClock, Megaphone, Repeat, RotateCcw, Sparkles, Trash2, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
@@ -44,6 +44,10 @@ export default function AnnouncementsPage() {
   const history = useApi(() => apiClient.getAnnouncementHistory(), { refreshInterval: 15000, initialData: [] });
   const scheduled = useApi(() => apiClient.getScheduledAnnouncements(), { refreshInterval: 15000, initialData: [] });
 
+  const [wisdomInterval, setWisdomInterval] = useState(45);
+  const [wisdomSender, setWisdomSender] = useState("Muad'Dib");
+  const [wisdomBusy, setWisdomBusy] = useState(false);
+
   const canSend = useMemo(() => message.trim().length > 0 && !busy, [busy, message]);
   const canSchedule = useMemo(() => {
     if (!scheduledMessage.trim() || scheduling) {
@@ -58,6 +62,36 @@ export default function AnnouncementsPage() {
 
   const refreshScheduled = async () => {
     await scheduled.refetch();
+  };
+
+  const handleSetupWisdom = async () => {
+    setWisdomBusy(true);
+    try {
+      const result = await apiClient.setupWisdomScheduler({
+        interval_minutes: wisdomInterval,
+        sender: wisdomSender.trim() || "Muad'Dib",
+        enabled: true,
+      });
+      toast(result.success ? 'Words of Wisdom scheduler activated!' : 'Failed to set up wisdom', result.success ? 'success' : 'error');
+      await refreshScheduled();
+    } catch (error) {
+      toast(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setWisdomBusy(false);
+    }
+  };
+
+  const handleSendWisdom = async () => {
+    setWisdomBusy(true);
+    try {
+      const result = await apiClient.sendRandomWisdom();
+      toast(result.success ? `Wisdom sent: "${result.quote.slice(0, 60)}..."` : 'Failed to send', result.success ? 'success' : 'error');
+      await refreshHistory();
+    } catch (error) {
+      toast(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setWisdomBusy(false);
+    }
   };
 
   const handleSend = async () => {
@@ -229,6 +263,60 @@ export default function AnnouncementsPage() {
             {feedback.text}
           </div>
         ) : null}
+      </div>
+
+      {/* Words of Wisdom */}
+      <div className="glass-panel p-6">
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl bg-amber-500/10 p-3 text-amber-400">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="section-title">Words of Wisdom</p>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Muad&apos;Dib&apos;s Wisdom Bot</h2>
+            <p className="mt-1 text-sm text-th-text-m">Dune-themed wisdom mixed with gen-z energy, broadcast throughout the day.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-th-text">Announcer name</span>
+            <input
+              className="dune-input"
+              value={wisdomSender}
+              onChange={(e) => setWisdomSender(e.target.value)}
+              placeholder="Muad'Dib"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-th-text">Interval (minutes)</span>
+            <input
+              className="dune-input"
+              type="number"
+              min={1}
+              value={wisdomInterval}
+              onChange={(e) => setWisdomInterval(Math.max(1, Number(e.target.value) || 45))}
+            />
+          </label>
+          <div className="flex items-end gap-2">
+            <button
+              type="button"
+              className="dune-button"
+              onClick={() => void handleSetupWisdom()}
+              disabled={wisdomBusy}
+            >
+              <CalendarClock className="mr-2 h-4 w-4" /> Start scheduler
+            </button>
+            <button
+              type="button"
+              className="dune-button-muted"
+              onClick={() => void handleSendWisdom()}
+              disabled={wisdomBusy}
+            >
+              <Zap className="mr-2 h-4 w-4" /> Send one now
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="glass-panel overflow-hidden">

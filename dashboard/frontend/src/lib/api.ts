@@ -361,6 +361,21 @@ export class ApiClient {
     return this.request<ScheduledAnnouncement>(`/announce/scheduled/${encodeURIComponent(id)}/toggle`, { method: 'POST' });
   }
 
+  getWisdomPool() {
+    return this.request<{ quotes: string[]; total: number }>('/announce/wisdom/pool');
+  }
+
+  setupWisdomScheduler(data: { interval_minutes?: number; sender?: string; enabled?: boolean }) {
+    return this.request<{ success: boolean; announcement: ScheduledAnnouncement }>('/announce/wisdom/setup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  sendRandomWisdom() {
+    return this.request<{ success: boolean; quote: string }>('/announce/wisdom/send', { method: 'POST' });
+  }
+
   getChatGuardSettings() {
     return this.request<ChatGuardSettings>('/chat-guard/settings');
   }

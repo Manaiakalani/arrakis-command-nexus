@@ -5,6 +5,7 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
+  Download,
   Filter,
   RefreshCw,
 } from 'lucide-react';
@@ -96,6 +97,24 @@ export default function AuditPage() {
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
+  const handleExport = (format: 'csv' | 'json') => {
+    const params = new URLSearchParams({ fmt: format });
+    if (category) params.set('category', category);
+    const url = `${API}/api/audit/export?${params}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `audit-trail.${format}`;
+    // Attach token via fetch + blob for auth
+    fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } })
+      .then((r) => r.blob())
+      .then((blob) => {
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+      })
+      .catch(() => toast('Export failed', 'error'));
+  };
+
   const fetchAudit = useCallback(async () => {
     setLoading(true);
     try {
@@ -158,13 +177,29 @@ export default function AuditPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { fetchAudit(); fetchSummary(); }}
-          className="dune-button-muted flex items-center gap-2"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleExport('csv')}
+            className="dune-button-muted flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            CSV
+          </button>
+          <button
+            onClick={() => handleExport('json')}
+            className="dune-button-muted flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            JSON
+          </button>
+          <button
+            onClick={() => { fetchAudit(); fetchSummary(); }}
+            className="dune-button-muted flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import csv
+import io
+import json
+
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,3 +76,47 @@ async def audit_summary(session: AsyncSession = Depends(get_session)) -> dict:
     )
     by_action = {row[0]: row[1] for row in result.all()}
     return {"total": total, "by_action": by_action}
+
+
+@router.get("/audit/export")
+async def export_audit_logs(
+    fmt: str = Query("csv", regex="^(csv|json)$"),
+    category: str | None = Query(None),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    """Export the full audit trail as CSV or JSON."""
+    query = select(AuditLog).order_by(AuditLog.created_at.desc())
+    if category and category in ACTION_CATEGORIES:
+        query = query.where(AuditLog.action.in_(ACTION_CATEGORIES[category]))
+
+    result = await session.execute(query)
+    entries = result.scalars().all()
+
+    rows = [
+        {
+            "id": e.id,
+            "action": e.action,
+            "details": json.dumps(e.details) if e.details else "",
+            "performed_by": e.performed_by,
+            "created_at": e.created_at.isoformat() if e.created_at else "",
+        }
+        for e in entries
+    ]
+
+    if fmt == "json":
+        body = json.dumps(rows, indent=2)
+        return StreamingResponse(
+            iter([body]),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=audit-trail.json"},
+        )
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["id", "action", "details", "performed_by", "created_at"])
+    writer.writeheader()
+    writer.writerows(rows)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=audit-trail.csv"},
+    )

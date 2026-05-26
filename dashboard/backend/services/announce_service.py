@@ -90,29 +90,30 @@ class AnnounceService:
             connection = pika.BlockingConnection(self._chat_connection_parameters())
             channel = connection.channel()
 
-            # Publish to chat.map with each routing key, setting user_id
-            # to match the authenticated AMQP user (required by RabbitMQ)
-            for rk in self.routing_keys:
-                channel.basic_publish(
-                    exchange="chat.map",
-                    routing_key=rk,
-                    body=body,
-                    properties=pika.BasicProperties(
-                        content_type="Content",
-                        delivery_mode=1,
-                        timestamp=int(time.time()),
-                        type="text_chat",
-                        user_id=self.chat_user,
-                        message_id=secrets.token_urlsafe(16),
-                    ),
-                    mandatory=False,
-                )
+            # Publish once to chat.map with empty routing key.
+            # Player queues are pre-bound to all routing keys above, so a
+            # single publish with "" matches the default binding and avoids
+            # duplicate delivery.
+            channel.basic_publish(
+                exchange="chat.map",
+                routing_key="",
+                body=body,
+                properties=pika.BasicProperties(
+                    content_type="Content",
+                    delivery_mode=1,
+                    timestamp=int(time.time()),
+                    type="text_chat",
+                    user_id=self.chat_user,
+                    message_id=secrets.token_urlsafe(16),
+                ),
+                mandatory=False,
+            )
             logger.info(
-                "Announcement published to chat.map with %d routing key(s): %s",
-                len(self.routing_keys), self.routing_keys,
+                "Announcement published to chat.map (%d player(s) bound)",
+                len(player_queues),
             )
             self._remember(message, sender or self.sender_name, "sent",
-                           f"Published to chat.map ({len(player_queues)} player(s), {len(self.routing_keys)} key(s))")
+                           f"Published to chat.map ({len(player_queues)} player(s))")
             return True
         except Exception as exc:
             logger.warning("Failed to send announcement: %s", exc, exc_info=True)
