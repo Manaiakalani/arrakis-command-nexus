@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from services.backup_service import BackupService
 
 logger = logging.getLogger(__name__)
+
+_PERSIST_PATH = Path("/workspace/config/backup_schedule.json")
 
 
 def _read_bool(name: str, default: bool) -> bool:
@@ -20,10 +24,20 @@ def _read_bool(name: str, default: bool) -> bool:
 class BackupScheduler:
     def __init__(self, backup_service: BackupService) -> None:
         self.backup_service = backup_service
-        self.enabled = _read_bool("BACKUP_SCHEDULE_ENABLED", False)
-        self.interval_hours = max(1, int(os.getenv("BACKUP_SCHEDULE_INTERVAL_HOURS", "24")))
-        self.retention_days = max(0, int(os.getenv("BACKUP_RETENTION_DAYS", "7")))
+        self._persist_path = _PERSIST_PATH if _PERSIST_PATH.parent.exists() else None
+
+        # Load persisted settings first, fall back to env vars
+        saved = self._load_settings()
+        self.enabled = saved.get("enabled", _read_bool("BACKUP_SCHEDULE_ENABLED", False))
+        self.interval_hours = max(1, saved.get("interval_hours", int(os.getenv("BACKUP_SCHEDULE_INTERVAL_HOURS", "24"))))
+        self.retention_days = max(0, saved.get("retention_days", int(os.getenv("BACKUP_RETENTION_DAYS", "7"))))
         self.last_run_at: datetime | None = None
+        last_run_str = saved.get("last_run_at")
+        if last_run_str:
+            try:
+                self.last_run_at = datetime.fromisoformat(last_run_str)
+            except (ValueError, TypeError):
+                pass
         self.next_run_at: datetime | None = self._compute_next_run() if self.enabled else None
         self._task: asyncio.Task | None = None
         self._stop_event = asyncio.Event()
@@ -74,18 +88,16 @@ class BackupScheduler:
         async with self._lock:
             if enabled is not None:
                 self.enabled = enabled
-                os.environ["BACKUP_SCHEDULE_ENABLED"] = "true" if enabled else "false"
             if interval_hours is not None:
                 if interval_hours < 1:
                     raise ValueError("intervalHours must be at least 1.")
                 self.interval_hours = interval_hours
-                os.environ["BACKUP_SCHEDULE_INTERVAL_HOURS"] = str(interval_hours)
             if retention_days is not None:
                 if retention_days < 0:
                     raise ValueError("retentionDays must be 0 or greater.")
                 self.retention_days = retention_days
-                os.environ["BACKUP_RETENTION_DAYS"] = str(retention_days)
             self.next_run_at = self._compute_next_run() if self.enabled else None
+            self._persist_settings()
         self._wake_event.set()
         logger.info(
             "Backup scheduler updated (enabled=%s, interval_hours=%s, retention_days=%s)",
@@ -135,6 +147,7 @@ class BackupScheduler:
             async with self._lock:
                 self.last_run_at = finished_at
                 self.next_run_at = finished_at + timedelta(hours=interval_hours) if self.enabled else None
+                self._persist_settings()
             logger.info(
                 "Scheduled backup completed (backup_id=%s, pruned=%s)",
                 backup.id,
@@ -144,6 +157,7 @@ class BackupScheduler:
             logger.exception("Scheduled backup failed")
             async with self._lock:
                 self.next_run_at = datetime.now(timezone.utc) + timedelta(hours=interval_hours) if self.enabled else None
+                self._persist_settings()
 
     async def _wait_for_change(self, timeout_seconds: float) -> bool:
         try:
@@ -156,3 +170,33 @@ class BackupScheduler:
 
     def _compute_next_run(self) -> datetime:
         return datetime.now(timezone.utc) + timedelta(hours=self.interval_hours)
+
+    def _load_settings(self) -> dict:
+        """Load persisted settings from JSON file."""
+        if self._persist_path is None or not self._persist_path.exists():
+            return {}
+        try:
+            data = json.loads(self._persist_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                logger.info("Loaded backup schedule from %s", self._persist_path)
+                return data
+        except Exception:
+            logger.warning("Failed to read backup schedule from %s", self._persist_path)
+        return {}
+
+    def _persist_settings(self) -> None:
+        """Persist current settings to JSON file so they survive restarts."""
+        if self._persist_path is None:
+            return
+        try:
+            data = {
+                "enabled": self.enabled,
+                "interval_hours": self.interval_hours,
+                "retention_days": self.retention_days,
+                "last_run_at": self.last_run_at.isoformat() if self.last_run_at else None,
+            }
+            self._persist_path.write_text(
+                json.dumps(data, indent=2), encoding="utf-8"
+            )
+        except Exception:
+            logger.exception("Failed to persist backup schedule to %s", self._persist_path)
