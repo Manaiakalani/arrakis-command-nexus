@@ -18,7 +18,22 @@ if ! command -v steamcmd &>/dev/null; then
 fi
 
 # Query Steam for app info and extract build ID
-steamcmd +login anonymous +app_info_print "$APP_ID" +quit 2>/dev/null | \
-  grep -A 5 '"public"' | \
-  grep -oP '"buildid"\s+"\K\d+' | \
-  head -1 || echo "ERROR: Could not parse build ID" >&2
+# Output is in VDF (Valve Data Format), looking for: "buildid" "XXXXXXX"
+TMPFILE=$(mktemp)
+trap "rm -f $TMPFILE" EXIT
+
+timeout 30 steamcmd +login anonymous +app_info_print "$APP_ID" +quit 2>/dev/null > "$TMPFILE" || {
+  echo "ERROR: steamcmd query failed" >&2
+  exit 1
+}
+
+# Look for buildid in the public branch section
+# Pattern: "buildid"		"1234567"
+BUILD_ID=$(grep -oP '"buildid"\s+"\K\d+' "$TMPFILE" | head -1)
+
+if [[ -n "$BUILD_ID" ]]; then
+  echo "$BUILD_ID"
+else
+  echo "ERROR: Could not parse build ID" >&2
+  exit 1
+fi
