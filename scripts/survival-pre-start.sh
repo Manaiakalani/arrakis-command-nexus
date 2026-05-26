@@ -28,10 +28,11 @@ if [[ ! "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
   exit 1
 fi
 
-psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -v map_name="$MAP_NAME" -c \
-  "DELETE FROM dune.world_partition WHERE map = :'map_name';"
-psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -v map_name="$MAP_NAME" -c \
-  "DELETE FROM dune.farm_state WHERE map = :'map_name';" || true
+# MAP_NAME is validated above (alphanumeric/underscore/hyphen only), safe to interpolate
+psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
+  "DELETE FROM dune.world_partition WHERE map = '$MAP_NAME';"
+psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
+  "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" || true
 
 # Start the game server. Tee output to a FIFO so a background scanner
 # can detect the server_id from stdout ("Server <ID> should be ready")
@@ -74,16 +75,14 @@ trap cleanup EXIT INT TERM
         echo "[pre-start] Detected server_id=$SID, waiting for farm_state registration..."
         # Poll until this server_id appears in farm_state (FK target)
         for i in $(seq 1 30); do
-          EXISTS=$(psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -v server_id="$SID" -t -A -c \
-            "SELECT 1 FROM dune.farm_state WHERE server_id = :'server_id' LIMIT 1;")
+          EXISTS=$(psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
+            "SELECT 1 FROM dune.farm_state WHERE server_id = '$SID' LIMIT 1;")
           if [ "$EXISTS" = "1" ]; then
             echo "[pre-start] farm_state registered (${i}s), inserting partition..."
+            PART_DEF='{"box": {"max_x": 1, "max_y": 1, "min_x": 0, "min_y": 0}, "type": "box2d_array"}'
             psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" \
-              -v server_id="$SID" \
-              -v map_name="$MAP_NAME" \
-              -v partition_definition='{"box": {"max_x": 1, "max_y": 1, "min_x": 0, "min_y": 0}, "type": "box2d_array"}' \
               -c "INSERT INTO dune.world_partition (server_id, map, partition_definition, dimension_index)
-                  VALUES (:'server_id', :'map_name', CAST(:'partition_definition' AS jsonb), 0)
+                  VALUES ('$SID', '$MAP_NAME', CAST('$PART_DEF' AS jsonb), 0)
                   ON CONFLICT DO NOTHING;"
             ASSIGNED=1
             echo "[pre-start] Partition created for $SID"
