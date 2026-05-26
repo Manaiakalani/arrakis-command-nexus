@@ -61,7 +61,7 @@ class RestartScheduler:
         self.backup_service = backup_service
         self.docker_service = docker_service
         self.watchdog_service = watchdog_service
-        self.config_path = Path(os.getenv("RESTART_SCHEDULE_PATH", "/workspace/config/restart_schedule.json"))
+        self.config_path = Path(os.getenv("RESTART_SCHEDULE_PATH", "/workspace/data/restart_schedule.json"))
         self.enabled = _read_bool("RESTART_SCHEDULE_ENABLED", False)
         self.interval_hours = max(1, int(os.getenv("RESTART_SCHEDULE_INTERVAL_HOURS", "24")))
         self.warning_minutes = _normalize_warning_minutes(self._read_warning_minutes_from_env())
