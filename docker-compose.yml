@@ -585,6 +585,7 @@ services:
       DUNE_DOCKER_BASE_URL: tcp://docker-socket-proxy:2375
       DUNE_DASHBOARD_DB_URL: sqlite+aiosqlite:////workspace/data/dashboard.db
     volumes:
+      - ./.env:/workspace/.env
       - ./config:/workspace/config:ro
       - ./backups:/workspace/backups
       - ./secrets:/workspace/secrets:ro
