@@ -242,3 +242,202 @@ No manual logrotate job is required for container logs unless you change the Doc
 ### Database Maintenance
 
 PostgreSQL uses normal auto-vacuum behavior. Routine manual vacuuming is not required for standard operation.
+
+#### Manual vacuum (if needed)
+
+```bash
+docker compose exec -T postgres psql -U postgres -d dune -c "VACUUM ANALYZE;"
+```
+
+#### Check database size
+
+```bash
+docker compose exec -T postgres psql -U postgres -d dune -c "SELECT pg_size_pretty(pg_database_size('dune'));"
+```
+
+### Credential Rotation
+
+Rotate credentials every 90 days or immediately if compromised.
+
+#### Dashboard Admin Token
+
+```bash
+# Generate new token
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Update .env
+nano .env
+# Change DUNE_ADMIN_TOKEN=<old> to new value
+
+# Restart dashboard
+docker compose restart dashboard-api dashboard-frontend
+```
+
+#### PostgreSQL Passwords
+
+```bash
+# Generate new password
+NEW_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+
+# For POSTGRES_SUPER_PASSWORD:
+# 1. Update .env
+# 2. Restart postgres: docker compose restart postgres
+
+# For POSTGRES_DUNE_PASSWORD:
+# 1. Change password in database:
+docker compose exec -T postgres psql -U postgres -d dune -c "ALTER USER dune PASSWORD '$NEW_PASSWORD';"
+# 2. Update .env
+# 3. Restart services: docker compose restart dashboard-api survival_1 overmap director partition-repair
+```
+
+#### RabbitMQ Credentials
+
+```bash
+# Generate new password
+NEW_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+
+# Update RabbitMQ user
+docker compose exec -T admin-rmq rabbitmqctl change_password admin "$NEW_PASSWORD"
+
+# Update .env (DUNE_RMQ_MANAGEMENT_PASSWORD)
+# Restart: docker compose restart admin-rmq game-rmq director text-router gateway rmq-auth-shim
+```
+
+### Server Updates
+
+#### Check for updates
+
+Via Dashboard: Navigate to Updates page → Check for Updates
+
+Via CLI:
+```bash
+bash scripts/check-steam-build.sh 3104830  # Beta
+bash scripts/check-steam-build.sh 4754530  # Production
+```
+
+#### Apply updates
+
+```bash
+# 1. Announce to players (15-30 min warning)
+# 2. Create backup
+bash scripts/backup.sh --scope full
+
+# 3. Run update
+./dune update
+
+# 4. Verify health
+docker compose ps
+./dune status
+```
+
+### Disk Space Management
+
+```bash
+# Check disk usage
+df -h
+
+# Docker disk usage
+docker system df
+
+# Clean up old images
+docker image prune -a
+
+# Clean up old backups (manual)
+find ./backups -name "*.dump" -mtime +30 -delete
+```
+
+### Scaling
+
+#### Adjust resource limits
+
+Via Dashboard: System → Resources
+
+Or edit `.env`:
+```bash
+# Game servers
+MEM_LIMIT_SURVIVAL=8g
+MEM_LIMIT_OVERMAP=6g
+MEM_LIMIT_DIRECTOR=2g
+
+# After changes:
+docker compose up -d
+```
+
+#### Change deployment profile
+
+```bash
+# Edit .env
+DEPLOYMENT_PROFILE=standard  # Options: basic, standard, full
+
+# Redeploy
+./dune deploy
+```
+
+**Profiles:**
+- **basic:** 1 survival + overmap (minimum)
+- **standard:** 2 survival + overmap + deep desert + 6 additional maps
+- **full:** 3 survival + overmap + deep desert + 19 additional maps
+
+---
+
+## Monitoring
+
+### Key Metrics
+
+- **Container health:** All services should show "healthy"
+- **CPU usage:** Below 80% sustained
+- **Memory usage:** Below 85% to avoid OOM
+- **Disk space:** Keep 20%+ free
+- **Player connections:** Track vs capacity
+
+### Setting Up Alerts
+
+Dashboard → System → Discord → Add Webhook
+
+Configure alert types:
+- Container restarts
+- Player join/leave
+- Economy anomalies
+- Backup completion/failure
+- Update availability
+
+---
+
+## Quick Reference Commands
+
+```bash
+# Server status
+./dune status
+
+# View all containers
+docker compose ps
+
+# Restart game servers
+docker compose restart survival_1 overmap
+
+# Restart entire stack
+docker compose restart
+
+# View logs
+docker compose logs -f <service-name>
+
+# Create backup
+bash scripts/backup.sh --scope full
+
+# Restore backup
+bash scripts/restore.sh <backup-id>
+
+# Update server
+./dune update
+
+# Database console
+docker compose exec -T postgres psql -U postgres -d dune
+
+# Container shell
+docker compose exec <service-name> bash
+```
+
+---
+
+**Last updated:** 2026-05-26  
+**Version:** 1.1
