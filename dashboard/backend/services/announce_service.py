@@ -70,6 +70,9 @@ class AnnounceService:
             channel = connection.channel()
 
             # Primary: publish to chat.intercept (topic exchange -> text-router -> game servers -> players)
+            # The text-router's GetMessageRedirectExchange reads the
+            # reply_to property to know which exchange to forward to.
+            # Without it, a NullReferenceException is thrown.
             channel.basic_publish(
                 exchange="chat.intercept",
                 routing_key="map.announcement",
@@ -80,6 +83,9 @@ class AnnounceService:
                     timestamp=int(time.time()),
                     type="text_chat",
                     message_id=secrets.token_urlsafe(16),
+                    app_id="dashboard",
+                    reply_to="chat.map",
+                    headers={"x-match": "map", "channelType": "Map"},
                 ),
                 mandatory=False,
             )

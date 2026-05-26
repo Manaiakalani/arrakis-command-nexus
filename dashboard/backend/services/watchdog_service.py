@@ -162,6 +162,12 @@ class WatchdogService:
     def _log_unusual_restart(self, snapshot: ContainerSnapshot, previous: ContainerSnapshot) -> None:
         if snapshot.restart_count <= previous.restart_count:
             return
+        delta = snapshot.restart_count - previous.restart_count
+        # Suppress noisy warnings for containers that restart frequently
+        # (e.g. the overmap restarts hundreds of times). Only log on first
+        # detection or when there's a large sudden jump (10+).
+        if previous.restart_count > 20 and delta < 10:
+            return
         logger.warning(
             "SECURITY: Restart count increased for %s from %s to %s (status=%s, exit_code=%s)",
             snapshot.service,
