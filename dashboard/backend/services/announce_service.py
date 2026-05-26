@@ -65,6 +65,14 @@ class AnnounceService:
 
         connection: pika.BlockingConnection | None = None
         try:
+            # Bind any online player queues to chat.map so forwarded messages reach them
+            player_queues = self._get_online_player_queues()
+            if player_queues:
+                self._bind_player_queues(player_queues)
+                logger.info("Bound %d player queue(s) to %s", len(player_queues), self.exchange)
+            else:
+                logger.warning("No online player queues found; message may not be delivered")
+
             body = self._build_textchat_payload(message, sender)
             connection = pika.BlockingConnection(self._connection_parameters())
             channel = connection.channel()
