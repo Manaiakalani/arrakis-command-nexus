@@ -68,17 +68,15 @@ class EconomyService:
 
     async def _check_solari_threshold(self) -> None:
         """Alert if any player has Solari above threshold."""
-        try:
-            pass
-        except Exception:
-            pass
+        # Stub: game does not expose per-player Solari via a simple query yet.
+        # When Funcom adds a currency ledger table, implement threshold checks here.
+        pass
 
     async def _check_base_claims(self) -> None:
         """Alert if base claim count is unusually high."""
-        try:
-            pass
-        except Exception:
-            pass
+        # Stub: base-claim data is embedded in actor properties JSON and requires
+        # schema-specific parsing. Implement when the schema stabilises.
+        pass
 
     def add_alert(self, alert_type: str, severity: str, message: str, details: dict[str, Any] | None = None) -> EconomyAlert:
         """Manually add an economy alert."""

@@ -7,7 +7,7 @@ export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 
 # Crash-cooldown: if the server crashed recently, wait before restarting
 # to avoid CPU/memory thrashing from rapid restart loops.
-CRASH_MARKER="/tmp/.server_crash_marker"
+CRASH_MARKER="/tmp/.dune_server_crash_marker"
 COOLDOWN_SECONDS="${RESTART_COOLDOWN_SECONDS:-60}"
 if [ -f "$CRASH_MARKER" ]; then
   last_crash=$(cat "$CRASH_MARKER" 2>/dev/null || echo 0)
@@ -32,7 +32,7 @@ fi
 psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
   "DELETE FROM dune.world_partition WHERE map = '$MAP_NAME';"
 psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-  "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" || true
+  "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" 2>/dev/null || echo "[pre-start] Note: farm_state table may not exist yet (first boot). Continuing."
 
 # Start the game server. Tee output to a FIFO so a background scanner
 # can detect the server_id from stdout ("Server <ID> should be ready")
@@ -40,7 +40,8 @@ psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
 # before inserting the world_partition row.
 echo "[pre-start] Starting game server for map='$MAP_NAME'..."
 
-FIFO="$(mktemp -u /tmp/.game_fifo.XXXXXX)"
+FIFO_DIR="$(mktemp -d /tmp/.game_fifo.XXXXXX)"
+FIFO="${FIFO_DIR}/pipe"
 mkfifo "$FIFO"
 SCANNER_PID=""
 GAME_PID=""
@@ -60,7 +61,7 @@ cleanup() {
     kill "$SCANNER_PID" 2>/dev/null || true
   fi
 
-  rm -f "$FIFO"
+  rm -rf "${FIFO_DIR:-}"
   exit "$exit_code"
 }
 trap cleanup EXIT INT TERM

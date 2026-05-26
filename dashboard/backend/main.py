@@ -179,11 +179,23 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
             logging.getLogger("player_tracker").warning(
                 "Failed to track player connections", exc_info=True
             )
+            # Exponential backoff on repeated failures (cap at 120s)
+            await asyncio.sleep(min(60, 15 * 2))
+            continue
         await asyncio.sleep(15)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail fast if placeholder secrets are still set
+    admin_token = os.getenv("DUNE_ADMIN_TOKEN", "")
+    if admin_token.startswith("change-me"):
+        logging.getLogger("dune.startup").critical(
+            "DUNE_ADMIN_TOKEN is still set to a placeholder value. "
+            "Generate a real token: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
+        raise SystemExit(1)
+
     await init_db()
 
     docker_service = DockerService()

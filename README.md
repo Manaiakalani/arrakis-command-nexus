@@ -93,7 +93,7 @@ See [docs/PROFILES.md](./docs/PROFILES.md) for the exact shard layouts.
 
 ```bash
 # 1. Download Funcom's dedicated server files
-steamcmd +login anonymous +app_update 3104830 validate +quit
+steamcmd +login anonymous +app_update 4754530 validate +quit
 
 # 2. Clone and configure
 git clone https://github.com/Manaiakalani/arrakis-command-nexus.git

@@ -90,7 +90,8 @@ class PostgresService:
         try:
             async with self.pool.acquire() as connection:
                 row = await connection.fetchrow(query, steam_id)
-        except asyncpg.PostgresError:
+        except asyncpg.PostgresError as exc:
+            logger.warning("get_player_progress query failed for steam_id=%s: %s", steam_id, exc)
             return {}
         return dict(row) if row else {}
 

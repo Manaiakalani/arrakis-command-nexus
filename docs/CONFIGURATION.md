@@ -41,8 +41,8 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `DEPLOYMENT_PROFILE` | `basic` | Selects `basic`, `standard`, or `full` compose overlays. |
-| `DUNE_IMAGE_TAG` | `latest` | Funcom server image tag loaded by update tooling. |
-| `STEAM_APP_ID` | `3104830` | Dedicated server Steam App ID. |
+| `DUNE_IMAGE_TAG` | `1960494-0-shipping` | Funcom server image tag loaded by update tooling. |
+| `STEAM_APP_ID` | `4754530` | Dedicated server Steam App ID. |
 | `DUNE_STEAM_SERVER_DIR` | `./steam` | Local directory containing extracted Steam payloads. |
 
 ### Database
@@ -97,7 +97,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `MEM_LIMIT_SURVIVAL` | `12g` | Container memory limit for Survival shards. |
-| `MEM_LIMIT_OVERMAP` | `2g` | Container memory limit for Overmap. |
+| `MEM_LIMIT_OVERMAP` | `8g` | Container memory limit for Overmap. |
 | `MEM_LIMIT_DEEP_DESERT` | `10g` | Container memory limit for Deep Desert shards. |
 | `MEM_LIMIT_DEFAULT_MAP` | `8g` | Container memory limit for social hubs and story maps. |
 | `MEM_LIMIT_POSTGRES` | `1g` | PostgreSQL container limit. |
