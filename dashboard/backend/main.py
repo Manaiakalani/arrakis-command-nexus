@@ -33,6 +33,7 @@ from services.log_service import LogService
 from services.metrics_service import MetricsService
 from services.postgres_service import PostgresService
 from services.restart_scheduler import RestartScheduler
+from services.update_scheduler import get_update_scheduler
 from services.watchdog_service import WatchdogService
 
 load_dotenv()
@@ -216,6 +217,7 @@ async def lifespan(app: FastAPI):
     chat_guard_service = ChatGuardService(docker_service=docker_service)
     watchdog_service = WatchdogService(docker_service, discord_service)
     restart_scheduler = RestartScheduler(announce_service, backup_service, docker_service, watchdog_service)
+    update_scheduler = get_update_scheduler(discord_service)
 
     app.state.docker_service = docker_service
     app.state.config_service = config_service
@@ -232,6 +234,7 @@ async def lifespan(app: FastAPI):
     app.state.log_service = log_service
     app.state.chat_guard_service = chat_guard_service
     app.state.watchdog_service = watchdog_service
+    app.state.update_scheduler = update_scheduler
 
     # Start independent services in parallel for faster boot
     await asyncio.gather(
@@ -248,6 +251,7 @@ async def lifespan(app: FastAPI):
         watchdog_service.start(),
         economy_service.start(),
         chat_guard_service.start(),
+        update_scheduler.start(),
     )
     logger.info("Dune dashboard backend started")
 

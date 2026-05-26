@@ -32,48 +32,44 @@ import type { HealthState, SystemVersion } from '@/lib/types';
 
 const navigationSections = [
   {
+    // Core navigation - most frequent actions
     items: [
       { href: '/', label: 'Overview', icon: Home },
+      { href: '/players', label: 'Players', icon: Users },
       { href: '/maps', label: 'Maps', icon: Map },
     ],
   },
   {
-    header: 'Players',
+    header: 'Management',
     items: [
-      { href: '/players', label: 'Players', icon: Users },
       { href: '/characters', label: 'Characters', icon: UserCog },
-    ],
-  },
-  {
-    header: 'Server',
-    items: [
-      { href: '/config', label: 'Configuration', icon: Settings },
-      { href: '/resources', label: 'Resources', icon: Gauge },
-      { href: '/logs', label: 'Logs', icon: Terminal },
-      { href: '/system', label: 'System', icon: Cpu },
-    ],
-  },
-  {
-    header: 'Operations',
-    items: [
       { href: '/economy', label: 'Economy', icon: Coins },
-      { href: '/backups', label: 'Backups', icon: Database },
       { href: '/moderation', label: 'Moderation', icon: Shield },
     ],
   },
   {
-    header: 'Communication',
+    header: 'Server Control',
     items: [
-      { href: '/discord', label: 'Discord', icon: MessageSquare },
-      { href: '/announcements', label: 'Announcements', icon: Megaphone },
+      { href: '/config', label: 'Configuration', icon: Settings },
+      { href: '/resources', label: 'Resources', icon: Gauge },
+      { href: '/system', label: 'System', icon: Cpu },
+      { href: '/logs', label: 'Logs', icon: Terminal },
     ],
   },
   {
-    header: 'Admin',
+    header: 'Automation',
     items: [
+      { href: '/backups', label: 'Backups', icon: Database },
+      { href: '/announcements', label: 'Announcements', icon: Megaphone },
       { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
+    ],
+  },
+  {
+    header: 'System',
+    items: [
+      { href: '/discord', label: 'Discord', icon: MessageSquare },
+      { href: '/updates', label: 'Updates', icon: Download },
       { href: '/audit', label: 'Audit Trail', icon: ClipboardList },
-      { href: '/updates', label: 'Server Updates', icon: Download },
       { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
       { href: '/public', label: 'Public Status', icon: Globe },
     ],

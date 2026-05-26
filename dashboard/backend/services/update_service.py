@@ -72,6 +72,9 @@ class UpdateService:
             # Get latest build ID from Steam
             latest_build = await self._get_latest_build_id()
             if not latest_build:
+                await self._log_audit("update_check_failed", {
+                    "error": "Failed to retrieve build information from Steam"
+                })
                 return {
                     "success": False,
                     "error": "Failed to retrieve build information from Steam",
@@ -88,6 +91,13 @@ class UpdateService:
             
             self._persist_state()
             
+            # Log to audit trail
+            await self._log_audit("update_check_completed", {
+                "current_build": current_build,
+                "latest_build": latest_build,
+                "update_available": self._update_available,
+            })
+            
             return {
                 "success": True,
                 "current_build": current_build,
@@ -100,11 +110,30 @@ class UpdateService:
             
         except Exception as e:
             logger.error(f"Error checking for updates: {e}", exc_info=True)
+            await self._log_audit("update_check_failed", {"error": str(e)})
             return {
                 "success": False,
                 "error": str(e),
                 "last_check": self._last_check.isoformat() if self._last_check else None,
             }
+
+    async def _log_audit(self, action: str, details: dict[str, Any]):
+        """Log update-related actions to audit trail."""
+        try:
+            from db.database import SessionLocal
+            from db.models import AuditLog
+            
+            async with SessionLocal() as session:
+                entry = AuditLog(
+                    category="system",
+                    action=action,
+                    actor="UpdateService",
+                    details=details,
+                )
+                session.add(entry)
+                await session.commit()
+        except Exception as e:
+            logger.warning(f"Failed to log audit entry: {e}")
 
     async def _get_latest_build_id(self) -> Optional[str]:
         """Query Steam for the latest public build ID using steamcmd."""
