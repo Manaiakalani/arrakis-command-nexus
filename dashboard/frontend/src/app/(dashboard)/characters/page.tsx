@@ -803,23 +803,47 @@ export default function CharactersPage() {
               </div>
 
               <div className="mt-5">
-                <p className="text-sm font-semibold text-th-text">Vehicle Parts</p>
-                <p className="mt-1 text-xs text-th-text-m">Sandbike components for crafting a vehicle.</p>
+                <p className="text-sm font-semibold text-th-text">Vehicles and Transport</p>
+                <p className="mt-1 text-xs text-th-text-m">Sandbike crafting components, assembly parts, and full vehicle kits.</p>
                 <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
+                  <button type="button" className="dune-button text-xs col-span-2 md:col-span-3" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'T2_Vehicle_Ground__SandBikeBodyHull', quantity: 1 },
+                    { templateId: 'T2_Vehicle_Ground__SandBikeChassis', quantity: 1 },
+                    { templateId: 'T2_SandbikeEngine', quantity: 1 },
+                    { templateId: 'T2_Vehicle_Ground__SandBikeTreads', quantity: 1 },
+                    { templateId: 'T2_Vehicle_Ground__SandBikeInventoryModule', quantity: 1 },
+                    { templateId: 'SandbikeEngine_1', quantity: 1 },
+                    { templateId: 'SandbikeLocomotion_1', quantity: 1 },
+                    { templateId: 'SandbikeSeat_1', quantity: 1 },
+                  ])}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Full Sandbike Kit (all parts)
+                  </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeBodyHull', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Sandbike Body Hull
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Body Hull
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeChassis', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Sandbike Chassis
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Chassis
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_SandbikeEngine', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Sandbike Engine
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine (Crafting)
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeTreads', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Sandbike Treads
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Treads
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeInventoryModule', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Sandbike Inventory Module
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Inventory Module
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeEngine_1', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine (Assembly)
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeLocomotion_1', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Locomotion Module
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeSeat_1', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Seat Module
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeEngine_Unique_Speed_1_Schematic', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Speed Engine Schematic
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T1_Structure_RespawnBeacon1', 1)}>
                     <MapPin className="mr-1.5 h-3.5 w-3.5" /> Respawn Beacon

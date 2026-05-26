@@ -53,32 +53,26 @@ class AnnounceService:
     # ------------------------------------------------------------------
 
     def send_announcement(self, message: str, sender: str | None = None) -> bool:
-        """Send an in-game chat announcement via RabbitMQ TextChat protocol."""
+        """Send an in-game chat announcement via RabbitMQ TextChat protocol.
+
+        Publishes to chat.intercept (topic exchange) consumed by the text-router,
+        which then routes through the game server to connected players.
+        Falls back to chat.map (direct exchange) if chat.intercept fails.
+        """
         if not self.enabled:
             self._remember(message, sender or self.sender_name, "skipped", "Announcements disabled")
             return False
 
         connection: pika.BlockingConnection | None = None
         try:
-            # 1. Discover online player queues via management API
-            player_queues = self._get_online_player_queues()
-            if not player_queues:
-                logger.info("No online player queues found, announcement saved but no recipients")
-                self._remember(message, sender or self.sender_name, "sent", "No players online")
-                return True
-
-            # 2. Bind each player queue to chat.map with our routing key
-            self._bind_player_queues(player_queues)
-
-            # 3. Build the TextChat payload
             body = self._build_textchat_payload(message, sender)
-
-            # 4. Connect and publish
             connection = pika.BlockingConnection(self._connection_parameters())
             channel = connection.channel()
+
+            # Primary: publish to chat.intercept (topic exchange -> text-router -> game servers -> players)
             channel.basic_publish(
-                exchange=self.exchange,
-                routing_key=self.routing_key,
+                exchange="chat.intercept",
+                routing_key="map.announcement",
                 body=body,
                 properties=pika.BasicProperties(
                     content_type="Content",
@@ -89,9 +83,27 @@ class AnnounceService:
                 ),
                 mandatory=False,
             )
-            logger.info("Announcement sent to %d player queue(s)", len(player_queues))
-            self._remember(message, sender or self.sender_name, "sent",
-                           f"Delivered to {len(player_queues)} player(s)")
+
+            # Fallback: also publish to chat.map for any directly-bound consumers
+            try:
+                channel.basic_publish(
+                    exchange="chat.map",
+                    routing_key="",
+                    body=body,
+                    properties=pika.BasicProperties(
+                        content_type="Content",
+                        delivery_mode=1,
+                        timestamp=int(time.time()),
+                        type="text_chat",
+                        message_id=secrets.token_urlsafe(16),
+                    ),
+                    mandatory=False,
+                )
+            except Exception:
+                pass  # Best-effort fallback
+
+            logger.info("Announcement published to chat.intercept and chat.map")
+            self._remember(message, sender or self.sender_name, "sent", "Published to chat exchanges")
             return True
         except Exception as exc:
             logger.warning("Failed to send announcement: %s", exc, exc_info=True)
