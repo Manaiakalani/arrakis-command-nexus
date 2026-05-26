@@ -64,6 +64,8 @@ class DockerService:
 
     async def list_containers(self) -> list[ServiceStatus]:
         if not self.client:
+            await asyncio.to_thread(self._connect)
+        if not self.client:
             return []
         now = time.monotonic()
         if self._containers_cache and (now - self._containers_cache[0]) < self._containers_ttl:
@@ -265,6 +267,8 @@ class DockerService:
         return await asyncio.to_thread(self._get_container_sync, name)
 
     def _get_container_sync(self, name: str) -> Any:
+        if not self.client:
+            self._connect()
         if not self.client:
             raise RuntimeError("Docker client unavailable")
         try:
