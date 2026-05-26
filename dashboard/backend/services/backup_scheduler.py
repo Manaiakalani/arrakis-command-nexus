@@ -11,7 +11,7 @@ from services.backup_service import BackupService
 
 logger = logging.getLogger(__name__)
 
-_PERSIST_PATH = Path("/workspace/config/backup_schedule.json")
+_PERSIST_PATH = Path("/workspace/data/backup_schedule.json")
 
 
 def _read_bool(name: str, default: bool) -> bool:
