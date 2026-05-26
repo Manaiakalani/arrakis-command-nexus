@@ -318,10 +318,26 @@ class CharacterService:
                         "Use the item search to find valid template IDs."
                     )
 
-            # Copy stats from an existing item of the same type if available
             import json
             import time
 
+            # Check the max stack size observed for this item type in the DB
+            observed_max = await connection.fetchval("""
+                SELECT MAX(stack_size) FROM dune.items WHERE template_id = $1
+            """, template_id)
+            warning = None
+            if observed_max and stack_size > observed_max:
+                warning = (
+                    f"Requested stack_size {stack_size} exceeds the largest observed "
+                    f"stack of {observed_max} for '{template_id}'. The game server may "
+                    f"cap, split, or move oversized stacks to overflow inventory."
+                )
+                logger.warning(
+                    "Grant stack_size %d exceeds observed max %d for %s (account %d)",
+                    stack_size, observed_max, template_id, account_id,
+                )
+
+            # Copy stats from an existing item of the same type if available
             existing_stats = await connection.fetchval("""
                 SELECT stats::text FROM dune.items
                 WHERE template_id = $1 AND stats IS NOT NULL
@@ -364,10 +380,11 @@ class CharacterService:
                 quality_level, int(time.time()), json.dumps(item_stats))
 
             logger.info(
-                "Granted item %s (x%d) to account %d, item_id=%d",
+                "Granted item %s (x%d) to account %d, item_id=%d, inventory=%d, pos=%d",
                 template_id, stack_size, account_id, new_item_id,
+                inventory_id, max_pos,
             )
-            return {
+            result: dict[str, Any] = {
                 "success": True,
                 "item_id": int(new_item_id),
                 "template_id": template_id,
@@ -375,6 +392,9 @@ class CharacterService:
                 "inventory_type": "backpack",
                 "position_index": int(max_pos),
             }
+            if warning:
+                result["warning"] = warning
+            return result
 
     async def grant_solari(self, character_id: str, amount: int) -> dict[str, Any]:
         """Add solari coins to a character's backpack as SolarisCoin items."""

@@ -274,7 +274,12 @@ export default function CharactersPage() {
     setGrantResult(null);
     try {
       const result = await apiClient.grantItem(selectedId, tid, qty);
-      setGrantResult({ tone: 'success', message: `Granted ${qty}x ${tid} (item #${result.item_id}). Relog to pick up.` });
+      const msg = `Granted ${qty}x ${tid} (item #${result.item_id}). Relog to pick up.`;
+      if (result.warning) {
+        setGrantResult({ tone: 'success', message: `${msg}\n⚠️ ${result.warning}` });
+      } else {
+        setGrantResult({ tone: 'success', message: msg });
+      }
       if (!templateId) { setGrantTemplate(''); setGrantAmount('1'); }
     } catch (error) {
       setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
