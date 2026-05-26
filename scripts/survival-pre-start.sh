@@ -23,40 +23,54 @@ date +%s > "$CRASH_MARKER"
 echo "[pre-start] Clearing stale partition/farm data for map=$MAP_NAME..."
 if [[ "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
   psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-    "UPDATE dune.world_partition SET server_id = NULL WHERE map = '$MAP_NAME';" 2>&1 || true
+    "DELETE FROM dune.world_partition WHERE map = '$MAP_NAME';" 2>&1 || true
   psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
     "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" 2>&1 || true
 fi
 
-# Start the game server, tee output so we can parse the server_id from
-# the game's own log (appears at frame 1: "Server <ID> should be ready").
-# We update world_partition immediately when we see it, closing the
-# 5-second timing gap before the game queries load_world_partition.
+# Start the game server. Tee output to a FIFO so a background scanner
+# can detect the server_id from stdout ("Server <ID> should be ready")
+# and then wait for that ID to appear in farm_state (FK requirement)
+# before inserting the world_partition row.
 echo "[pre-start] Starting game server for map=$MAP_NAME..."
 
 FIFO="/tmp/.game_output_$$"
 mkfifo "$FIFO" 2>/dev/null || true
 
-# Background process: scan game output for server_id and assign partition
+# Background scanner: detect server_id, wait for farm_state FK, assign partition
 (
   ASSIGNED=0
   while IFS= read -r line; do
     if [ "$ASSIGNED" -eq 0 ]; then
-      # Match: "Server XXXX should be ready"
       SID=$(echo "$line" | grep -oP 'Server \K[A-Za-z0-9_+/=-]{10,30}(?= should be ready)')
       if [ -n "$SID" ]; then
-        echo "[pre-start] Detected server_id=$SID, assigning partition..."
-        psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-          "UPDATE dune.world_partition SET server_id = '$SID' WHERE map = '$MAP_NAME';" 2>&1 || true
-        ASSIGNED=1
-        echo "[pre-start] Partition assigned to $SID"
+        echo "[pre-start] Detected server_id=$SID, waiting for farm_state registration..."
+        # Poll until this server_id appears in farm_state (FK target)
+        for i in $(seq 1 30); do
+          EXISTS=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
+            "SELECT 1 FROM dune.farm_state WHERE server_id = '$SID' LIMIT 1;" 2>/dev/null)
+          if [ "$EXISTS" = "1" ]; then
+            echo "[pre-start] farm_state registered (${i}s), inserting partition..."
+            psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
+              "INSERT INTO dune.world_partition (server_id, map, partition_definition, dimension_index)
+               VALUES ('$SID', '$MAP_NAME', '{\"box\": {\"max_x\": 1, \"max_y\": 1, \"min_x\": 0, \"min_y\": 0}, \"type\": \"box2d_array\"}', 0)
+               ON CONFLICT DO NOTHING;" 2>&1 || true
+            ASSIGNED=1
+            echo "[pre-start] Partition created for $SID"
+            break
+          fi
+          sleep 1
+        done
+        if [ "$ASSIGNED" -eq 0 ]; then
+          echo "[pre-start] WARNING: farm_state registration timed out for $SID"
+        fi
       fi
     fi
   done < "$FIFO"
 ) &
 SCANNER_PID=$!
 
-# Run game, tee to both stdout and the FIFO scanner
+# Run game, tee to both stdout (container logs) and the FIFO scanner
 /home/dune/run.sh "$@" 2>&1 | tee "$FIFO" &
 GAME_PID=$!
 
