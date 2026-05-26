@@ -8,7 +8,7 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 export default function UpdatesPage() {
-  const { showToast } = useToast();
+  const { toast } = useToast();
   const [status, setStatus] = useState<{
     current_tag: string;
     current_build: string | null;
@@ -27,7 +27,7 @@ export default function UpdatesPage() {
       const data = await apiClient.getUpdateStatus();
       setStatus(data);
     } catch (error) {
-      showToast('Failed to load update status', 'error');
+      toast('Failed to load update status', 'error');
       console.error(error);
     } finally {
       setLoading(false);
@@ -39,7 +39,7 @@ export default function UpdatesPage() {
     try {
       const result = await apiClient.checkForUpdates();
       if (result.success) {
-        showToast(
+        toast(
           result.update_available
             ? 'Update available! See instructions below.'
             : 'Server is up to date',
@@ -47,10 +47,10 @@ export default function UpdatesPage() {
         );
         await loadStatus();
       } else {
-        showToast(result.error || 'Failed to check for updates', 'error');
+        toast(result.error || 'Failed to check for updates', 'error');
       }
     } catch (error: any) {
-      showToast(error?.message || 'Failed to check for updates', 'error');
+      toast(error?.message || 'Failed to check for updates', 'error');
       console.error(error);
     } finally {
       setChecking(false);
