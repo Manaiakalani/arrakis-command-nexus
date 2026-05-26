@@ -404,7 +404,7 @@ export default function AnnouncementsPage() {
                   <tr key={entry.id} className="align-top text-th-text-s">
                     <td className="px-5 py-4">
                       <div className="max-w-2xl space-y-1">
-                        <p className="text-th-text">{previewMessage(entry.message)}</p>
+                        <p className="text-th-text">{entry.message === '__WISDOM__' ? <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-amber-400" /> Words of Wisdom <span className="text-th-text-m">(random quotes)</span></span> : previewMessage(entry.message)}</p>
                         <p className="text-xs text-th-text-m">From {entry.sender}</p>
                       </div>
                     </td>
