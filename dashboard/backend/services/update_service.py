@@ -136,47 +136,34 @@ class UpdateService:
             logger.warning(f"Failed to log audit entry: {e}")
 
     async def _get_latest_build_id(self) -> Optional[str]:
-        """Query Steam for the latest public build ID using steamcmd."""
+        """Query Steam for the latest public build ID using host's steamcmd."""
         try:
-            # Run steamcmd to get app_info_print
-            cmd = [
-                "steamcmd",
-                "+login", "anonymous",
-                "+app_info_print", self.steam_app_id,
-                "+quit"
-            ]
+            # Use the check-steam-build.sh script on the host
+            script_path = "/workspace/scripts/check-steam-build.sh"
             
             result = await asyncio.create_subprocess_exec(
-                *cmd,
+                "bash", script_path, self.steam_app_id,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await result.communicate()
             
             if result.returncode != 0:
-                logger.error(f"steamcmd failed: {stderr.decode()}")
+                error_msg = stderr.decode().strip()
+                logger.error(f"Steam build check failed: {error_msg}")
                 return None
             
-            output = stdout.decode()
+            build_id = stdout.decode().strip()
             
-            # Parse build ID from output
-            # Look for: "public" { "buildid" "XXXXXXX" }
-            match = re.search(
-                r'"public"\s*\{[^}]*"buildid"\s*"(\d+)"',
-                output,
-                re.MULTILINE | re.DOTALL
-            )
-            
-            if match:
-                build_id = match.group(1)
+            if build_id and not build_id.startswith("ERROR"):
                 logger.info(f"Found latest build ID: {build_id}")
                 return build_id
             
-            logger.warning("Could not parse build ID from steamcmd output")
+            logger.warning(f"Could not determine build ID: {build_id}")
             return None
             
         except FileNotFoundError:
-            logger.error("steamcmd not found. Install it to enable update checking.")
+            logger.error("check-steam-build.sh script not found")
             return None
         except Exception as e:
             logger.error(f"Error querying Steam: {e}", exc_info=True)

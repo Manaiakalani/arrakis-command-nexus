@@ -87,7 +87,7 @@ export default function UpdatesPage() {
             type="button"
             onClick={() => void checkForUpdates()}
             disabled={checking || loading}
-            className="dune-button-primary text-sm"
+            className="dune-button"
           >
             <RefreshCw className={cn('mr-1.5 h-4 w-4', checking && 'animate-spin')} />
             {checking ? 'Checking...' : 'Check for Updates'}

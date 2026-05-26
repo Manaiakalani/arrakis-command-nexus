@@ -579,17 +579,25 @@ services:
       DUNE_RMQ_MANAGEMENT_PASSWORD: ${DUNE_RMQ_MANAGEMENT_PASSWORD:-}
       DUNE_ANNOUNCE_ENABLED: ${DUNE_ANNOUNCE_ENABLED:-true}
       DUNE_ANNOUNCE_NAME: ${DUNE_ANNOUNCE_NAME:-Server}
+      DUNE_ANNOUNCE_CHAT_USER: ${DUNE_ANNOUNCE_CHAT_USER:-A000000000000001}
+      DUNE_ANNOUNCE_CHAT_PASSWORD: ${DUNE_ANNOUNCE_CHAT_PASSWORD:-announce}
+      DUNE_ANNOUNCE_ROUTING_KEYS: ${DUNE_ANNOUNCE_ROUTING_KEYS:-}
       DUNE_IMAGE_TAG: ${DUNE_IMAGE_TAG}
       DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-basic}
       DUNE_FLS_ENV: ${DUNE_FLS_ENV:-retail}
       DUNE_DOCKER_BASE_URL: tcp://docker-socket-proxy:2375
       DUNE_DASHBOARD_DB_URL: sqlite+aiosqlite:////workspace/data/dashboard.db
+      STEAM_APP_ID: ${STEAM_APP_ID:-3104830}
+      DUNE_STEAM_SERVER_DIR: ${DUNE_STEAM_SERVER_DIR:-}
+      UPDATE_CHECK_INTERVAL_HOURS: ${UPDATE_CHECK_INTERVAL_HOURS:-6}
+      UPDATE_AUTO_UPDATE: ${UPDATE_AUTO_UPDATE:-false}
     volumes:
       - ./.env:/workspace/.env
       - ./config:/workspace/config:ro
       - ./backups:/workspace/backups
       - ./secrets:/workspace/secrets:ro
       - ./dashboard-data:/workspace/data
+      - ./scripts:/workspace/scripts:ro
     depends_on:
       postgres:
         condition: service_healthy
