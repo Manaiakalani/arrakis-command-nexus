@@ -27,7 +27,7 @@ HOST = os.environ.get("DB_HOST", "postgres")
 PORT = int(os.environ.get("DB_PORT", "5432"))
 DATABASE = os.environ.get("DB_NAME", "dune_sb_1_4_0_0")
 USER = os.environ.get("DB_USER", "dune")
-PASSWORD = os.environ.get("POSTGRES_DUNE_PASSWORD")
+PASSWORD = os.environ.get("DB_PASSWORD") or os.environ.get("POSTGRES_DUNE_PASSWORD")
 SCHEMA = "dune"
 MAX_WAIT = int(os.environ.get("PARTITION_REPAIR_MAX_WAIT", "120"))
 POLL_INTERVAL = int(os.environ.get("PARTITION_REPAIR_POLL_INTERVAL", "5"))
@@ -288,7 +288,7 @@ def main():
     log = logging.getLogger("partition-repair")
 
     if not PASSWORD:
-        print("[ERROR] POSTGRES_DUNE_PASSWORD is not set", file=sys.stderr)
+        print("[ERROR] DB_PASSWORD / POSTGRES_DUNE_PASSWORD is not set", file=sys.stderr)
         return 1
 
     watch_mode = os.environ.get("PARTITION_REPAIR_WATCH", "").lower() in ("1", "true", "yes")
