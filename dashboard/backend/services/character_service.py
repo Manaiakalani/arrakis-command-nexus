@@ -298,6 +298,41 @@ class CharacterService:
 
         account_id = int(character_id)
         async with pool.acquire() as connection:
+            # Validate template_id exists in the game data (items or recipes)
+            if template_id not in self.KNOWN_TEMPLATES:
+                exists = await connection.fetchval("""
+                    SELECT EXISTS(
+                        SELECT 1 FROM dune.items WHERE template_id = $1
+                        UNION ALL
+                        SELECT 1 FROM dune.actors,
+                            jsonb_array_elements(
+                                properties->'CraftingRecipesLibraryActorComponent'->'m_KnownItemRecipes'
+                            ) recipe
+                        WHERE properties ? 'CraftingRecipesLibraryActorComponent'
+                          AND recipe->'BaseRecipeId'->>'Name' ILIKE '%' || $1 || '%'
+                    )
+                """, template_id)
+                if not exists:
+                    raise ValueError(
+                        f"Unknown template '{template_id}'. "
+                        "Use the item search to find valid template IDs."
+                    )
+
+            # Copy stats from an existing item of the same type if available
+            import json
+            import time
+
+            existing_stats = await connection.fetchval("""
+                SELECT stats::text FROM dune.items
+                WHERE template_id = $1 AND stats IS NOT NULL
+                LIMIT 1
+            """, template_id)
+
+            if existing_stats:
+                item_stats = json.loads(existing_stats)
+            else:
+                item_stats = {"FItemStackAndDurabilityStats": [[], {"DecayedMaxDurability": 0.0}]}
+
             # Find the player's backpack inventory (type 0)
             inv = await connection.fetchrow("""
                 SELECT i.id AS inventory_id
@@ -319,12 +354,6 @@ class CharacterService:
                 FROM dune.items WHERE inventory_id = $1
             """, inventory_id)
 
-            # Insert the item with proper stats JSON that the game engine expects.
-            # Without FItemStackAndDurabilityStats the game silently skips the item.
-            import json
-            import time
-
-            item_stats = {"FItemStackAndDurabilityStats": [[], {"DecayedMaxDurability": 0.0}]}
             new_item_id = await connection.fetchval("""
                 INSERT INTO dune.items
                     (inventory_id, template_id, stack_size, position_index,

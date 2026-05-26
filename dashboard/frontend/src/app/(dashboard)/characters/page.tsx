@@ -109,6 +109,7 @@ export default function CharactersPage() {
   const [grantSearch, setGrantSearch] = useState('');
   const [grantResult, setGrantResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const [granting, setGranting] = useState(false);
+  const [grantingLabel, setGrantingLabel] = useState<string | null>(null);
   const [templateResults, setTemplateResults] = useState<{ id: string; count: number; source?: string; category?: string }[]>([]);
   const [searchingTemplates, setSearchingTemplates] = useState(false);
   const [inventoryData, setInventoryData] = useState<Record<string, { template_id: string; stack_size: number; position_index: number; quality_level: number }[]> | null>(null);
@@ -269,6 +270,7 @@ export default function CharactersPage() {
       return;
     }
     setGranting(true);
+    setGrantingLabel(tid);
     setGrantResult(null);
     try {
       const result = await apiClient.grantItem(selectedId, tid, qty);
@@ -278,12 +280,14 @@ export default function CharactersPage() {
       setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
     } finally {
       setGranting(false);
+      setGrantingLabel(null);
     }
   };
 
   const handleGrantBatch = async (items: { templateId: string; quantity: number }[]) => {
     if (!selectedId || items.length === 0) return;
     setGranting(true);
+    setGrantingLabel(`${items.length} items`);
     setGrantResult(null);
     let granted = 0;
     let lastError = '';
@@ -303,11 +307,13 @@ export default function CharactersPage() {
       setGrantResult({ tone: 'error', message: lastError || 'All grants failed.' });
     }
     setGranting(false);
+    setGrantingLabel(null);
   };
 
   const handleGrantSolari = async (amount: number) => {
     if (!selectedId) return;
     setGranting(true);
+    setGrantingLabel(`${amount} Solari`);
     setGrantResult(null);
     try {
       const result = await apiClient.grantSolari(selectedId, amount);
@@ -316,21 +322,25 @@ export default function CharactersPage() {
       setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
     } finally {
       setGranting(false);
+      setGrantingLabel(null);
     }
   };
 
   const handleSetHealth = async (hp: number) => {
     if (!selectedId) return;
     setGranting(true);
+    setGrantingLabel(`${hp} HP`);
     setGrantResult(null);
     try {
-      await apiClient.setHealth(selectedId, hp);
+      const updated = await apiClient.setHealth(selectedId, hp);
+      setSelectedCharacter(updated);
+      setDraft(buildDraft(updated, schema.data?.stats ?? []));
       setGrantResult({ tone: 'success', message: `Max health set to ${hp}. Relog to apply.` });
-      void handleReset();
     } catch (error) {
       setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Failed.' });
     } finally {
       setGranting(false);
+      setGrantingLabel(null);
     }
   };
 
@@ -697,6 +707,13 @@ export default function CharactersPage() {
                   <h2 className="mt-1 text-xl font-semibold text-th-text">Quick Grant to {selectedCharacter.name}</h2>
                 </div>
               </div>
+
+              {granting && grantingLabel ? (
+                <div className="mt-4 flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-200">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Granting {grantingLabel}...
+                </div>
+              ) : null}
 
               {grantResult ? (
                 <div className={cn('mt-4 rounded-2xl border px-4 py-3 text-sm', grantResult.tone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200')}>

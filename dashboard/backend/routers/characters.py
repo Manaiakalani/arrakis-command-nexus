@@ -97,6 +97,8 @@ async def grant_item(
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
