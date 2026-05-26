@@ -45,6 +45,12 @@ class AnnounceService:
         self.ca_cert_path = os.getenv("DUNE_RMQ_CA_CERT", "/workspace/config/tls/rabbitmq/ca.crt")
         self.mgmt_port = int(os.getenv("DUNE_RMQ_MGMT_PORT", "15672"))
         self.exchange = "chat.map"
+        # Routing keys for chat.map: empty string covers default binding,
+        # map-specific keys reach map-bound queues
+        self.routing_keys = [
+            rk.strip() for rk in
+            os.getenv("DUNE_ANNOUNCE_ROUTING_KEYS", ",Survival_1.dim_0,HaggaBasin.0").split(",")
+        ]
         self.routing_key = ""
         self.history: list[dict] = []
 
@@ -53,11 +59,14 @@ class AnnounceService:
     # ------------------------------------------------------------------
 
     def send_announcement(self, message: str, sender: str | None = None) -> bool:
-        """Send an in-game chat announcement via RabbitMQ TextChat protocol.
+        """Send an in-game chat announcement via RabbitMQ directly to chat.map.
 
-        Publishes to chat.intercept (topic exchange) consumed by the text-router,
-        which then routes through the game server to connected players.
-        Falls back to chat.map (direct exchange) if chat.intercept fails.
+        Publishes to the chat.map direct exchange with multiple routing keys
+        so the message reaches all connected players. Player queues are
+        pre-bound via the RMQ management API before publishing.
+
+        Note: chat.intercept is NOT used because the TextRouter has a user_id
+        mismatch bug that causes PRECONDITION_FAILED on republish.
         """
         if not self.enabled:
             self._remember(message, sender or self.sender_name, "skipped", "Announcements disabled")
@@ -65,7 +74,7 @@ class AnnounceService:
 
         connection: pika.BlockingConnection | None = None
         try:
-            # Bind any online player queues to chat.map so forwarded messages reach them
+            # Pre-bind online player queues to chat.map with each routing key
             player_queues = self._get_online_player_queues()
             if player_queues:
                 self._bind_player_queues(player_queues)
@@ -77,32 +86,11 @@ class AnnounceService:
             connection = pika.BlockingConnection(self._connection_parameters())
             channel = connection.channel()
 
-            # Primary: publish to chat.intercept (topic exchange -> text-router -> game servers -> players)
-            # The text-router's GetMessageRedirectExchange reads the
-            # reply_to property to know which exchange to forward to.
-            # Without it, a NullReferenceException is thrown.
-            channel.basic_publish(
-                exchange="chat.intercept",
-                routing_key="map.announcement",
-                body=body,
-                properties=pika.BasicProperties(
-                    content_type="Content",
-                    delivery_mode=1,
-                    timestamp=int(time.time()),
-                    type="text_chat",
-                    message_id=secrets.token_urlsafe(16),
-                    app_id="dashboard",
-                    reply_to="chat.map",
-                    headers={"x-match": "map", "channelType": "Map"},
-                ),
-                mandatory=False,
-            )
-
-            # Fallback: also publish to chat.map for any directly-bound consumers
-            try:
+            # Publish to chat.map with each routing key
+            for rk in self.routing_keys:
                 channel.basic_publish(
                     exchange="chat.map",
-                    routing_key="",
+                    routing_key=rk,
                     body=body,
                     properties=pika.BasicProperties(
                         content_type="Content",
@@ -113,11 +101,12 @@ class AnnounceService:
                     ),
                     mandatory=False,
                 )
-            except Exception:
-                logger.warning("Fallback publish to chat.map failed", exc_info=True)
-
-            logger.info("Announcement published to chat.intercept and chat.map")
-            self._remember(message, sender or self.sender_name, "sent", "Published to chat exchanges")
+            logger.info(
+                "Announcement published to chat.map with %d routing key(s): %s",
+                len(self.routing_keys), self.routing_keys,
+            )
+            self._remember(message, sender or self.sender_name, "sent",
+                           f"Published to chat.map ({len(player_queues)} player(s), {len(self.routing_keys)} key(s))")
             return True
         except Exception as exc:
             logger.warning("Failed to send announcement: %s", exc, exc_info=True)
@@ -196,25 +185,26 @@ class AnnounceService:
             return []
 
     def _bind_player_queues(self, queue_names: list[str]) -> None:
-        """Bind player queues to chat.map exchange so messages get routed."""
+        """Bind player queues to chat.map exchange with all routing keys."""
         vhost = urllib.parse.quote(self.virtual_host, safe="")
         exchange = urllib.parse.quote(self.exchange, safe="")
         auth = self._mgmt_auth_header()
-        binding_data = json.dumps({"routing_key": self.routing_key, "arguments": {}}).encode()
 
         for queue_name in queue_names:
-            try:
-                queue_enc = urllib.parse.quote(queue_name, safe="")
-                url = f"http://{self.host}:{self.mgmt_port}/api/bindings/{vhost}/e/{exchange}/q/{queue_enc}"
-                req = urllib.request.Request(
-                    url,
-                    data=binding_data,
-                    headers={"Authorization": auth, "Content-Type": "application/json"},
-                    method="POST",
-                )
-                urllib.request.urlopen(req, timeout=5).close()
-            except Exception as exc:
-                logger.debug("Failed to bind queue %s: %s", queue_name, exc)
+            for rk in self.routing_keys:
+                try:
+                    binding_data = json.dumps({"routing_key": rk, "arguments": {}}).encode()
+                    queue_enc = urllib.parse.quote(queue_name, safe="")
+                    url = f"http://{self.host}:{self.mgmt_port}/api/bindings/{vhost}/e/{exchange}/q/{queue_enc}"
+                    req = urllib.request.Request(
+                        url,
+                        data=binding_data,
+                        headers={"Authorization": auth, "Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    urllib.request.urlopen(req, timeout=5).close()
+                except Exception as exc:
+                    logger.debug("Failed to bind queue %s with key '%s': %s", queue_name, rk, exc)
 
     # ------------------------------------------------------------------
     # AMQP connection
