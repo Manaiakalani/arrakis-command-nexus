@@ -85,7 +85,7 @@ services:
       start_period: 20s
     mem_limit: ${MEM_LIMIT_POSTGRES}
     memswap_limit: ${MEM_LIMIT_POSTGRES}
-    pids_limit: 128
+    pids_limit: 256
     cpus: 2
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
@@ -117,7 +117,7 @@ services:
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
     memswap_limit: ${MEM_LIMIT_RMQ}
-    pids_limit: 128
+    pids_limit: 512
     cpus: 1
     volumes:
       - ./config/rabbitmq-admin.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
@@ -152,7 +152,7 @@ services:
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
     memswap_limit: ${MEM_LIMIT_RMQ}
-    pids_limit: 128
+    pids_limit: 512
     cpus: 1
     volumes:
       - ./config/rabbitmq-game.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
