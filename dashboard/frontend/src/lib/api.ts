@@ -131,7 +131,7 @@ export class ApiClient {
   }
 
   grantItem(id: string, templateId: string, stackSize: number = 1, qualityLevel: number = 0) {
-    return this.request<{ success: boolean; item_id: number; template_id: string; stack_size: number }>(`/characters/${encodeURIComponent(id)}/grant-item`, {
+    return this.request<{ success: boolean; item_id: number; template_id: string; stack_size: number; warning?: string }>(`/characters/${encodeURIComponent(id)}/grant-item`, {
       method: 'POST',
       body: JSON.stringify({ template_id: templateId, stack_size: stackSize, quality_level: qualityLevel }),
     });
