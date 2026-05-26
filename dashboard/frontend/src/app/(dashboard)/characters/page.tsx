@@ -1108,13 +1108,12 @@ export default function CharactersPage() {
                               <button
                                 key={item.id}
                                 type="button"
-                                className="group relative rounded-full border border-th-border px-3 py-1 text-xs text-th-text-s hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors"
-                                title={`${item.name || item.id} — ${item.id} (${item.source}${item.count > 0 ? `, ${item.count} in DB` : ''})`}
+                                className="group relative flex flex-col items-start rounded-lg border border-th-border px-3 py-1.5 text-xs text-th-text-s hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors"
                                 disabled={granting}
                                 onClick={() => { setGrantTemplate(item.id); setCatalogOpen(false); }}
                               >
-                                {item.name || item.id}
-                                {item.count > 0 && <span className="ml-1 text-th-text-m">({item.count})</span>}
+                                <span className="font-medium text-th-text">{item.name || item.id}{item.count > 0 && <span className="ml-1 font-normal text-th-text-m">({item.count})</span>}</span>
+                                {item.name && item.name !== item.id && <span className="font-mono text-[10px] text-th-text-m/70 leading-tight">{item.id}</span>}
                               </button>
                             ))}
                           </div>
