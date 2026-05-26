@@ -6,7 +6,7 @@ export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 # Crash-cooldown: if the server crashed recently, wait before restarting
 # to avoid CPU/memory thrashing from rapid restart loops.
 CRASH_MARKER="/tmp/.server_crash_marker"
-COOLDOWN_SECONDS="${RESTART_COOLDOWN_SECONDS:-30}"
+COOLDOWN_SECONDS="${RESTART_COOLDOWN_SECONDS:-60}"
 if [ -f "$CRASH_MARKER" ]; then
   last_crash=$(cat "$CRASH_MARKER" 2>/dev/null || echo 0)
   now=$(date +%s)
