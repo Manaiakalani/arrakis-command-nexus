@@ -9,6 +9,7 @@ import {
   Coins,
   Cpu,
   Database,
+  Download,
   Gauge,
   Globe,
   Home,
@@ -72,6 +73,7 @@ const navigationSections = [
     items: [
       { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
       { href: '/audit', label: 'Audit Trail', icon: ClipboardList },
+      { href: '/updates', label: 'Server Updates', icon: Download },
       { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
       { href: '/public', label: 'Public Status', icon: Globe },
     ],

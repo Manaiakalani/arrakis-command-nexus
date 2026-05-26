@@ -18,7 +18,7 @@ from middleware.rate_limit import RateLimitMiddleware
 from middleware.redaction import redact
 from middleware.request_logging import RequestLoggingMiddleware
 from middleware.security_headers import SecurityHeadersMiddleware
-from routers import announce, audit, backups, characters, chat_guard, config, discord, economy, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, watchdog
+from routers import announce, audit, backups, characters, chat_guard, config, discord, economy, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog
 from services.announce_scheduler import AnnounceScheduler
 from services.announce_service import AnnounceService
 from services.backup_scheduler import BackupScheduler
@@ -325,6 +325,7 @@ app.include_router(characters.router, prefix="/api", dependencies=_SECURE_API_DE
 app.include_router(chat_guard.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(settings.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(audit.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(updates.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 
 
 @app.get("/api/ping")

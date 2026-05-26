@@ -518,6 +518,41 @@ export class ApiClient {
       body: JSON.stringify({ values }),
     });
   }
+
+  // Update checking
+  getUpdateStatus() {
+    return this.request<{
+      current_tag: string;
+      current_build: string | null;
+      latest_build: string | null;
+      update_available: boolean;
+      last_check: string | null;
+      auto_update_enabled: boolean;
+      check_interval_hours: number;
+      steam_app_id: string;
+    }>('/updates/status');
+  }
+
+  checkForUpdates() {
+    return this.request<{
+      success: boolean;
+      current_build: string | null;
+      latest_build: string | null;
+      update_available: boolean;
+      current_tag: string | null;
+      last_check: string | null;
+      steam_app_id: string | null;
+      error?: string;
+    }>('/updates/check', { method: 'POST' });
+  }
+
+  triggerUpdate() {
+    return this.request<{
+      success: boolean;
+      error?: string;
+      manual_command?: string;
+    }>('/updates/trigger', { method: 'POST' });
+  }
 }
 
 export const apiClient = new ApiClient();
