@@ -10,6 +10,8 @@ This project packages Funcom's dedicated server stack, helper scripts, Docker Co
 - [Design System](./DESIGN.md)
 - [Deployment Profiles](./PROFILES.md)
 - [Networking Guide](./NETWORKING.md)
+- [Operations Runbook](./OPERATIONS.md)
+- [Monitoring and Alerts](./MONITORING.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)
 
 ## Project Overview

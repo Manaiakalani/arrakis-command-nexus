@@ -40,6 +40,8 @@ services:
   overmap:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_OVERMAP}
+    memswap_limit: ${MEM_LIMIT_OVERMAP}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_OVERMAP:-2}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -81,6 +83,8 @@ services:
   survival_1:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -121,6 +125,8 @@ services:
   deep_desert_1:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -161,6 +167,8 @@ services:
   arrakeen:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -201,6 +209,8 @@ services:
   harko_village:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -241,6 +251,8 @@ services:
   testing_hephaestus:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -281,6 +293,8 @@ services:
   testing_carthag:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -321,6 +335,8 @@ services:
   testing_waterfat:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -361,6 +377,8 @@ services:
   proces_verbal:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -401,6 +419,8 @@ services:
   survival_2:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -441,6 +461,8 @@ services:
   survival_3:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -481,6 +503,8 @@ services:
   survival_4:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -521,6 +545,8 @@ services:
   survival_5:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -561,6 +587,8 @@ services:
   survival_6:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -601,6 +629,8 @@ services:
   survival_7:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -641,6 +671,8 @@ services:
   survival_8:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -681,6 +713,8 @@ services:
   survival_9:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -721,6 +755,8 @@ services:
   survival_10:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -761,6 +797,8 @@ services:
   survival_11:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -801,6 +839,8 @@ services:
   survival_12:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -841,6 +881,8 @@ services:
   survival_13:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -881,6 +923,8 @@ services:
   survival_14:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -921,6 +965,8 @@ services:
   survival_15:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -961,6 +1007,8 @@ services:
   survival_16:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -1001,6 +1049,8 @@ services:
   survival_17:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
@@ -1041,6 +1091,8 @@ services:
   deep_desert_2:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1081,6 +1133,8 @@ services:
   deep_desert_3:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1121,6 +1175,8 @@ services:
   deep_desert_4:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1161,6 +1217,8 @@ services:
   deep_desert_5:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1201,6 +1259,8 @@ services:
   arrakeen_2:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1241,6 +1301,8 @@ services:
   harko_village_2:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1281,6 +1343,8 @@ services:
   testing_hephaestus_2:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1321,6 +1385,8 @@ services:
   testing_carthag_2:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
@@ -1361,6 +1427,8 @@ services:
   testing_waterfat_2:
     <<: *game-server-common
     mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
     command:
       - -FarmRegion=${WORLD_REGION:-North America}
       - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}

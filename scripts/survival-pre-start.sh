@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 MAP_NAME="${PARTITION_MAP_NAME:-Survival_1}"
 DB_NAME="${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}"
 export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
@@ -20,41 +22,69 @@ fi
 date +%s > "$CRASH_MARKER"
 
 # Clear stale data before starting.
-echo "[pre-start] Clearing stale partition/farm data for map=$MAP_NAME..."
-if [[ "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
-  psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-    "DELETE FROM dune.world_partition WHERE map = '$MAP_NAME';" 2>&1 || true
-  psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-    "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" 2>&1 || true
+echo "[pre-start] Clearing stale partition/farm data for map='$MAP_NAME'..."
+if [[ ! "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "[pre-start] ERROR: Invalid MAP_NAME '$MAP_NAME'"
+  exit 1
 fi
+
+psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -v map_name="$MAP_NAME" -c \
+  "DELETE FROM dune.world_partition WHERE map = :'map_name';"
+psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -v map_name="$MAP_NAME" -c \
+  "DELETE FROM dune.farm_state WHERE map = :'map_name';" || true
 
 # Start the game server. Tee output to a FIFO so a background scanner
 # can detect the server_id from stdout ("Server <ID> should be ready")
 # and then wait for that ID to appear in farm_state (FK requirement)
 # before inserting the world_partition row.
-echo "[pre-start] Starting game server for map=$MAP_NAME..."
+echo "[pre-start] Starting game server for map='$MAP_NAME'..."
 
-FIFO="/tmp/.game_output_$$"
-mkfifo "$FIFO" 2>/dev/null || true
+FIFO="$(mktemp -u /tmp/.game_fifo.XXXXXX)"
+mkfifo "$FIFO"
+SCANNER_PID=""
+GAME_PID=""
+GAME_PGID=""
+
+cleanup() {
+  local exit_code=$?
+  trap - EXIT INT TERM
+
+  if [ -n "${GAME_PGID:-}" ]; then
+    kill -- "-${GAME_PGID}" 2>/dev/null || true
+  elif [ -n "${GAME_PID:-}" ]; then
+    kill "$GAME_PID" 2>/dev/null || true
+  fi
+
+  if [ -n "${SCANNER_PID:-}" ]; then
+    kill "$SCANNER_PID" 2>/dev/null || true
+  fi
+
+  rm -f "$FIFO"
+  exit "$exit_code"
+}
+trap cleanup EXIT INT TERM
 
 # Background scanner: detect server_id, wait for farm_state FK, assign partition
 (
   ASSIGNED=0
   while IFS= read -r line; do
     if [ "$ASSIGNED" -eq 0 ]; then
-      SID=$(echo "$line" | grep -oP 'Server \K[A-Za-z0-9_+/=-]{10,30}(?= should be ready)')
+      SID=$(printf '%s\n' "$line" | grep -oP 'Server \K[A-Za-z0-9_+/=-]{10,30}(?= should be ready)' || true)
       if [ -n "$SID" ]; then
         echo "[pre-start] Detected server_id=$SID, waiting for farm_state registration..."
         # Poll until this server_id appears in farm_state (FK target)
         for i in $(seq 1 30); do
-          EXISTS=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
-            "SELECT 1 FROM dune.farm_state WHERE server_id = '$SID' LIMIT 1;" 2>/dev/null)
+          EXISTS=$(psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -v server_id="$SID" -t -A -c \
+            "SELECT 1 FROM dune.farm_state WHERE server_id = :'server_id' LIMIT 1;")
           if [ "$EXISTS" = "1" ]; then
             echo "[pre-start] farm_state registered (${i}s), inserting partition..."
-            psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-              "INSERT INTO dune.world_partition (server_id, map, partition_definition, dimension_index)
-               VALUES ('$SID', '$MAP_NAME', '{\"box\": {\"max_x\": 1, \"max_y\": 1, \"min_x\": 0, \"min_y\": 0}, \"type\": \"box2d_array\"}', 0)
-               ON CONFLICT DO NOTHING;" 2>&1 || true
+            psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" \
+              -v server_id="$SID" \
+              -v map_name="$MAP_NAME" \
+              -v partition_definition='{"box": {"max_x": 1, "max_y": 1, "min_x": 0, "min_y": 0}, "type": "box2d_array"}' \
+              -c "INSERT INTO dune.world_partition (server_id, map, partition_definition, dimension_index)
+                  VALUES (:'server_id', :'map_name', CAST(:'partition_definition' AS jsonb), 0)
+                  ON CONFLICT DO NOTHING;"
             ASSIGNED=1
             echo "[pre-start] Partition created for $SID"
             break
@@ -73,13 +103,12 @@ SCANNER_PID=$!
 # Run game, tee to both stdout (container logs) and the FIFO scanner
 /home/dune/run.sh "$@" 2>&1 | tee "$FIFO" &
 GAME_PID=$!
-
-# Forward signals to the game process
-trap "kill $GAME_PID $SCANNER_PID 2>/dev/null; rm -f $FIFO" SIGTERM SIGINT EXIT
+GAME_PGID="$(ps -o pgid= -p "$GAME_PID" | tr -d '[:space:]')"
 
 # Wait for game to exit
-wait $GAME_PID 2>/dev/null
-EXIT_CODE=$?
-kill $SCANNER_PID 2>/dev/null
-rm -f "$FIFO"
-exit $EXIT_CODE
+if wait "$GAME_PID"; then
+  EXIT_CODE=0
+else
+  EXIT_CODE=$?
+fi
+exit "$EXIT_CODE"

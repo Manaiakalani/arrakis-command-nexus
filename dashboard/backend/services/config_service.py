@@ -5,8 +5,8 @@ import configparser
 import hashlib
 import logging
 import os
+import tempfile
 from datetime import datetime, timezone
-from io import StringIO
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -744,9 +744,17 @@ class ConfigService:
         return parser
 
     def _write_parser(self, path: Path, parser: configparser.ConfigParser) -> None:
-        buffer = StringIO()
-        parser.write(buffer)
-        path.write_text(buffer.getvalue(), encoding="utf-8")
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            dir=os.path.dirname(path),
+            delete=False,
+            suffix=".tmp",
+            encoding="utf-8",
+        ) as tmp:
+            parser.write(tmp)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        os.replace(tmp.name, path)
 
     def _validate_value(self, filename: str, key: str, value: str) -> str:
         definition = self.get_field_definitions(filename).get(key)

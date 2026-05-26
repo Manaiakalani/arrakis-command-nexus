@@ -5,8 +5,18 @@ services:
     extends:
       file: docker-compose.yml
       service: dashboard-api
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   dashboard-frontend:
     extends:
       file: docker-compose.yml
       service: dashboard-frontend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

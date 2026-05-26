@@ -84,6 +84,8 @@ services:
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_POSTGRES}
+    memswap_limit: ${MEM_LIMIT_POSTGRES}
+    pids_limit: 128
     cpus: 2
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
@@ -114,6 +116,8 @@ services:
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
+    memswap_limit: ${MEM_LIMIT_RMQ}
+    pids_limit: 128
     cpus: 1
     volumes:
       - ./config/rabbitmq-admin.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
@@ -147,6 +151,8 @@ services:
       retries: 12
       start_period: 20s
     mem_limit: ${MEM_LIMIT_RMQ}
+    memswap_limit: ${MEM_LIMIT_RMQ}
+    pids_limit: 128
     cpus: 1
     volumes:
       - ./config/rabbitmq-game.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
@@ -187,6 +193,8 @@ services:
       retries: 3
       start_period: 15s
     mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 128
     cpus: 0.5
     networks:
       default:
@@ -212,6 +220,8 @@ services:
       postgres:
         condition: service_healthy
     mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 128
     cpus: 1
     networks:
       default:
@@ -241,6 +251,8 @@ services:
     volumes:
       - .:/workspace:ro
     mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 128
     cpus: 0.5
     depends_on:
       db-init:
@@ -338,6 +350,8 @@ services:
       fls-apikey: ${FLS_APIKEY:-}
       DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE: "false"
     mem_limit: ${MEM_LIMIT_DIRECTOR}
+    memswap_limit: ${MEM_LIMIT_DIRECTOR}
+    pids_limit: 128
     cpus: 1
     volumes:
       - ./config/director.ini:/etc/app/conf.d/director.ini:ro
@@ -403,6 +417,8 @@ services:
       HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
       FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
     mem_limit: ${MEM_LIMIT_TEXT_ROUTER}
+    memswap_limit: ${MEM_LIMIT_TEXT_ROUTER}
+    pids_limit: 128
     cpus: 1
     depends_on:
       postgres:
@@ -474,6 +490,8 @@ services:
       GAME_RMQ_PUBLIC_PORT: "${GAME_RMQ_PUBLIC_PORT:-31982}"
       GAME_RMQ_PUBLIC_HTTP_PORT: "${GAME_RMQ_PUBLIC_HTTP_PORT:-31983}"
     mem_limit: ${MEM_LIMIT_GATEWAY}
+    memswap_limit: ${MEM_LIMIT_GATEWAY}
+    pids_limit: 128
     cpus: 1
     depends_on:
       postgres:
@@ -516,6 +534,8 @@ services:
       - /tmp
     cpus: 0.5
     mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 128
     networks:
       backend: {}
 
@@ -589,6 +609,8 @@ services:
         ipv4_address: 10.80.0.50
       backend: {}
     mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
     cpus: 2
 
   # -------------------------------------------------------------------------
@@ -614,6 +636,8 @@ services:
       dashboard-api:
         condition: service_healthy
     mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
     cpus: 1
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000"]

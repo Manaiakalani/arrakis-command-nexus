@@ -74,6 +74,8 @@ services:
       EXTERNAL_ADDRESS_OVERRIDE: ${EXTERNAL_ADDRESS}
       fls-apikey: ${FLS_APIKEY:-}
     mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_SURVIVAL:-4}
     ports:
       - "7777:7777/udp"
@@ -178,6 +180,8 @@ services:
       EXTERNAL_ADDRESS_OVERRIDE: ${EXTERNAL_ADDRESS}
       fls-apikey: ${FLS_APIKEY:-}
     mem_limit: ${MEM_LIMIT_OVERMAP}
+    memswap_limit: ${MEM_LIMIT_OVERMAP}
+    pids_limit: 512
     cpus: ${CPU_LIMIT_OVERMAP:-2}
     ports:
       - "7778:7778/udp"

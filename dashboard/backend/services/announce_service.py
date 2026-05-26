@@ -106,7 +106,7 @@ class AnnounceService:
                     mandatory=False,
                 )
             except Exception:
-                pass  # Best-effort fallback
+                logger.warning("Fallback publish to chat.map failed", exc_info=True)
 
             logger.info("Announcement published to chat.intercept and chat.map")
             self._remember(message, sender or self.sender_name, "sent", "Published to chat exchanges")

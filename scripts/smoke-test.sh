@@ -31,8 +31,28 @@ DASHBOARD_PORT="${DUNE_ADMIN_HOST_PORT:-18080}"
 DASHBOARD_URL="http://localhost:${DASHBOARD_PORT}"
 
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
-  # Source .env safely: handle unquoted spaces by quoting values
-  eval "$(grep -v '^\s*#' "$PROJECT_ROOT/.env" | grep -v '^\s*$' | sed 's/=\(.*\)/="\1"/' | sed 's/^/export /')"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+
+    if [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+
+      if [[ "$value" == *'$('* || "$value" == *'`'* ]]; then
+        continue
+      fi
+
+      value="${value#"${value%%[![:space:]]*}"}"
+      value="${value%"${value##*[![:space:]]}"}"
+
+      if [[ "$value" =~ ^\".*\"$ || "$value" =~ ^\'.*\'$ ]]; then
+        value="${value:1:${#value}-2}"
+      fi
+
+      export "$key=$value"
+    fi
+  done < "$PROJECT_ROOT/.env"
 fi
 
 ADMIN_TOKEN="${DUNE_ADMIN_TOKEN:-}"

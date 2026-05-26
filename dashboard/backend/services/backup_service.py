@@ -212,7 +212,12 @@ class BackupService:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await process.communicate()
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=300)
+        except asyncio.TimeoutError as exc:
+            process.kill()
+            await process.communicate()
+            raise RuntimeError(f"Backup command timed out after 300 seconds for scope '{scope}'.") from exc
         return {
             "returncode": process.returncode,
             "stdout": stdout.decode("utf-8", errors="replace").strip(),

@@ -330,3 +330,84 @@ bash scripts/smoke-test.sh
 ```
 
 The test checks 42 items across 7 categories: container health, API endpoints, frontend routes, volume persistence, configuration, database connectivity, and recent error logs.
+
+## Partition Crash-Loop (Server Won't Start)
+
+**Root cause:** The game server must find a matching `world_partition` row for its freshly generated `server_id` almost immediately after startup.
+
+1. The game binary generates a random `server_id` on each startup.
+2. It registers that `server_id` in `farm_state` through RabbitMQ and the director.
+3. It then queries `load_world_partition` using that `server_id` within about 5 seconds.
+4. If `world_partition` does not contain the matching `server_id`, the server crashes with `Local partition is not found`.
+5. `scripts/survival-pre-start.sh` handles this automatically by parsing the startup output, waiting for `farm_state`, and inserting the partition row.
+6. If the pre-start flow fails, manually delete stale rows from `farm_state` and `world_partition`, then restart the affected server.
+
+Suggested recovery steps:
+
+```sql
+DELETE FROM dune.farm_state WHERE server_id = '<stale_server_id>';
+DELETE FROM dune.world_partition WHERE server_id = '<stale_server_id>';
+```
+
+Then run:
+
+```bash
+docker compose run --rm partition-repair
+docker compose restart overmap
+```
+
+## Crafting and Refinery Timer Glitches
+
+**Symptoms:** Refineries stay paused, timers cycle backward, or crafting durations keep extending.
+
+**Root cause:** Server tick-rate drops when the host is starved for CPU or memory.
+
+**Most common trigger:** `overmap` enters a crash-loop and burns 100 percent or more CPU during repeated restarts.
+
+**Diagnosis:**
+
+```bash
+docker stats
+```
+
+Check the CPU and memory percentages for `overmap`, survival shards, and supporting services.
+
+**Fix:** Stop the offending container, increase resource limits, then restart it.
+
+```bash
+docker compose stop overmap
+# edit .env and raise MEM_LIMIT_OVERMAP or the matching MEM_LIMIT_<SERVICE>
+docker compose up -d overmap
+```
+
+## Credential Rotation
+
+Rotate credentials carefully so connected services stay in sync.
+
+### `DUNE_ADMIN_TOKEN`
+
+1. Update `.env`.
+2. Restart the API:
+   ```bash
+   docker compose restart dashboard-api
+   ```
+
+### `POSTGRES_DUNE_PASSWORD`
+
+1. Update `.env`.
+2. Update the PostgreSQL user password inside the database.
+3. Restart all game containers and any service that connects to PostgreSQL.
+
+### RabbitMQ credentials
+
+1. Update `.env`.
+2. Restart RabbitMQ.
+3. Restart all connected services so they reconnect with the new credentials.
+
+### Discord webhook
+
+1. Update `.env`.
+2. Restart the API:
+   ```bash
+   docker compose restart dashboard-api
+   ```

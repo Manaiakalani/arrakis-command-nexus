@@ -27,7 +27,7 @@ HOST = os.environ.get("DB_HOST", "postgres")
 PORT = int(os.environ.get("DB_PORT", "5432"))
 DATABASE = os.environ.get("DB_NAME", "dune_sb_1_4_0_0")
 USER = os.environ.get("DB_USER", "dune")
-PASSWORD = os.environ.get("POSTGRES_DUNE_PASSWORD", os.environ.get("DB_PASSWORD", "change-me-dune-db"))
+PASSWORD = os.environ.get("POSTGRES_DUNE_PASSWORD")
 SCHEMA = "dune"
 MAX_WAIT = int(os.environ.get("PARTITION_REPAIR_MAX_WAIT", "120"))
 POLL_INTERVAL = int(os.environ.get("PARTITION_REPAIR_POLL_INTERVAL", "5"))
@@ -142,7 +142,7 @@ def repair_partitions(log):
                     (partition_id,),
                 )
                 log.info(
-                    "Deleted stale partition %d (server=%s..., map=%s) to free label",
+                    "Deleted stale partition partition_id=%d server_id=%s map=%s to free label",
                     partition_id, server_id[:8], map_name,
                 )
                 deleted += 1
@@ -171,7 +171,7 @@ def repair_partitions(log):
                     (partition_id,),
                 )
                 log.info(
-                    "Deleted orphan partition %d (map=%s) - alive server already has partition",
+                    "Deleted orphan partition partition_id=%d server_id=<none> map=%s because an alive server already has a partition",
                     partition_id, map_name,
                 )
                 deleted += 1
@@ -197,7 +197,7 @@ def repair_partitions(log):
             for server_id, map_name, igw_addr, igw_port in servers:
                 if server_id in existing_server_ids:
                     log.info(
-                        "Partition already exists for server %s... (map=%s)",
+                        "Partition already exists for server_id=%s map=%s",
                         server_id[:8], map_name,
                     )
                     continue
@@ -217,7 +217,7 @@ def repair_partitions(log):
                             (server_id, pid),
                         )
                         log.info(
-                            "Claimed partition %d for server %s... (map=%s, was=%s)",
+                            "Claimed partition partition_id=%d server_id=%s map=%s previous_server_id=%s",
                             pid, server_id[:8], map_name, (sid or "<none>")[:8],
                         )
                         # Update local state so subsequent iterations see this as taken
@@ -238,14 +238,14 @@ def repair_partitions(log):
                         )
                         cur.execute("RELEASE SAVEPOINT sp_insert")
                         log.info(
-                            "Created partition for server %s... (map=%s)",
+                            "Created partition for server_id=%s map=%s partition_id=<new>",
                             server_id[:8], map_name,
                         )
                         created += 1
                     except Exception as exc:
                         cur.execute("ROLLBACK TO SAVEPOINT sp_insert")
                         log.warning(
-                            "Failed to create partition for %s... (map=%s): %s",
+                            "Failed to create partition for server_id=%s map=%s partition_id=<new>: %s",
                             server_id[:8], map_name, exc,
                         )
                 elif not claimed:
@@ -255,7 +255,7 @@ def repair_partitions(log):
                     # from farm_state. The pre-start script handles legitimate
                     # restarts by NULLing the partition's server_id first.
                     log.info(
-                        "Partition for map=%s owned by alive server, skipping ghost %s...",
+                        "Partition for map=%s is owned by an alive server, skipping ghost server_id=%s",
                         map_name, server_id[:8],
                     )
 
@@ -287,10 +287,14 @@ def main():
     )
     log = logging.getLogger("partition-repair")
 
+    if not PASSWORD:
+        print("[ERROR] POSTGRES_DUNE_PASSWORD is not set", file=sys.stderr)
+        return 1
+
     watch_mode = os.environ.get("PARTITION_REPAIR_WATCH", "").lower() in ("1", "true", "yes")
     watch_interval = int(os.environ.get("PARTITION_REPAIR_WATCH_INTERVAL", "30"))
 
-    log.info("Starting partition repair (target: %s:%d/%s)", HOST, PORT, DATABASE)
+    log.info("Starting partition repair target=%s:%d/%s", HOST, PORT, DATABASE)
     wait_for_servers(log, min_servers=1)
     fix_gateway_function(log)
     changes = repair_partitions(log)
@@ -299,13 +303,25 @@ def main():
         log.info("No changes needed")
 
     if watch_mode:
+        consecutive_failures = 0
         log.info("Watch mode enabled, checking every %ds", watch_interval)
         while True:
             time.sleep(watch_interval)
             try:
                 repair_partitions(log)
-            except Exception as exc:
-                log.warning("Watch cycle failed: %s", exc)
+                consecutive_failures = 0
+            except Exception:
+                consecutive_failures += 1
+                log.exception(
+                    "Watch cycle failed (consecutive_failures=%d/10)",
+                    consecutive_failures,
+                )
+                if consecutive_failures >= 10:
+                    log.error(
+                        "Watch mode exiting after %d consecutive failures",
+                        consecutive_failures,
+                    )
+                    return 1
 
     return 0
 
