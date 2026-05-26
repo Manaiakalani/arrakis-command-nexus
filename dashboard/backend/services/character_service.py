@@ -239,7 +239,7 @@ class CharacterService:
         raise NotImplementedError("Character mutations require game DB schema mapping")
 
     async def get_inventory(self, character_id: str) -> dict[str, Any]:
-        """Get all items in a character's inventories."""
+       """Get items from the player character actor's inventories only."""
         pool = getattr(self.postgres_service, "pool", None) if self.postgres_service else None
         if pool is None:
             return {"character_id": character_id, "inventories": []}
@@ -257,10 +257,12 @@ class CharacterService:
                 FROM dune.items it
                 JOIN dune.inventories i ON i.id = it.inventory_id
                 WHERE i.actor_id IN (
-                    SELECT id FROM dune.actors WHERE owner_account_id = $1
-                )
-                ORDER BY i.inventory_type, it.position_index
-            """, account_id)
+                   SELECT id FROM dune.actors
+                   WHERE owner_account_id = $1
+                     AND class LIKE '%PlayerCharacter%'
+               )
+               ORDER BY i.inventory_type, it.position_index
+           """, account_id)
 
         inv_type_names = {
             0: "backpack", 1: "equipment", 12: "quest",

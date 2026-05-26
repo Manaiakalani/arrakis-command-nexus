@@ -1142,9 +1142,14 @@ export default function CharactersPage() {
                     <RefreshCcw className={cn('mr-1.5 h-3.5 w-3.5', loadingInventory && 'animate-spin')} /> Refresh
                   </button>
                 </div>
+                <p className="mt-2 text-xs text-th-text-m/70 italic">
+                  Reads from the last database save. Items consumed, dropped, or moved in-game may still appear until the game server saves again (on logout or periodic save).
+                </p>
                 {inventoryData ? (
                   <div className="mt-4 space-y-4">
-                    {Object.entries(inventoryData).map(([invName, items]) => (
+                    {Object.entries(inventoryData)
+                      .filter(([invName]) => ['backpack', 'equipment', 'hotbar'].includes(invName))
+                      .map(([invName, items]) => (
                       <div key={invName}>
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-th-text-m">{invName} ({items.length} items)</p>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -1161,6 +1166,27 @@ export default function CharactersPage() {
                         </div>
                       </div>
                     ))}
+                    {Object.entries(inventoryData).some(([invName]) => !['backpack', 'equipment', 'hotbar'].includes(invName)) && (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-th-text-m hover:text-th-text">Other inventories (emotes, quest, etc.)</summary>
+                        <div className="mt-2 space-y-3">
+                          {Object.entries(inventoryData)
+                            .filter(([invName]) => !['backpack', 'equipment', 'hotbar'].includes(invName))
+                            .map(([invName, items]) => (
+                            <div key={invName}>
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-th-text-m">{invName} ({items.length} items)</p>
+                              <div className="mt-1 flex flex-wrap gap-2">
+                                {items.map((item, i) => (
+                                  <span key={`${item.template_id}-${i}`} className="rounded-full border border-th-border/50 px-2 py-0.5 text-xs text-th-text-m">
+                                    {item.template_id} x{item.stack_size}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
                 ) : loadingInventory ? (
                   <div className="mt-4 flex items-center gap-2 text-sm text-th-text-m">
