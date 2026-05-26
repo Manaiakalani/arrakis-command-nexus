@@ -120,7 +120,7 @@ export default function CharactersPage() {
   const [teleporting, setTeleporting] = useState(false);
   const [teleportResult, setTeleportResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
-  const [catalogData, setCatalogData] = useState<{ id: string; count: number; source?: string; category?: string }[] | null>(null);
+  const [catalogData, setCatalogData] = useState<{ id: string; name?: string; count: number; source?: string; category?: string }[] | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
 
   const filteredCharacters = useMemo(() => {
