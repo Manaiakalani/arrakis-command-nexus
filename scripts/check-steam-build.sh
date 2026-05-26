@@ -11,8 +11,15 @@ if [[ -z "$APP_ID" ]]; then
   exit 1
 fi
 
-# Check if steamcmd is available
-if ! command -v steamcmd &>/dev/null; then
+# Find steamcmd - check common locations
+STEAMCMD=""
+if command -v steamcmd &>/dev/null && steamcmd +quit &>/dev/null; then
+  STEAMCMD="steamcmd"
+elif [[ -f "$HOME/steamcmd/steamcmd.sh" ]]; then
+  STEAMCMD="$HOME/steamcmd/steamcmd.sh"
+elif [[ -f "/usr/games/steamcmd" ]]; then
+  STEAMCMD="/usr/games/steamcmd"
+else
   echo "ERROR: steamcmd not found" >&2
   exit 1
 fi
@@ -22,7 +29,7 @@ fi
 TMPFILE=$(mktemp)
 trap "rm -f $TMPFILE" EXIT
 
-timeout 30 steamcmd +login anonymous +app_info_print "$APP_ID" +quit 2>/dev/null > "$TMPFILE" || {
+timeout 120 "$STEAMCMD" +login anonymous +app_info_print "$APP_ID" +quit 2>/dev/null > "$TMPFILE" || {
   echo "ERROR: steamcmd query failed" >&2
   exit 1
 }
