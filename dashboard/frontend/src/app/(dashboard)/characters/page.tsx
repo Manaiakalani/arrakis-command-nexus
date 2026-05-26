@@ -110,7 +110,7 @@ export default function CharactersPage() {
   const [grantResult, setGrantResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const [granting, setGranting] = useState(false);
   const [grantingLabel, setGrantingLabel] = useState<string | null>(null);
-  const [templateResults, setTemplateResults] = useState<{ id: string; count: number; source?: string; category?: string }[]>([]);
+  const [templateResults, setTemplateResults] = useState<{ id: string; name?: string; count: number; source?: string; category?: string }[]>([]);
   const [searchingTemplates, setSearchingTemplates] = useState(false);
   const [inventoryData, setInventoryData] = useState<Record<string, { template_id: string; stack_size: number; position_index: number; quality_level: number }[]> | null>(null);
   const [loadingInventory, setLoadingInventory] = useState(false);
@@ -1068,7 +1068,8 @@ export default function CharactersPage() {
                         className="flex w-full items-center justify-between border-b border-th-border-m/40 px-4 py-2.5 text-left text-sm last:border-b-0 transition-colors hover:bg-th-surface-s/60"
                       >
                         <button type="button" className="flex-1 text-left" onClick={() => { setGrantTemplate(t.id); setTemplateResults([]); }}>
-                          <span className="font-medium text-th-text">{t.id}</span>
+                          <span className="font-medium text-th-text">{t.name || t.id}</span>
+                          {t.name && t.name !== t.id && <span className="ml-2 text-xs text-th-text-m font-mono">{t.id}</span>}
                         </button>
                         <span className="flex items-center gap-2 text-xs text-th-text-m">
                           {t.category && <span className="rounded-full bg-th-surface-s px-2 py-0.5">{t.category}</span>}
@@ -1093,7 +1094,7 @@ export default function CharactersPage() {
                         const cat = item.category || 'Unknown';
                         (grouped[cat] ??= []).push(item);
                       }
-                      const categoryOrder = ['Weapons', 'Tools', 'Resources', 'Consumables', 'Currency', 'Armor', 'Cosmetics', 'Vehicle Parts', 'Schematics', 'Structures', 'Contracts', 'Emotes', 'Unknown'];
+                      const categoryOrder = ['Weapons', 'Tools', 'Resources', 'Components', 'Consumables', 'Currency', 'Armor', 'Cosmetics', 'Vehicle Parts', 'Ornithopter Parts', 'Schematics', 'Structures', 'Contracts', 'Emotes', 'Unknown'];
                       const sorted = Object.entries(grouped).sort(([a], [b]) => {
                         const ai = categoryOrder.indexOf(a);
                         const bi = categoryOrder.indexOf(b);
@@ -1108,11 +1109,11 @@ export default function CharactersPage() {
                                 key={item.id}
                                 type="button"
                                 className="group relative rounded-full border border-th-border px-3 py-1 text-xs text-th-text-s hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors"
-                                title={`${item.id} (${item.source}${item.count > 0 ? `, ${item.count} in DB` : ''})`}
+                                title={`${item.name || item.id} — ${item.id} (${item.source}${item.count > 0 ? `, ${item.count} in DB` : ''})`}
                                 disabled={granting}
                                 onClick={() => { setGrantTemplate(item.id); setCatalogOpen(false); }}
                               >
-                                {item.id}
+                                {item.name || item.id}
                                 {item.count > 0 && <span className="ml-1 text-th-text-m">({item.count})</span>}
                               </button>
                             ))}
