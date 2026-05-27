@@ -85,15 +85,34 @@ trap cleanup EXIT INT TERM
           EXISTS=$(psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
             "SELECT 1 FROM dune.farm_state WHERE server_id = '$SID' LIMIT 1;")
           if [ "$EXISTS" = "1" ]; then
-            echo "[pre-start] farm_state registered (${i}s), inserting partition..."
+          echo "[pre-start] farm_state registered (${i}s), claiming partition for map='$MAP_NAME'..."
             PART_DEF='{"box": {"max_x": 1, "max_y": 1, "min_x": 0, "min_y": 0}, "type": "box2d_array"}'
-            psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" \
+          # Try to claim an existing unassigned partition first (UPDATE).
+          # This avoids the determine_partition_label_trigger UNIQUE conflict
+          # that occurs when a labelled row (e.g. Overmap/Overland) already
+          # exists and we attempt a second INSERT for the same map type.
+          CLAIMED=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A \
+            -c "UPDATE dune.world_partition SET server_id = '$SID'
+                WHERE partition_id = (
+                  SELECT partition_id FROM dune.world_partition
+                  WHERE map = '$MAP_NAME'
+                    AND (server_id IS NULL
+                         OR server_id NOT IN (SELECT server_id FROM dune.active_server_ids))
+                  ORDER BY partition_id LIMIT 1
+                  FOR UPDATE SKIP LOCKED
+                ) RETURNING partition_id;" 2>/dev/null || echo "")
+          if [ -n "$CLAIMED" ]; then
+            echo "[pre-start] Claimed existing partition_id=$CLAIMED for $SID"
+          else
+            # No existing partition for this map (first boot) — insert a new one.
+            psql -h postgres -p 5432 -U dune -d "$DB_NAME" \
               -c "INSERT INTO dune.world_partition (server_id, map, partition_definition, dimension_index)
                   VALUES ('$SID', '$MAP_NAME', CAST('$PART_DEF' AS jsonb), 0)
-                  ON CONFLICT DO NOTHING;"
-            ASSIGNED=1
-            echo "[pre-start] Partition created for $SID"
-            break
+                  ON CONFLICT DO NOTHING;" 2>/dev/null || true
+            echo "[pre-start] Inserted new partition for $SID (first boot)"
+          fi
+          ASSIGNED=1
+          break
           fi
           sleep 1
         done

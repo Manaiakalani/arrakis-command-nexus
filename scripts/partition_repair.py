@@ -272,6 +272,8 @@ def repair_partitions(log):
             partitions = cur.fetchall()
             # sid → partition_id (for alive-server lookup)
             sid_to_pid = {p[1]: p[0] for p in partitions if p[1]}
+            # partition_id → map (for map-type validation)
+            pid_to_map = {p[0]: p[2] for p in partitions}
             # map → list of (partition_id, server_id) — for finding unassigned slots
             map_to_parts: dict = {}
             for pid, sid, mname in partitions:
@@ -290,11 +292,33 @@ def repair_partitions(log):
                 chosen = next((s for s in reversed(sids) if s in active_ids), sids[-1])
 
                 if chosen in sid_to_pid:
-                    log.info(
-                        "Port %d OK: server_id=%.8s already has partition_id=%d (map=%s)",
-                        game_port, chosen, sid_to_pid[chosen], expected_map,
+                    assigned_pid = sid_to_pid[chosen]
+                    actual_map = pid_to_map.get(assigned_pid)
+                    if actual_map == expected_map:
+                        log.info(
+                            "Port %d OK: server_id=%.8s has correct partition_id=%d (map=%s)",
+                            game_port, chosen, assigned_pid, expected_map,
+                        )
+                        continue
+                    # Map-type mismatch: server has wrong partition; clear and re-assign.
+                    log.warning(
+                        "Port %d: server_id=%.8s has WRONG partition_id=%d "
+                        "(actual map=%s, expected %s) — clearing and re-assigning",
+                        game_port, chosen, assigned_pid, actual_map, expected_map,
                     )
-                    continue
+                    cur.execute(
+                        "UPDATE world_partition SET server_id = NULL WHERE partition_id = %s",
+                        (assigned_pid,),
+                    )
+                    del sid_to_pid[chosen]
+                    updated += 1
+                    # Mark the cleared partition available in map_to_parts
+                    if actual_map in map_to_parts:
+                        map_to_parts[actual_map] = [
+                            (pid, None if pid == assigned_pid else sid)
+                            for pid, sid in map_to_parts[actual_map]
+                        ]
+                    # Fall through to the assignment logic below.
 
                 # This server_id has no partition → assign one.
                 assigned = False
