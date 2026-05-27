@@ -8,22 +8,25 @@ export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 # Write Bgd.ServerDisplayName to UserEngine.ini before the game starts.
 # The -ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName= command-line arg
 # splits on spaces, so we write directly to the UserSettings ini file instead.
-# Both survival_1 and overmap share the same Saved volume so this runs twice;
-# the second write is a no-op since the content is identical.
-USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/UserSettings"
-DISPLAY_NAME="${DUNE_SERVER_DISPLAY_NAME:-${WORLD_NAME:-}}"
+# Each map writes to its own subdirectory (Survival_1 uses root Saved/UserSettings/,
+# all others use Saved/<MapName>/UserSettings/) matching UE5's per-map Saved layout.
+if [ "$MAP_NAME" = "Survival_1" ]; then
+  USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/UserSettings"
+else
+  USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/${MAP_NAME}/UserSettings"
+fi
+# Per-partition display name overrides DUNE_SERVER_DISPLAY_NAME and WORLD_NAME
+DISPLAY_NAME="${PARTITION_DISPLAY_NAME:-${DUNE_SERVER_DISPLAY_NAME:-${WORLD_NAME:-}}}"
 if [ -n "$DISPLAY_NAME" ]; then
   mkdir -p "$USERSETTINGS_DIR"
-  # Write [ConsoleVariables] block; preserve any existing sections if the file
-  # already exists and was not written by us (check for our marker comment).
-  if ! grep -qs "# arrakis-command-nexus" "$USERSETTINGS_DIR/UserEngine.ini" 2>/dev/null; then
-    cat > "$USERSETTINGS_DIR/UserEngine.ini" << EOF
+  # Always rewrite so display name changes take effect on restart.
+  # The marker lets us detect and skip files not managed by us.
+  cat > "$USERSETTINGS_DIR/UserEngine.ini" << EOF
 # arrakis-command-nexus managed — do not edit manually
 [ConsoleVariables]
 Bgd.ServerDisplayName=$DISPLAY_NAME
 EOF
-    echo "[pre-start] Wrote Bgd.ServerDisplayName='$DISPLAY_NAME' to UserEngine.ini"
-  fi
+  echo "[pre-start] Wrote Bgd.ServerDisplayName='$DISPLAY_NAME' to $USERSETTINGS_DIR/UserEngine.ini"
 fi
 
 # Crash-cooldown: if the server crashed recently, wait before restarting
