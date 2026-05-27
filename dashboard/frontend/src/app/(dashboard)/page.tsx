@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Check, Clock3, Database, Play, RefreshCcw, Server, ShieldCheck, Square, Users } from 'lucide-react';
+import { Activity, Check, Clock3, Database, Play, RefreshCcw, Server, ShieldCheck, Square, Users, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -59,6 +59,16 @@ export default function OverviewPage() {
       toast(`${name}: ${action} failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
     } finally {
       setBusyService(null);
+    }
+  }, [status, toast]);
+
+  const handleDirectorNudge = useCallback(async () => {
+    try {
+      await apiClient.restartServiceDirect('director');
+      await status.refetch();
+      toast('Director restarted -- FLS declarations will re-fire within 60 s', 'success');
+    } catch (err) {
+      toast(`Director nudge failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
     }
   }, [status, toast]);
 
@@ -125,6 +135,14 @@ export default function OverviewPage() {
               <h2 className="mt-1 text-xl font-semibold text-th-text">Operational Services</h2>
             </div>
             <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void handleDirectorNudge()}
+                title="Restart only the Director to force FLS re-declaration. Use if the server is not appearing in the in-game Experimental browser."
+                className="dune-button-muted"
+              >
+                <Zap className="mr-2 h-4 w-4" /> Director nudge
+              </button>
               <button type="button" onClick={() => void handleRestartAll()} className="dune-button-muted">
                 <RefreshCcw className="mr-2 h-4 w-4" /> Restart all
               </button>

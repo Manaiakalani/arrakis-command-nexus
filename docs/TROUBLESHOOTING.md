@@ -191,7 +191,87 @@ for servers to register in `farm_state`, then ensures matching `world_partition`
 **Symptoms:** All containers are healthy, FLS heartbeats succeed, but the server does not
 appear under the Experimental tab in the game's server browser.
 
-**Root causes (check in order):**
+### Quick Diagnosis Checklist
+
+Run through these in order before digging deeper:
+
+1. Run `./dune preflight` and resolve any failures.
+2. **Wait at least 5 minutes** after a fresh start (10+ minutes after an image update). The
+   `DeclareBattlegroupUpdates` FLS call fires roughly 4 minutes after game servers become
+   ready -- the server will not appear in the browser before this fires.
+3. Verify `31982/tcp` (RabbitMQ AMQP) is reachable from the internet.
+4. Verify `7777/udp` is port-forwarded.
+5. Check director logs for a successful `DeclareBattlegroupUpdates` with `UpDeclarationsByPartitionId`:
+   ```bash
+   docker logs dune-awakening-director-1 2>&1 | grep "DeclareBattlegroupUpdates"
+   ```
+   If you see `Exception thrown in FlsDeclareBattlegroupUpdates`, see the **Director Nudge** section below.
+6. Check gateway logs that `GameRmqHttpAddress` is NOT `x.x.x.x:None`:
+   ```bash
+   docker logs dune-awakening-gateway-1 2>&1 | grep -i "GameRmqHttpAddress\|GatewayDeclareFarmStatus"
+   ```
+7. Verify your FLS token has not expired.
+8. If another host accidentally started with the same `WORLD_UNIQUE_NAME`, it can steal the
+   FLS identity. Stop the duplicate stack and restart gateway on the live host.
+
+### Director Nudge (Browser Shows Nothing / FLS Declaration Stale)
+
+When game servers are running correctly but FLS declarations are stale or missing (for
+example, after a partition swap recovery), restart only the Director -- do NOT restart game servers:
+
+```bash
+docker compose -f docker-compose.yml restart director
+# Then watch for successful DeclareBattlegroupUpdates:
+docker logs -f dune-awakening-director-1 2>&1 | grep -i "DeclareBattlegroupUpdates"
+```
+
+A successful declaration looks like:
+```
+("api/Battlegroups_DeclareBattlegroupUpdates") Request successful. ...
+  "UpDeclarationsByPartitionId":{"19":{"ServerId":"...","GameAddress":"...","GamePort":7777,...}}
+```
+
+The Director restarts in seconds and immediately re-reads `farm_state` + `world_partition`
+from PostgreSQL, rebuilding a clean FLS state.
+
+### Partition Swap Recovery (Overmap / Survival Partitions Swapped)
+
+**Symptom:** Overmap crash-loops every 25-30 seconds, logs show:
+```
+ERROR:  duplicate key value violates unique constraint "world_partition_label_key"
+DETAIL:  Key (label)=(Overland) already exists.
+```
+
+**Cause:** When both game servers restart simultaneously, there is a race condition where the
+overmap server grabs the Survival_1 partition and survival_1 ends up with the Overmap
+partition. The `partition-repair` service detects this mismatch and corrects it, but the
+Director then needs a nudge to re-declare the corrected state to FLS.
+
+**Fix:**
+```bash
+# 1. Check current state
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 \
+  -c "SELECT partition_id, server_id, map, label FROM dune.world_partition"
+
+# 2. If swapped (survival_1 server has map='Overmap' or vice versa), correct manually:
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  BEGIN;
+  UPDATE dune.world_partition SET server_id = '<SURVIVAL1_SERVER_ID>' WHERE partition_id = <SURVIVAL_PID>;
+  UPDATE dune.world_partition SET server_id = NULL WHERE partition_id = <OVERMAP_PID>;
+  COMMIT;
+"
+
+# 3. Restart overmap to pick up corrected assignment
+docker compose -f docker-compose.yml -f docker-compose.basic.yml restart overmap
+
+# 4. Director nudge to re-declare to FLS
+docker compose -f docker-compose.yml restart director
+```
+
+The `partition-repair` service (with the map-type validation fix) now detects and corrects
+this swap automatically on every 3-second cycle.
+
+**Root causes (additional checks):**
 
 1. **Database version mismatch.** If the Funcom images were upgraded but the database was
    not recreated, the game server logs `Database version mismatch` and the persistence
