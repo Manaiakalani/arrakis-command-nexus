@@ -129,9 +129,8 @@ class UpdateService:
             
             async with SessionLocal() as session:
                 entry = AuditLog(
-                    category="system",
                     action=action,
-                    actor="UpdateService",
+                    performed_by="UpdateService",
                     details=details,
                 )
                 session.add(entry)
