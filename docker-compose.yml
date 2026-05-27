@@ -596,6 +596,7 @@ services:
       STEAM_APP_ID: ${STEAM_APP_ID:-3104830}
       UPDATE_CHECK_INTERVAL_HOURS: ${UPDATE_CHECK_INTERVAL_HOURS:-6}
       UPDATE_AUTO_UPDATE: ${UPDATE_AUTO_UPDATE:-false}
+      DUNE_COMPOSE_OVERLAY: ${DUNE_COMPOSE_OVERLAY:-basic}
     volumes:
       - ./.env:/workspace/.env
       - ./config:/workspace/config:ro
@@ -604,6 +605,11 @@ services:
       - ./dashboard-data:/workspace/data
       - ./scripts:/workspace/scripts:ro
       - ./steam:/workspace/steam
+      - ./docker-compose.yml:/workspace/compose/docker-compose.yml:ro
+      - ./docker-compose.basic.yml:/workspace/compose/docker-compose.basic.yml:ro
+      - ./docker-compose.standard.yml:/workspace/compose/docker-compose.standard.yml:ro
+      - ./docker-compose.full.yml:/workspace/compose/docker-compose.full.yml:ro
+      - ./docker-compose.dashboard.yml:/workspace/compose/docker-compose.dashboard.yml:ro
     depends_on:
       postgres:
         condition: service_healthy

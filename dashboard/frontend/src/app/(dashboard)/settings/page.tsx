@@ -5,6 +5,8 @@ import {
   Download,
   Key,
   Link2,
+  Lock,
+  LockOpen,
   Palette,
   Plus,
   Server,
@@ -33,6 +35,13 @@ export default function SettingsPage() {
   const security = useMemo(() => (settings.data?.security ?? {}) as Record<string, unknown>, [settings.data]);
   const integrations = useMemo(() => (settings.data?.integrations ?? {}) as Record<string, unknown>, [settings.data]);
   const appearance = useMemo(() => (settings.data?.appearance ?? {}) as Record<string, unknown>, [settings.data]);
+
+  const serverPassword = useApi(() => apiClient.getServerPassword(), { initialData: { enabled: false, hasPassword: false } });
+  const [passwordEnabled, setPasswordEnabled] = useState<boolean | null>(null);
+  const [passwordValue, setPasswordValue] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const effectivePasswordEnabled = passwordEnabled ?? (serverPassword.data?.enabled ?? false);
 
   const saveSection = useCallback(async (section: string, data: Record<string, unknown>) => {
     setSaving(section);
@@ -122,6 +131,27 @@ export default function SettingsPage() {
     }
   }, [admins, toast]);
 
+  const handleSavePassword = useCallback(async (enabled: boolean) => {
+    setSavingPassword(true);
+    try {
+      const result = await apiClient.setServerPassword(enabled, passwordValue || undefined);
+      setPasswordEnabled(result.enabled);
+      await serverPassword.refetch();
+      const restartedCount = result.restarted?.length ?? 0;
+      toast(
+        enabled
+          ? `Password protection enabled. ${restartedCount} game server(s) restarted.`
+          : `Password protection disabled. ${restartedCount} game server(s) restarted.`,
+        'success',
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update password.';
+      toast(`Failed to update password: ${message}`, 'error');
+    } finally {
+      setSavingPassword(false);
+    }
+  }, [passwordValue, serverPassword, toast]);
+
   const isLoading = settings.loading || admins.loading;
 
   if (isLoading) {
@@ -157,6 +187,71 @@ export default function SettingsPage() {
           </button>
           <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} aria-label="Import settings file" />
         </div>
+      </div>
+
+      {/* Server Access — password toggle */}
+      <div className="glass-panel p-5">
+        <div className="mb-4 flex items-center gap-2">
+          {effectivePasswordEnabled
+            ? <Lock className="h-5 w-5 text-amber-400" aria-hidden="true" />
+            : <LockOpen className="h-5 w-5 text-emerald-400" aria-hidden="true" />}
+          <h2 className="text-xl font-semibold text-th-text">Server Access</h2>
+          <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+            effectivePasswordEnabled
+              ? 'bg-amber-500/20 text-amber-300'
+              : 'bg-emerald-500/20 text-emerald-300'
+          }`}>
+            {effectivePasswordEnabled ? 'Password protected' : 'Open access'}
+          </span>
+        </div>
+        <p className="mb-4 text-sm text-th-text-m">
+          When enabled, players must enter a password to join. Changing this setting immediately restarts the
+          game servers. The password is preserved when disabled so you can re-enable it later.
+        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label htmlFor="serverPassword" className="block text-sm font-medium text-th-text-s">
+              Join password{!effectivePasswordEnabled && serverPassword.data?.hasPassword ? ' (stored, not active)' : ''}
+            </label>
+            <input
+              id="serverPassword"
+              type="password"
+              className="dune-input mt-1 w-full"
+              placeholder={serverPassword.data?.hasPassword ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : 'Enter a password\u2026'}
+              value={passwordValue}
+              onChange={(e) => setPasswordValue(e.target.value)}
+              disabled={savingPassword}
+            />
+          </div>
+          <div className="flex gap-3">
+            {effectivePasswordEnabled ? (
+              <button
+                type="button"
+                className="dune-button-muted"
+                onClick={() => handleSavePassword(false)}
+                disabled={savingPassword}
+              >
+                <LockOpen className="mr-2 h-4 w-4" aria-hidden="true" />
+                {savingPassword ? 'Disabling\u2026' : 'Disable password'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="dune-button"
+                onClick={() => handleSavePassword(true)}
+                disabled={savingPassword || (!passwordValue && !serverPassword.data?.hasPassword)}
+              >
+                <Lock className="mr-2 h-4 w-4" aria-hidden="true" />
+                {savingPassword ? 'Enabling\u2026' : 'Enable password'}
+              </button>
+            )}
+          </div>
+        </div>
+        {!effectivePasswordEnabled && (
+          <p className="mt-3 text-xs text-emerald-400">
+            Server is publicly visible in the in-game browser. Players can join without a password.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

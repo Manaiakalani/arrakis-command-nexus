@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import re
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import get_session
+from db.database import SessionLocal, get_session
+from db.models import AuditLog, DashboardSetting
 from models.config import ConfigUpdate
 from services.backup_service import BackupService
 from services.config_service import ConfigService
-
-from db.models import AuditLog
-
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -202,3 +203,190 @@ async def update_config(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Server password toggle
+# ---------------------------------------------------------------------------
+
+_ENV_PATH = os.getenv("DUNE_ENV_FILE", "/workspace/.env")
+_PASSWORD_KEY = "DUNE_SERVER_LOGIN_PASSWORD"
+_STORED_PASSWORD_SETTING = "server_password_stored"
+_env_lock = asyncio.Lock()
+
+# Game-server container name patterns — matched with containslogic
+_GAME_CONTAINERS = ("survival_1", "overmap")
+
+
+def _read_env_password() -> tuple[bool, str]:
+    """Return (enabled, stored_value) from the .env file."""
+    try:
+        with open(_ENV_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.rstrip("\n")
+                if line.startswith(f"{_PASSWORD_KEY}="):
+                    value = line[len(_PASSWORD_KEY) + 1:].strip('"').strip("'").strip()
+                    return bool(value), value
+    except FileNotFoundError:
+        pass
+    return False, ""
+
+
+def _write_env_password(value: str) -> None:
+    """Rewrite the DUNE_SERVER_LOGIN_PASSWORD line in .env."""
+    try:
+        with open(_ENV_PATH, encoding="utf-8") as f:
+            content = f.read()
+    except FileNotFoundError:
+        content = ""
+
+    pattern = rf'^{re.escape(_PASSWORD_KEY)}=.*$'
+    new_line = f'{_PASSWORD_KEY}={value}'
+    if re.search(pattern, content, re.MULTILINE):
+        content = re.sub(pattern, new_line, content, flags=re.MULTILINE)
+    else:
+        content = content.rstrip("\n") + f"\n{new_line}\n"
+
+    with open(_ENV_PATH, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+async def _restart_game_servers(request: Request) -> list[str]:
+    """Recreate survival and overmap containers via docker compose so they pick up the new .env."""
+    import subprocess
+    import shutil
+
+    compose_dir = "/workspace/compose"
+    overlay = os.getenv("DUNE_COMPOSE_OVERLAY", "basic")
+    overlay_file = str(Path(compose_dir) / f"docker-compose.{overlay}.yml")
+    base_file = str(Path(compose_dir) / "docker-compose.yml")
+
+    # If overlay file doesn't exist fall back to basic
+    if not Path(overlay_file).exists():
+        overlay_file = str(Path(compose_dir) / "docker-compose.basic.yml")
+
+    docker_bin = shutil.which("docker")
+    if docker_bin is None or not Path(base_file).exists():
+        logger.warning("docker binary or compose files not found; falling back to SDK restart")
+        return await _sdk_restart_game_servers(request)
+
+    cmd = [
+        docker_bin, "compose",
+        "-f", base_file,
+        "-f", overlay_file,
+        "--env-file", _ENV_PATH,
+        "up", "-d", "--force-recreate", "--no-deps",
+        "survival_1", "overmap",
+    ]
+
+    logger.info("Recreating game servers: %s", " ".join(cmd))
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=120)
+        output = stdout.decode(errors="replace").strip() if stdout else ""
+        if proc.returncode != 0:
+            logger.warning("docker compose up returned %s: %s", proc.returncode, output)
+            return []
+        logger.info("docker compose up output: %s", output)
+        return ["dune-awakening-survival_1-1", "dune-awakening-overmap-1"]
+    except asyncio.TimeoutError:
+        logger.error("docker compose up timed out")
+        return []
+    except Exception as exc:
+        logger.error("Failed to recreate game servers: %s", exc)
+        return []
+
+
+async def _sdk_restart_game_servers(request: Request) -> list[str]:
+    """Fallback: restart (not recreate) via SDK. Does not pick up .env changes."""
+    docker_service = request.app.state.docker_service
+    restarted: list[str] = []
+    try:
+        containers = await docker_service.list_containers()
+        for svc in containers:
+            if any(pat in svc.name.lower() for pat in _GAME_CONTAINERS):
+                try:
+                    await docker_service.restart_container(svc.name)
+                    restarted.append(svc.name)
+                except Exception as exc:
+                    logger.warning("Could not restart %s: %s", svc.name, exc)
+    except Exception as exc:
+        logger.warning("Could not list containers for restart: %s", exc)
+    return restarted
+
+
+async def _get_stored_password() -> str:
+    async with SessionLocal() as session:
+        row = await session.get(DashboardSetting, _STORED_PASSWORD_SETTING)
+        if row and isinstance(row.value, dict):
+            return row.value.get("password", "")
+        return ""
+
+
+async def _set_stored_password(password: str) -> None:
+    from datetime import datetime, timezone
+    async with SessionLocal() as session:
+        row = await session.get(DashboardSetting, _STORED_PASSWORD_SETTING)
+        if row:
+            row.value = {"password": password}
+            row.updated_at = datetime.now(timezone.utc)
+        else:
+            row = DashboardSetting(
+                key=_STORED_PASSWORD_SETTING,
+                value={"password": password},
+            )
+            session.add(row)
+        await session.commit()
+
+
+@router.get("/server/password")
+async def get_server_password() -> dict:
+    """Return whether a login password is currently active."""
+    enabled, _ = _read_env_password()
+    stored = await _get_stored_password()
+    return {"enabled": enabled, "hasPassword": bool(stored)}
+
+
+@router.put("/server/password")
+async def set_server_password(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Enable or disable the server login password.
+
+    Body: ``{"enabled": true|false, "password": "..."}``
+    Persists the password value in the dashboard DB so it can be re-enabled later.
+    Writes the .env file and restarts the game-server containers.
+    """
+    body = await request.json()
+    enabled: bool = bool(body.get("enabled", False))
+    new_password: str | None = body.get("password")
+
+    async with _env_lock:
+        _, current = _read_env_password()
+        stored = await _get_stored_password() or current
+
+        if new_password is not None:
+            stored = new_password
+
+        if stored:
+            await _set_stored_password(stored)
+
+        write_value = stored if enabled else ""
+        await asyncio.to_thread(_write_env_password, write_value)
+
+    restarted = await _restart_game_servers(request)
+
+    session.add(AuditLog(
+        action="server_password_toggle",
+        details={"enabled": enabled, "containersRestarted": restarted},
+        performed_by=request.headers.get("X-Admin-User", "dashboard"),
+    ))
+    await session.commit()
+
+    logger.info("Server password %s; restarted: %s", "enabled" if enabled else "disabled", restarted)
+    return {"enabled": enabled, "restarted": restarted, "status": "ok"}

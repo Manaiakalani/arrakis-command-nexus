@@ -451,6 +451,18 @@ export class ApiClient {
     return this.request<Record<string, Record<string, unknown>>>('/settings');
   }
 
+  // Server password toggle
+  getServerPassword() {
+    return this.request<{ enabled: boolean; hasPassword: boolean }>('/server/password');
+  }
+
+  setServerPassword(enabled: boolean, password?: string) {
+    return this.request<{ enabled: boolean; restarted: string[]; status: string }>('/server/password', {
+      method: 'PUT',
+      body: JSON.stringify({ enabled, ...(password !== undefined ? { password } : {}) }),
+    });
+  }
+
   getSettingsSection(section: string) {
     return this.request<Record<string, unknown>>(`/settings/${encodeURIComponent(section)}`);
   }
