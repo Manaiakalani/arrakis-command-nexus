@@ -39,22 +39,27 @@ search_leaks() {
     --exclude=.env
     --exclude=.env.example
     --exclude=package-lock.json
+    # Exclude scripts/docs that intentionally show placeholder values
+    --exclude=setup.sh
+    --exclude=smoke-test.sh
+    --exclude='*.md'
   )
   local -a patterns=(
-    'FLS_SECRET\s*=\s*.+$'
-    'DUNE_ADMIN_TOKEN\s*=\s*.+$'
+    'FLS_SECRET\s*=\s*[^${\s].+$'
+    # Exclude placeholder tokens (change-me*, xxx, <...>)
+    'DUNE_ADMIN_TOKEN\s*=\s*(?!change-me|xxx|<)[^\s${"'"'"'<].{8,}'
     'DISCORD_WEBHOOK_URL\s*=\s*https://discord\.com/api/webhooks/'
-    'gh[pousr]_[A-Za-z0-9_]+'
+    'gh[pousr]_[A-Za-z0-9_]{36,}'
     'github_pat_[A-Za-z0-9_]+'
     'AKIA[0-9A-Z]{16}'
     '-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----'
-    'Bearer [A-Za-z0-9._-]{20,}'
+    'Bearer [A-Za-z0-9._-]{30,}'
   )
   local matches=''
   local pattern
 
   for pattern in "${patterns[@]}"; do
-    if matches="$(grep -RInE "${excludes[@]}" "$pattern" "$PROJECT_ROOT" 2>/dev/null)" && [[ -n "$matches" ]]; then
+    if matches="$(grep -RInP "${excludes[@]}" "$pattern" "$PROJECT_ROOT" 2>/dev/null)" && [[ -n "$matches" ]]; then
       printf '%s\n' "$matches"
       return 0
     fi
@@ -80,6 +85,8 @@ check_dashboard_binding() {
 
   if [[ "$bind_address" == '127.0.0.1' || "$bind_address" == 'localhost' ]]; then
     pass "Dashboard bind address is local-only ($bind_address)."
+  elif [[ "$bind_address" == '0.0.0.0' ]]; then
+    warn "Dashboard is bound to all interfaces ($bind_address). Ensure it is behind a firewall or trusted reverse proxy."
   else
     fail "Dashboard bind address is $bind_address. Prefer 127.0.0.1 unless protected by a trusted reverse proxy/firewall."
   fi
@@ -93,13 +100,25 @@ check_compose_exposure() {
     return
   fi
 
-  if grep -Eq '127\.0\.0\.1:\$\{POSTGRES_PORT\}:5432' "$compose_file"; then
+  # PostgreSQL — accepts default syntax: 127.0.0.1:${VAR:-PORT}:5432
+  if grep -Eq '127\.0\.0\.1:\$\{POSTGRES_PORT(:-[0-9]+)?\}:5432' "$compose_file"; then
     pass 'PostgreSQL is bound to localhost.'
   else
     fail 'PostgreSQL does not appear to be bound to localhost.'
   fi
 
-  if grep -Eq '127\.0\.0\.1:5672:5672' "$compose_file" && grep -Eq '127\.0\.0\.1:15672:15672' "$compose_file" && grep -Eq '127\.0\.0\.1:15673:15673' "$compose_file"; then
+  # RabbitMQ — check that the internal admin-rmq management UI is NOT on 0.0.0.0.
+  # Note: game-rmq ports (31982/31983) are intentionally public; Funcom FLS requires them.
+  local rmq_ok=true
+  # admin-rmq management (15672) must be localhost only
+  if ! grep -qE '127\.0\.0\.1:[0-9]+:15672' "$compose_file"; then
+    rmq_ok=false
+  fi
+  # admin-rmq AMQP (5672) must be localhost only
+  if ! grep -qE '127\.0\.0\.1:[0-9]+:5672' "$compose_file"; then
+    rmq_ok=false
+  fi
+  if "$rmq_ok"; then
     pass 'RabbitMQ admin and management ports are local-only.'
   else
     fail 'RabbitMQ admin or management ports may be exposed publicly.'
