@@ -18,9 +18,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gzip \
     gnupg \
+    lib32gcc-s1 \
+    ca-certificates \
     && echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg \
     && apt-get update && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && dpkg --add-architecture i386 \
+    && apt-get update \
+    && echo steam steam/question select "I AGREE" | debconf-set-selections \
+    && echo steam steam/license note '' | debconf-set-selections \
+    && apt-get install -y --no-install-recommends steamcmd \
+    && ln -s /usr/games/steamcmd /usr/local/bin/steamcmd \
     && groupadd --system app \
     && useradd --system --gid app --create-home --home-dir /home/app --shell /usr/sbin/nologin app \
     && rm -rf /var/lib/apt/lists/*
