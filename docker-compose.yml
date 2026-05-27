@@ -247,10 +247,11 @@ services:
       PARTITION_REPAIR_WATCH: "true"
       # Poll every 3s so new server registrations are caught within ~14s crash window
       PARTITION_REPAIR_WATCH_INTERVAL: "3"
-      # Maps farm_state.map → exact partition_id the game binary expects.
+      # Maps game_port → exact partition_id the game binary expects.
+      # All game servers register with map='Survival_1' in farm_state, so we use
+      # game_port to identify which server slot each server_id belongs to.
       # Must match -PartitionIndex=N in each game server container command.
-      # The DB record is always stored with map='Survival_1' (game requirement).
-      PARTITION_SLOT_CONFIG: "Survival_1:1,Overmap:2,DeepDesert_1:3"
+      PARTITION_SLOT_CONFIG: "7777:1,7778:2"
     command:
       - /workspace/scripts/partition_repair.py
     volumes:
