@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
-"""Repair world_partition rows after server restarts.
+"""Repair world_partition rows after game server restarts.
 
-When Dune Awakening game servers (survival, overmap) restart, they receive
-new process correlation IDs (PCIDs/server_ids). They register in farm_state
-but do NOT automatically create matching world_partition rows. The overmap
-then enters a tight retry loop:
+Each time a Dune Awakening game server (survival_1, overmap) restarts it
+receives a new server_id (PCID).  It registers in farm_state but does NOT
+automatically own a world_partition row.  The game then calls the Postgres
+function load_world_partition() to find its partition; if none is found it
+crashes immediately.
 
-    LoadPartitionDefinition: Sql::load_world_partition(Survival_1, <PCID>, 0, 2)
-    got 0 rows, expected exactly 1.
+Patched load_world_partition() behaviour (applied once by this script):
+  Primary lookup : WHERE server_id = <sid> AND dimension_index = <dim>
+                   (map-agnostic -- works for both Survival_1 and Overmap)
+  Fallback lookup: WHERE server_id IS NULL/dead AND map = in_map_name
+                   (claims an unassigned slot)
 
-Key insight: the game binary ALWAYS queries world_partition with map='Survival_1',
-even for overmap/deepdesert servers. The partition_id it queries matches the
-container's -PartitionIndex=N startup argument.
+Port-to-map mapping (PARTITION_PORT_MAP env var, JSON):
+  {"7777": "Survival_1", "7778": "Overmap"}
+  This tells partition_repair which world_partition map label to use when
+  creating/updating a record for the server that listens on each game port.
 
-Slot configuration via environment variables:
-  PARTITION_SLOT_CONFIG = "farm_map:partition_id,..."
-  Example: "Survival_1:1,Overmap:2,DeepDesert_1:3"
+For each alive server (game_port → server_id):
+  1. Look for an existing world_partition record for that server_id.
+  2. If found and healthy: no action needed.
+  3. If not found: find an unassigned partition for the expected map type
+     (server_id IS NULL or dead) and UPDATE server_id onto it.
+  4. If no unassigned partition exists: INSERT a new one with the correct map.
 
-  - farm_map: the map name as it appears in farm_state (e.g. Overmap)
-  - partition_id: the EXACT partition_id the game binary expects
-    (must match -PartitionIndex=N in the container command)
-
-For each slot, this script:
-  1. Monitors farm_state for new server registrations
-  2. Ensures the world_partition record at the configured partition_id has
-     the current server_id (creating or updating as needed)
-  3. Removes stale world_partition rows for dead server_ids
-  4. Always stores records with map='Survival_1' (required by game binary)
-
-Run once after each restart, or as a sidecar/cron job (watch mode recommended).
+Dead server_id cleanup:
+  - world_partition rows whose server_id is not in any alive farm_state entry
+    AND is not NULL have their server_id set to NULL (freeing them for reuse).
+  - Only the Survival_1 and Overmap rows are managed; others are left alone.
 """
 import logging
 import os
@@ -36,6 +36,8 @@ import sys
 import time
 
 import psycopg2
+
+import json
 
 HOST = os.environ.get("DB_HOST", "postgres")
 PORT = int(os.environ.get("DB_PORT", "5432"))
@@ -47,26 +49,19 @@ MAX_WAIT = int(os.environ.get("PARTITION_REPAIR_MAX_WAIT", "120"))
 POLL_INTERVAL = int(os.environ.get("PARTITION_REPAIR_POLL_INTERVAL", "5"))
 DEFAULT_PARTITION_DEF = '{"box": {"max_x": 1, "max_y": 1, "min_x": 0, "min_y": 0}, "type": "box2d_array"}'
 
-# Slot configuration via environment variables (port-based, since all game servers
-# register with map='Survival_1' in farm_state regardless of their logical role).
-# PARTITION_SLOT_CONFIG = "game_port:partition_id,..."
-# Example: "7777:1,7778:2" means port 7777→partition_id=1, port 7778→partition_id=2
-# Must match -PartitionIndex=N in each game server container command.
-def _parse_slot_config() -> dict:
-    raw = os.environ.get("PARTITION_SLOT_CONFIG", "7777:1,7778:2")
-    slots = {}
-    for part in raw.split(","):
-        part = part.strip()
-        if ":" not in part:
-            continue
-        key, _, pid_str = part.partition(":")
-        try:
-            slots[int(key.strip())] = int(pid_str.strip())
-        except ValueError:
-            pass
-    return slots
+# Port-to-partition-map mapping.
+# PARTITION_PORT_MAP (JSON string): maps game_port → world_partition map name.
+# Example: '{"7777":"Survival_1","7778":"Overmap"}'
+# Defaults cover the standard basic deployment (survival + overmap).
+def _parse_port_map() -> dict:
+    raw = os.environ.get("PARTITION_PORT_MAP", '{"7777":"Survival_1","7778":"Overmap"}')
+    try:
+        return {int(k): v for k, v in json.loads(raw).items()}
+    except Exception:
+        return {7777: "Survival_1", 7778: "Overmap"}
 
-SLOT_CONFIG: dict = _parse_slot_config()  # game_port → target_partition_id
+
+PORT_MAP: dict = _parse_port_map()  # game_port → world_partition map name
 
 
 def get_connection():
@@ -137,208 +132,152 @@ def fix_gateway_function(log):
 
 
 def repair_partitions(log):
-    """Ensure every alive server in farm_state has a world_partition row.
+    """Ensure every alive server has a valid world_partition row.
 
-    Important: all game servers (survival, overmap, etc.) register with
-    map='Survival_1' in farm_state. The only distinguishing factor is game_port.
-    The game binary always queries world_partition with map='Survival_1' and the
-    exact partition_id matching its -PartitionIndex=N arg.
+    All game servers (survival_1, overmap, etc.) register in farm_state with
+    map='Survival_1'.  The only reliable distinguishing factor between them is
+    game_port.  PORT_MAP maps each game_port to the correct world_partition map
+    label (e.g. 7777 → 'Survival_1', 7778 → 'Overmap').
 
-    Strategy per slot (identified by game_port):
-      - Find the UNIQUE alive server for this port. If multiple are alive (stale
-        entries from crash-loops), pick the one NOT currently at the target
-        partition_id, or the last one if all are stale.
-      - Ensure the world_partition record at target_partition_id has the current
-        server_id (inserting or updating as needed).
-      - Null out dead server_ids in world_partition for slot anchor records.
-      - Delete non-slot stale partition records.
+    The patched load_world_partition() SQL function now does a map-agnostic
+    lookup: WHERE server_id = <sid> AND dimension_index = <dim>.  So we only
+    need to ensure each alive server_id has exactly one world_partition row with
+    dimension_index=0 — the map label no longer needs to be 'Survival_1'.
+
+    Algorithm:
+      1. For each configured game_port, pick the CURRENT alive server_id.
+      2. Check whether that server_id already has a world_partition row.
+      3. If yes and healthy → nothing to do.
+      4. If no → find an existing partition for that map label with a dead or
+         NULL server_id, and UPDATE server_id onto it.
+         If no such partition exists, INSERT a new one.
+      5. After processing all ports, null out dead server_ids in any remaining
+         rows whose server_id is no longer alive (keeps slots available for
+         future use without deleting records).
     """
     with get_connection() as conn:
         conn.autocommit = False
         with conn.cursor() as cur:
-            # Get all alive servers from farm_state
-            cur.execute(
-                "SELECT server_id, map, game_port FROM farm_state WHERE alive = true"
-            )
+            # Collect alive server_ids from farm_state (includes stale crash entries)
+            cur.execute("SELECT server_id, game_port FROM farm_state WHERE alive = true")
             rows = cur.fetchall()
             alive_ids = {r[0] for r in rows}
-            log.info("Alive server count: %d", len(rows))
 
-            # Group alive server_ids by game_port
+            # Build: game_port → list of alive server_ids (last = most recent)
             port_to_sids: dict = {}
-            for server_id, _, game_port in rows:
+            for server_id, game_port in rows:
                 port_to_sids.setdefault(game_port, []).append(server_id)
 
-            # Get current world_partition state
-            cur.execute("SELECT partition_id, server_id, map FROM world_partition")
-            partitions = cur.fetchall()
+            # Collect active server_ids (those with live DB connections)
+            cur.execute("SELECT server_id FROM active_server_ids")
+            active_ids = {r[0] for r in cur.fetchall()}
             log.info(
-                "Existing partitions: %s",
-                [(p[0], (p[1] or "")[:8] + "...", p[2]) for p in partitions],
+                "farm_state alive=%d  active_db_connections=%d  configured_ports=%s",
+                len(alive_ids), len(active_ids), list(PORT_MAP.keys()),
             )
 
-            # Index: partition_id → (server_id, map)
-            pid_to_row = {p[0]: (p[1], p[2]) for p in partitions}
+            # Snapshot current world_partition state
+            cur.execute(
+                "SELECT partition_id, server_id, map FROM world_partition ORDER BY partition_id"
+            )
+            partitions = cur.fetchall()
+            # sid → partition_id (for alive-server lookup)
+            sid_to_pid = {p[1]: p[0] for p in partitions if p[1]}
+            # map → list of (partition_id, server_id) — for finding unassigned slots
+            map_to_parts: dict = {}
+            for pid, sid, mname in partitions:
+                map_to_parts.setdefault(mname, []).append((pid, sid))
 
-            created = 0
-            updated = 0
-            deleted = 0
+            created = updated = 0
 
-            # --- Process each configured port slot ---
-            target_pids = set(SLOT_CONFIG.values())
-
-            for game_port, target_pid in SLOT_CONFIG.items():
+            for game_port, expected_map in PORT_MAP.items():
                 sids = port_to_sids.get(game_port, [])
                 if not sids:
-                    log.info("No alive servers on port %d (slot partition_id=%d)", game_port, target_pid)
+                    log.debug("No alive server on port %d", game_port)
                     continue
 
-                current_row = pid_to_row.get(target_pid)
-                current_sid_at_slot = current_row[0] if current_row else None
+                # Prefer an active (DB-connected) server_id; otherwise pick last
+                # (most recently added to farm_state in the crash-loop).
+                chosen = next((s for s in reversed(sids) if s in active_ids), sids[-1])
 
-                # Pick the "best" server_id for this slot:
-                # Prefer the one already at the slot (no update needed),
-                # otherwise take the last in the list (most recently added to
-                # farm_state — smaller IDs are older registrations).
-                if current_sid_at_slot and current_sid_at_slot in sids:
-                    chosen_sid = current_sid_at_slot
-                else:
-                    # All entries may be stale - pick the last one (arbitrary
-                    # but deterministic; partition-repair will correct on next cycle)
-                    chosen_sid = sids[-1]
-
-                log.info(
-                    "Port %d → partition_id=%d, chosen server_id=%s (%d alive on this port)",
-                    game_port, target_pid, chosen_sid[:8], len(sids),
-                )
-
-                if current_row is None:
-                    _insert_partition_at(cur, target_pid, chosen_sid, log)
-                    pid_to_row[target_pid] = (chosen_sid, "Survival_1")
-                    created += 1
-
-                elif current_row[0] == chosen_sid:
-                    # server_id is correct; ensure map is right
-                    if current_row[1] != "Survival_1":
-                        cur.execute(
-                            "UPDATE world_partition SET map = 'Survival_1' WHERE partition_id = %s",
-                            (target_pid,),
-                        )
-                        log.info(
-                            "Fixed map at partition_id=%d server_id=%s: %s → Survival_1",
-                            target_pid, chosen_sid[:8], current_row[1],
-                        )
-                        pid_to_row[target_pid] = (chosen_sid, "Survival_1")
-                        updated += 1
-                    else:
-                        log.info(
-                            "Partition OK: partition_id=%d server_id=%s map=Survival_1",
-                            target_pid, chosen_sid[:8],
-                        )
-
-                else:
-                    old_sid = current_row[0] or "<none>"
-                    cur.execute(
-                        "UPDATE world_partition SET server_id = %s, map = 'Survival_1' "
-                        "WHERE partition_id = %s",
-                        (chosen_sid, target_pid),
-                    )
+                if chosen in sid_to_pid:
                     log.info(
-                        "Updated partition_id=%d: server_id %s → %s (map=Survival_1)",
-                        target_pid, old_sid[:8], chosen_sid[:8],
+                        "Port %d OK: server_id=%.8s already has partition_id=%d (map=%s)",
+                        game_port, chosen, sid_to_pid[chosen], expected_map,
                     )
-                    pid_to_row[target_pid] = (chosen_sid, "Survival_1")
-                    updated += 1
+                    continue
 
-            # --- Clean up stale non-slot partitions and dead server_ids ---
-            cur.execute("SELECT partition_id, server_id, map FROM world_partition")
-            after = cur.fetchall()
-            for pid, sid, mname in after:
-                if pid in target_pids:
-                    # Slot anchor: null dead server_ids but keep the record
-                    if sid and sid not in alive_ids:
+                # This server_id has no partition → assign one.
+                assigned = False
+                for pid, sid in map_to_parts.get(expected_map, []):
+                    # Prefer a slot whose server_id is dead or NULL
+                    if sid is None or sid not in active_ids:
+                        old = sid or "<none>"
                         cur.execute(
-                            "UPDATE world_partition SET server_id = NULL WHERE partition_id = %s",
-                            (pid,),
+                            "UPDATE world_partition SET server_id = %s "
+                            "WHERE partition_id = %s",
+                            (chosen, pid),
                         )
                         log.info(
-                            "Nulled dead server_id at slot partition_id=%d (was %s)",
-                            pid, sid[:8],
+                            "Port %d: reassigned partition_id=%d map=%s "
+                            "server_id %.8s → %.8s",
+                            game_port, pid, expected_map, old, chosen,
                         )
+                        sid_to_pid[chosen] = pid
                         updated += 1
-                elif sid and sid not in alive_ids:
+                        assigned = True
+                        break
+
+                if not assigned:
+                    # No existing slot available; insert a new one.
+                    try:
+                        cur.execute("SAVEPOINT sp_ins")
+                        cur.execute(
+                            "INSERT INTO world_partition "
+                            "(server_id, map, partition_definition, dimension_index) "
+                            "VALUES (%s, %s, %s::jsonb, 0)",
+                            (chosen, expected_map, DEFAULT_PARTITION_DEF),
+                        )
+                        cur.execute("RELEASE SAVEPOINT sp_ins")
+                        log.info(
+                            "Port %d: inserted new partition map=%s server_id=%.8s",
+                            game_port, expected_map, chosen,
+                        )
+                        created += 1
+                    except Exception as exc:
+                        cur.execute("ROLLBACK TO SAVEPOINT sp_ins")
+                        log.warning(
+                            "Port %d: failed to insert partition map=%s: %s",
+                            game_port, expected_map, exc,
+                        )
+
+            # Null out dead server_ids so those slots are reclaimable next cycle.
+            cur.execute("SELECT partition_id, server_id FROM world_partition WHERE server_id IS NOT NULL")
+            for pid, sid in cur.fetchall():
+                if sid not in active_ids and sid not in alive_ids:
                     cur.execute(
-                        "DELETE FROM world_partition WHERE partition_id = %s",
+                        "UPDATE world_partition SET server_id = NULL WHERE partition_id = %s",
                         (pid,),
                     )
-                    log.info(
-                        "Deleted stale non-slot partition partition_id=%d server_id=%s map=%s",
-                        pid, sid[:8], mname,
-                    )
-                    deleted += 1
+                    log.info("Nulled dead server_id=%.8s at partition_id=%d", sid, pid)
+                    updated += 1
 
             conn.commit()
-
-            log.info(
-                "Partition repair complete: %d created, %d updated, %d deleted",
-                created, updated, deleted,
-            )
 
             cur.execute(
                 "SELECT partition_id, server_id, map FROM world_partition ORDER BY partition_id"
             )
             for row in cur.fetchall():
                 log.info(
-                    "  partition_id=%d server=%s map=%s",
-                    row[0], (row[1] or "<none>")[:16], row[2],
+                    "  partition_id=%d  server=%-20s  map=%s",
+                    row[0], (row[1] or "<unassigned>")[:20], row[2],
                 )
 
+            log.info(
+                "Partition repair done: %d created, %d updated", created, updated
+            )
+
     return created + updated
-
-
-def _insert_partition_at(cur, partition_id: int, server_id: str, log) -> None:
-    """Insert a world_partition record with an EXPLICIT partition_id."""
-    try:
-        cur.execute("SAVEPOINT sp_insert")
-        cur.execute(
-            "INSERT INTO world_partition "
-            "(partition_id, server_id, map, partition_definition, dimension_index) "
-            "VALUES (%s, %s, 'Survival_1', %s::jsonb, 0)",
-            (partition_id, server_id, DEFAULT_PARTITION_DEF),
-        )
-        cur.execute("RELEASE SAVEPOINT sp_insert")
-        log.info(
-            "Inserted partition_id=%d server_id=%s map=Survival_1",
-            partition_id, server_id[:8],
-        )
-    except Exception as exc:
-        cur.execute("ROLLBACK TO SAVEPOINT sp_insert")
-        log.warning(
-            "Failed to insert partition_id=%d server_id=%s: %s",
-            partition_id, server_id[:8], exc,
-        )
-
-
-def _insert_partition_fallback(cur, server_id: str, farm_map: str, log) -> None:
-    """Insert a world_partition row without an explicit partition_id (auto-increment)."""
-    try:
-        cur.execute("SAVEPOINT sp_fallback")
-        cur.execute(
-            "INSERT INTO world_partition (server_id, map, partition_definition, dimension_index) "
-            "VALUES (%s, %s, %s::jsonb, 0)",
-            (server_id, farm_map, DEFAULT_PARTITION_DEF),
-        )
-        cur.execute("RELEASE SAVEPOINT sp_fallback")
-        log.info(
-            "Inserted fallback partition for server_id=%s map=%s",
-            server_id[:8], farm_map,
-        )
-    except Exception as exc:
-        cur.execute("ROLLBACK TO SAVEPOINT sp_fallback")
-        log.warning(
-            "Fallback insert failed for server_id=%s map=%s: %s",
-            server_id[:8], farm_map, exc,
-        )
 
 
 def main():
@@ -356,7 +295,7 @@ def main():
     watch_mode = os.environ.get("PARTITION_REPAIR_WATCH", "").lower() in ("1", "true", "yes")
     watch_interval = int(os.environ.get("PARTITION_REPAIR_WATCH_INTERVAL", "30"))
 
-    log.info("Starting partition repair target=%s:%d/%s", HOST, PORT, DATABASE)
+    log.info("Starting partition repair target=%s:%d/%s port_map=%s", HOST, PORT, DATABASE, PORT_MAP)
     wait_for_servers(log, min_servers=1)
     fix_gateway_function(log)
     changes = repair_partitions(log)

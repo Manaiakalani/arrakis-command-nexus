@@ -251,7 +251,7 @@ services:
       # All game servers register with map='Survival_1' in farm_state, so we use
       # game_port to identify which server slot each server_id belongs to.
       # Must match -PartitionIndex=N in each game server container command.
-      PARTITION_SLOT_CONFIG: "7777:1,7778:2"
+      PARTITION_PORT_MAP: '{"7777":"Survival_1","7778":"Overmap"}'
     command:
       - /workspace/scripts/partition_repair.py
     volumes:
