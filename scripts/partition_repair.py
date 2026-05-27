@@ -9,12 +9,26 @@ then enters a tight retry loop:
     LoadPartitionDefinition: Sql::load_world_partition(Survival_1, <PCID>, 0, 2)
     got 0 rows, expected exactly 1.
 
-This script:
-  1. Waits for servers to appear in farm_state
-  2. Ensures every server_id in farm_state has a world_partition row
-  3. Removes stale world_partition rows for server_ids no longer in farm_state
+Key insight: the game binary ALWAYS queries world_partition with map='Survival_1',
+even for overmap/deepdesert servers. The partition_id it queries matches the
+container's -PartitionIndex=N startup argument.
 
-Run once after each restart, or as a sidecar/cron job.
+Slot configuration via environment variables:
+  PARTITION_SLOT_CONFIG = "farm_map:partition_id,..."
+  Example: "Survival_1:1,Overmap:2,DeepDesert_1:3"
+
+  - farm_map: the map name as it appears in farm_state (e.g. Overmap)
+  - partition_id: the EXACT partition_id the game binary expects
+    (must match -PartitionIndex=N in the container command)
+
+For each slot, this script:
+  1. Monitors farm_state for new server registrations
+  2. Ensures the world_partition record at the configured partition_id has
+     the current server_id (creating or updating as needed)
+  3. Removes stale world_partition rows for dead server_ids
+  4. Always stores records with map='Survival_1' (required by game binary)
+
+Run once after each restart, or as a sidecar/cron job (watch mode recommended).
 """
 import logging
 import os
@@ -32,6 +46,26 @@ SCHEMA = "dune"
 MAX_WAIT = int(os.environ.get("PARTITION_REPAIR_MAX_WAIT", "120"))
 POLL_INTERVAL = int(os.environ.get("PARTITION_REPAIR_POLL_INTERVAL", "5"))
 DEFAULT_PARTITION_DEF = '{"box": {"max_x": 1, "max_y": 1, "min_x": 0, "min_y": 0}, "type": "box2d_array"}'
+
+# Map farm_state.map → required partition_id for that server slot.
+# The game binary always queries world_partition with map='Survival_1', so we
+# use that as the DB map for every slot.
+# Override via env: PARTITION_SLOT_CONFIG="Survival_1:1,Overmap:2,DeepDesert_1:3"
+def _parse_slot_config() -> dict:
+    raw = os.environ.get("PARTITION_SLOT_CONFIG", "Survival_1:1,Overmap:2")
+    slots = {}
+    for part in raw.split(","):
+        part = part.strip()
+        if ":" not in part:
+            continue
+        farm_map, _, pid_str = part.partition(":")
+        try:
+            slots[farm_map.strip()] = int(pid_str.strip())
+        except ValueError:
+            pass
+    return slots
+
+SLOT_CONFIG: dict = _parse_slot_config()
 
 
 def get_connection():
@@ -104,8 +138,12 @@ def fix_gateway_function(log):
 def repair_partitions(log):
     """Ensure every alive server in farm_state has a world_partition row.
 
-    Strategy: delete stale partitions first (freeing labels for the DB trigger),
-    then claim or create partitions for alive servers.
+    Strategy:
+      - For each alive server, look up its target partition_id from SLOT_CONFIG
+      - If a world_partition record exists at that partition_id, update its server_id
+      - If not, INSERT with explicit partition_id and map='Survival_1'
+      - Delete stale world_partition rows (for dead server_ids) that don't belong
+        to any configured slot's current target partition_id
     """
     with get_connection() as conn:
         conn.autocommit = False
@@ -118,165 +156,179 @@ def repair_partitions(log):
             alive_ids = {s[0] for s in servers}
             log.info("Alive servers: %s", [(s[0][:8] + "...", s[1]) for s in servers])
 
-            # Get existing world_partition entries
-            cur.execute("SELECT partition_id, server_id, map, dimension_index FROM world_partition")
-            existing = cur.fetchall()
-            existing_server_ids = {row[1] for row in existing if row[1]}
+            # Get current world_partition state
+            cur.execute("SELECT partition_id, server_id, map FROM world_partition")
+            partitions = cur.fetchall()
             log.info(
                 "Existing partitions: %s",
-                [(p[0], (p[1] or "")[:8] + "...", p[2]) for p in existing],
+                [(p[0], (p[1] or "")[:8] + "...", p[2]) for p in partitions],
             )
 
-            # --- Phase 1: Delete stale partitions FIRST ---
-            # Stale = server_id set but not in alive farm_state.
-            # We DELETE (not NULL) so the label unique constraint is freed,
-            # preventing crash loops when new servers try to INSERT.
-            stale = [
-                row for row in existing
-                if row[1] and row[1] not in alive_ids
-            ]
-            deleted = 0
-            for partition_id, server_id, map_name, _ in stale:
-                cur.execute(
-                    "DELETE FROM world_partition WHERE partition_id = %s",
-                    (partition_id,),
-                )
-                log.info(
-                    "Deleted stale partition partition_id=%d server_id=%s map=%s to free label",
-                    partition_id, server_id[:8], map_name,
-                )
-                deleted += 1
+            # Index: partition_id → (server_id, map)
+            pid_to_row = {p[0]: (p[1], p[2]) for p in partitions}
+            # Index: server_id → partition_id
+            sid_to_pid = {p[1]: p[0] for p in partitions if p[1]}
 
-            # Also delete orphan partitions (NULL/empty server_id) that block
-            # label assignment. If alive servers already have their own partitions,
-            # orphans for the same map are stale leftovers whose labels block new inserts.
-            cur.execute("SELECT partition_id, server_id, map, dimension_index FROM world_partition")
-            post_delete = cur.fetchall()
-            alive_maps = {s[1] for s in servers}
-            alive_with_partition = set()
-            orphans_to_delete = []
-            for row in post_delete:
-                pid, sid, mname, _ = row
-                if sid and sid in alive_ids:
-                    alive_with_partition.add(mname)
-
-            for row in post_delete:
-                pid, sid, mname, _ = row
-                if (not sid or sid == '') and mname in alive_with_partition:
-                    orphans_to_delete.append(row)
-
-            for partition_id, server_id, map_name, _ in orphans_to_delete:
-                cur.execute(
-                    "DELETE FROM world_partition WHERE partition_id = %s",
-                    (partition_id,),
-                )
-                log.info(
-                    "Deleted orphan partition partition_id=%d server_id=<none> map=%s because an alive server already has a partition",
-                    partition_id, map_name,
-                )
-                deleted += 1
-
-            conn.commit()
-
-            # --- Phase 2: Refresh existing state after deletions ---
-            cur.execute("SELECT partition_id, server_id, map, dimension_index FROM world_partition")
-            existing = cur.fetchall()
-            existing_server_ids = {row[1] for row in existing if row[1]}
-            # Build map→partition lookup: for each map+dim, which partition exists
-            map_dim_partitions = {}
-            for pid, sid, mname, dim in existing:
-                key = (mname, dim)
-                if key not in map_dim_partitions:
-                    map_dim_partitions[key] = []
-                map_dim_partitions[key].append((pid, sid))
-
-            # --- Phase 3: Claim or create partitions for alive servers ---
             created = 0
             updated = 0
+            deleted = 0
 
-            for server_id, map_name, igw_addr, igw_port in servers:
-                if server_id in existing_server_ids:
-                    log.info(
-                        "Partition already exists for server_id=%s map=%s",
-                        server_id[:8], map_name,
-                    )
+            # --- Process each alive server ---
+            for server_id, farm_map, _, _ in servers:
+                target_pid = SLOT_CONFIG.get(farm_map)
+
+                if target_pid is None:
+                    # No slot config for this map type — fall back to old-style insert
+                    if server_id not in sid_to_pid:
+                        _insert_partition_fallback(cur, server_id, farm_map, log)
+                        created += 1
+                        sid_to_pid[server_id] = None  # track as handled
+                    else:
+                        log.info(
+                            "Partition exists (no slot config) for server_id=%s map=%s",
+                            server_id[:8], farm_map,
+                        )
                     continue
 
-                # The label trigger is deterministic per (map, dimension_index).
-                # Only one partition per map+dim can exist due to the unique label.
-                # Strategy: claim an existing partition instead of inserting.
-                key = (map_name, 0)
-                existing_for_map = map_dim_partitions.get(key, [])
+                current_row = pid_to_row.get(target_pid)
 
-                # Find a claimable partition (NULL server_id, or stale server_id)
-                claimed = False
-                for i, (pid, sid) in enumerate(existing_for_map):
-                    if not sid or sid == '' or sid not in alive_ids:
+                if current_row is None:
+                    # No record at the target partition_id — INSERT it
+                    _insert_partition_at(cur, target_pid, server_id, log)
+                    pid_to_row[target_pid] = (server_id, "Survival_1")
+                    sid_to_pid[server_id] = target_pid
+                    created += 1
+
+                elif current_row[0] == server_id:
+                    # Correct record already in place — check map
+                    if current_row[1] != "Survival_1":
                         cur.execute(
-                            "UPDATE world_partition SET server_id = %s WHERE partition_id = %s",
-                            (server_id, pid),
+                            "UPDATE world_partition SET map = 'Survival_1' WHERE partition_id = %s",
+                            (target_pid,),
                         )
                         log.info(
-                            "Claimed partition partition_id=%d server_id=%s map=%s previous_server_id=%s",
-                            pid, server_id[:8], map_name, (sid or "<none>")[:8],
+                            "Fixed map name at partition_id=%d server_id=%s: %s → Survival_1",
+                            target_pid, server_id[:8], current_row[1],
                         )
-                        # Update local state so subsequent iterations see this as taken
-                        existing_for_map[i] = (pid, server_id)
-                        existing_server_ids.add(server_id)
+                        pid_to_row[target_pid] = (server_id, "Survival_1")
                         updated += 1
-                        claimed = True
-                        break
-
-                if not claimed and not existing_for_map:
-                    # No partition exists at all for this map -- safe to insert
-                    try:
-                        cur.execute("SAVEPOINT sp_insert")
-                        cur.execute(
-                            "INSERT INTO world_partition (server_id, map, partition_definition, dimension_index) "
-                            "VALUES (%s, %s, %s::jsonb, 0)",
-                            (server_id, map_name, DEFAULT_PARTITION_DEF),
-                        )
-                        cur.execute("RELEASE SAVEPOINT sp_insert")
+                    else:
                         log.info(
-                            "Created partition for server_id=%s map=%s partition_id=<new>",
-                            server_id[:8], map_name,
+                            "Partition OK: partition_id=%d server_id=%s map=Survival_1",
+                            target_pid, server_id[:8],
                         )
-                        created += 1
-                    except Exception as exc:
-                        cur.execute("ROLLBACK TO SAVEPOINT sp_insert")
-                        log.warning(
-                            "Failed to create partition for server_id=%s map=%s partition_id=<new>: %s",
-                            server_id[:8], map_name, exc,
-                        )
-                elif not claimed:
-                    # Partition exists but owned by another alive server.
-                    # Do NOT reassign -- the owning server is actively using it.
-                    # Ghost server_ids from Docker restarts will eventually expire
-                    # from farm_state. The pre-start script handles legitimate
-                    # restarts by NULLing the partition's server_id first.
-                    log.info(
-                        "Partition for map=%s is owned by an alive server, skipping ghost server_id=%s",
-                        map_name, server_id[:8],
+
+                else:
+                    # Record at target_pid has a stale server_id — update it
+                    old_sid = current_row[0] or "<none>"
+                    cur.execute(
+                        "UPDATE world_partition SET server_id = %s, map = 'Survival_1' "
+                        "WHERE partition_id = %s",
+                        (server_id, target_pid),
                     )
+                    log.info(
+                        "Updated partition_id=%d: server_id %s → %s (map=Survival_1)",
+                        target_pid, old_sid[:8], server_id[:8],
+                    )
+                    pid_to_row[target_pid] = (server_id, "Survival_1")
+                    sid_to_pid[server_id] = target_pid
+                    updated += 1
+
+            # --- Delete stale partitions ---
+            # Keep partitions only if:
+            #   (a) their server_id is in alive_ids, OR
+            #   (b) their partition_id is a target slot (even if server_id is NULL/dead —
+            #       partition-repair will reclaim it on the next alive registration)
+            target_pids = set(SLOT_CONFIG.values())
+            cur.execute("SELECT partition_id, server_id, map FROM world_partition")
+            after = cur.fetchall()
+            for pid, sid, mname in after:
+                if pid in target_pids:
+                    # Never delete slot anchors; just let the server_id be NULL
+                    if sid and sid not in alive_ids:
+                        cur.execute(
+                            "UPDATE world_partition SET server_id = NULL WHERE partition_id = %s",
+                            (pid,),
+                        )
+                        log.info(
+                            "Nulled dead server_id at slot partition_id=%d (was %s)",
+                            pid, sid[:8],
+                        )
+                        updated += 1
+                elif sid and sid not in alive_ids:
+                    cur.execute(
+                        "DELETE FROM world_partition WHERE partition_id = %s",
+                        (pid,),
+                    )
+                    log.info(
+                        "Deleted stale non-slot partition partition_id=%d server_id=%s map=%s",
+                        pid, sid[:8], mname,
+                    )
+                    deleted += 1
+
+            conn.commit()
 
             log.info(
-                "Partition repair complete: %d created, %d claimed, %d stale deleted",
+                "Partition repair complete: %d created, %d updated, %d deleted",
                 created, updated, deleted,
             )
-            conn.commit()
 
             # Show final state
             cur.execute(
-                "SELECT partition_id, server_id, map, dimension_index FROM world_partition ORDER BY partition_id"
+                "SELECT partition_id, server_id, map FROM world_partition ORDER BY partition_id"
             )
-            final = cur.fetchall()
-            for row in final:
+            for row in cur.fetchall():
                 log.info(
-                    "  partition_id=%d server=%s map=%s dim=%d",
-                    row[0], (row[1] or "<none>")[:16], row[2], row[3],
+                    "  partition_id=%d server=%s map=%s",
+                    row[0], (row[1] or "<none>")[:16], row[2],
                 )
 
     return created + updated
+
+
+def _insert_partition_at(cur, partition_id: int, server_id: str, log) -> None:
+    """Insert a world_partition record with an EXPLICIT partition_id."""
+    try:
+        cur.execute("SAVEPOINT sp_insert")
+        cur.execute(
+            "INSERT INTO world_partition "
+            "(partition_id, server_id, map, partition_definition, dimension_index) "
+            "VALUES (%s, %s, 'Survival_1', %s::jsonb, 0)",
+            (partition_id, server_id, DEFAULT_PARTITION_DEF),
+        )
+        cur.execute("RELEASE SAVEPOINT sp_insert")
+        log.info(
+            "Inserted partition_id=%d server_id=%s map=Survival_1",
+            partition_id, server_id[:8],
+        )
+    except Exception as exc:
+        cur.execute("ROLLBACK TO SAVEPOINT sp_insert")
+        log.warning(
+            "Failed to insert partition_id=%d server_id=%s: %s",
+            partition_id, server_id[:8], exc,
+        )
+
+
+def _insert_partition_fallback(cur, server_id: str, farm_map: str, log) -> None:
+    """Insert a world_partition row without an explicit partition_id (auto-increment)."""
+    try:
+        cur.execute("SAVEPOINT sp_fallback")
+        cur.execute(
+            "INSERT INTO world_partition (server_id, map, partition_definition, dimension_index) "
+            "VALUES (%s, %s, %s::jsonb, 0)",
+            (server_id, farm_map, DEFAULT_PARTITION_DEF),
+        )
+        cur.execute("RELEASE SAVEPOINT sp_fallback")
+        log.info(
+            "Inserted fallback partition for server_id=%s map=%s",
+            server_id[:8], farm_map,
+        )
+    except Exception as exc:
+        cur.execute("ROLLBACK TO SAVEPOINT sp_fallback")
+        log.warning(
+            "Fallback insert failed for server_id=%s map=%s: %s",
+            server_id[:8], farm_map, exc,
+        )
 
 
 def main():

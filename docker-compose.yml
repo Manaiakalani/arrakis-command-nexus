@@ -245,7 +245,12 @@ services:
       DB_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
       PARTITION_REPAIR_MAX_WAIT: "120"
       PARTITION_REPAIR_WATCH: "true"
-      PARTITION_REPAIR_WATCH_INTERVAL: "10"
+      # Poll every 3s so new server registrations are caught within ~14s crash window
+      PARTITION_REPAIR_WATCH_INTERVAL: "3"
+      # Maps farm_state.map → exact partition_id the game binary expects.
+      # Must match -PartitionIndex=N in each game server container command.
+      # The DB record is always stored with map='Survival_1' (game requirement).
+      PARTITION_SLOT_CONFIG: "Survival_1:1,Overmap:2,DeepDesert_1:3"
     command:
       - /workspace/scripts/partition_repair.py
     volumes:
