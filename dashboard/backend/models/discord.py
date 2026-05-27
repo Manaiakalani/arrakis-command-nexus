@@ -12,6 +12,7 @@ class DiscordWebhookCreate(BaseModel):
     notify_crash: bool = True
     notify_player_join: bool = False
     notify_player_leave: bool = False
+    notify_update_available: bool = True
 
 
 class DiscordWebhookUpdate(BaseModel):
@@ -20,6 +21,7 @@ class DiscordWebhookUpdate(BaseModel):
     notify_crash: bool | None = None
     notify_player_join: bool | None = None
     notify_player_leave: bool | None = None
+    notify_update_available: bool | None = None
 
 
 class DiscordWebhookEntry(BaseModel):
@@ -32,6 +34,7 @@ class DiscordWebhookEntry(BaseModel):
     notify_crash: bool
     notify_player_join: bool
     notify_player_leave: bool
+    notify_update_available: bool = True
     created_at: datetime
 
 

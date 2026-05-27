@@ -105,9 +105,10 @@ class UpdateScheduler:
                 f"💾 Always create a backup before updating."
             )
 
-            await self.discord_service.send_notification(
+            await self.discord_service.enqueue(
+                event_type="update_available",
                 message=message,
-                notification_type="update_available",
+                title="🔄 Server Update Available",
             )
 
             logger.info(f"Sent update notification for build {latest_build}")
