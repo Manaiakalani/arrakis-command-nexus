@@ -55,11 +55,12 @@ class PostgresService:
                 eps.server_id,
                 eps.last_login_time AS session_start,
                 ea.platform_name,
-                a.map AS map_name,
+                COALESCE(a.map, fs.map) AS map_name,
                 a.transform
             FROM dune.encrypted_player_state eps
             JOIN dune.encrypted_accounts ea ON ea.id = eps.account_id
             LEFT JOIN dune.actors a ON a.id = eps.player_pawn_id
+            LEFT JOIN dune.farm_state fs ON fs.server_id = eps.server_id
             WHERE eps.online_status::text = 'Online'
             ORDER BY eps.last_login_time DESC
         """
