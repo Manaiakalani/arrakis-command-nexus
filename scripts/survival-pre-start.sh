@@ -13,7 +13,9 @@ export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 if [ "$MAP_NAME" = "Survival_1" ]; then
   USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/UserSettings"
 else
-  USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/${MAP_NAME}/UserSettings"
+  # UE5 creates Saved/<map>/ subdirs using lowercase map name
+  MAP_DIR=$(echo "$MAP_NAME" | tr '[:upper:]' '[:lower:]')
+  USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/${MAP_DIR}/UserSettings"
 fi
 # Per-partition display name overrides DUNE_SERVER_DISPLAY_NAME and WORLD_NAME
 DISPLAY_NAME="${PARTITION_DISPLAY_NAME:-${DUNE_SERVER_DISPLAY_NAME:-${WORLD_NAME:-}}}"
