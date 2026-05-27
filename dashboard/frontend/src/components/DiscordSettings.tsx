@@ -7,6 +7,15 @@ import type { DiscordWebhook } from '@/lib/types';
 
 const availableEvents = ['server-start', 'server-stop', 'server-crash', 'player-join', 'player-leave', 'update-available'];
 
+const eventLabels: Record<string, string> = {
+  'server-start': 'Server Start',
+  'server-stop': 'Server Stop',
+  'server-crash': 'Server Crash',
+  'player-join': 'Player Join',
+  'player-leave': 'Player Leave',
+  'update-available': 'Update Available',
+};
+
 interface DiscordSettingsProps {
   webhooks: DiscordWebhook[];
   onAdd: (data: Omit<DiscordWebhook, 'id'>) => Promise<void> | void;
@@ -89,7 +98,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
                   const enabled = webhook.events.includes(eventName);
                   return (
                     <label key={eventName} className="flex items-center justify-between rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
-                      <span>{eventName}</span>
+                      <span>{eventLabels[eventName] ?? eventName}</span>
                       <input
                         type="checkbox"
                         checked={enabled}

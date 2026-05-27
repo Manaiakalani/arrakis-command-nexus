@@ -22,6 +22,7 @@ _EVENT_FIELDS = {
     "server-crash": "notify_crash",
     "player-join": "notify_player_join",
     "player-leave": "notify_player_leave",
+    "update-available": "notify_update_available",
 }
 
 
