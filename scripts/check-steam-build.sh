@@ -13,7 +13,9 @@ fi
 
 # Find steamcmd - check common locations
 STEAMCMD=""
-if command -v steamcmd &>/dev/null && steamcmd +quit &>/dev/null; then
+if [[ -f "/home/app/steamcmd/steamcmd.sh" ]]; then
+  STEAMCMD="/home/app/steamcmd/steamcmd.sh"
+elif command -v steamcmd &>/dev/null && steamcmd +quit &>/dev/null; then
   STEAMCMD="steamcmd"
 elif [[ -f "$HOME/steamcmd/steamcmd.sh" ]]; then
   STEAMCMD="$HOME/steamcmd/steamcmd.sh"
