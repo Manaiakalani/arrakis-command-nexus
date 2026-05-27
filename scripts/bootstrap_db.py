@@ -121,9 +121,16 @@ def main() -> int:
         create_database()
 
     if schema_initialized():
-        log.info("Schema %s already exists in %s — running migrations", SCHEMA, DATABASE)
-    else:
-        log.info("Schema %s not found in %s — initialising fresh", SCHEMA, DATABASE)
+        log.info("Schema %s already exists in %s", SCHEMA, DATABASE)
+        with psycopg2.connect(
+            host=HOST, port=PORT, database=DATABASE, user=USER, password=PASSWORD
+        ) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'ALTER DATABASE "{DATABASE}" SET search_path TO {SCHEMA}, public'
+                )
+        return 0
 
     settings = Settings(
         bin_path=pathlib.Path("/usr/bin"),
