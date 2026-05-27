@@ -10,11 +10,13 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `WORLD_NAME` | `My Dune Awakening Server` | Friendly server name shown to players. |
+| `WORLD_NAME` | `My Dune Awakening Server` | Friendly server name shown to players. Used as the default display name for all partitions unless overridden. |
 | `WORLD_UNIQUE_NAME` | `sh-my-dune-server` | Unique battlegroup identifier used across services. |
 | `FLS_SECRET` | blank | Funcom Live Services token. Prefer `secrets/funcom-token.txt` instead of inline values. |
 | `DUNE_FLS_ENV` | `retail` | FLS environment. Use `retail` for live servers, `beta` for public test. |
-| `DUNE_SERVER_LOGIN_PASSWORD` | blank | Optional join password for the battlegroup. |
+| `DUNE_SERVER_LOGIN_PASSWORD` | blank | Optional join password for the battlegroup. Applies to all partitions. Passwords with spaces are not supported. |
+| `SURVIVAL_DISPLAY_NAME` | blank | Display name for the Survival partition (Hagga Basin, etc.). Overrides `WORLD_NAME` for that partition. |
+| `OVERMAP_DISPLAY_NAME` | blank | Display name for the Overmap partition (Sietch Tabr, etc.). Overrides `WORLD_NAME` for that partition. |
 | `WORLD_REGION` | `North America` | Region name shown to players and reported to FLS. |
 | `WORLD_DATACENTER_ID` | `North America` | Datacenter identifier reported to FLS. |
 
@@ -41,8 +43,8 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `DEPLOYMENT_PROFILE` | `basic` | Selects `basic`, `standard`, or `full` compose overlays. |
-| `DUNE_IMAGE_TAG` | `1960494-0-shipping` | Funcom server image tag loaded by update tooling. |
-| `STEAM_APP_ID` | `4754530` | Dedicated server Steam App ID. |
+| `DUNE_IMAGE_TAG` | `1973075-0-shipping` | Funcom retail server image tag. Use `4754530` (retail) not `3104830` (PTC). Updated by `dune update`. |
+| `STEAM_APP_ID` | `4754530` | Dedicated server Steam App ID. **Always use `4754530` (retail).** |
 | `DUNE_STEAM_SERVER_DIR` | `./steam` | Local directory containing extracted Steam payloads. |
 
 ### Database
@@ -122,6 +124,45 @@ These are not part of the default `.env.example` but are supported when you need
 | `NEXT_PUBLIC_ADMIN_TOKEN` | blank | Optional frontend token injection for trusted local admin environments. |
 
 ## Config Files
+
+### Per-Partition Display Names
+
+Each partition (Survival, Overmap) can have its own name in the server browser. Set these in `.env`:
+
+```bash
+SURVIVAL_DISPLAY_NAME=Hagga Basin
+OVERMAP_DISPLAY_NAME=Sietch Tabr
+```
+
+**Why these exist:** The UE5 `-ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName=` command-line
+argument splits on spaces, so multi-word names are silently truncated to the first word. Instead,
+`scripts/survival-pre-start.sh` writes the display name directly into `UserEngine.ini` before the
+game binary starts.
+
+**UE5 per-map SavedDir behaviour:** Each map binary reads its user configuration from two
+locations under the container's `Saved/` directory:
+
+1. `Saved/UserSettings/UserEngine.ini` -- root-level (read by Survival_1)
+2. `Saved/<MapName>/UserSettings/UserEngine.ini` -- map-specific subdirectory (read by Overmap)
+
+The pre-start script writes to both locations on every startup, so changes to
+`SURVIVAL_DISPLAY_NAME` or `OVERMAP_DISPLAY_NAME` take effect on the next container restart.
+
+**Volume layout (basic profile):**
+
+| Partition | Host path | Container mount |
+|---|---|---|
+| Survival_1 | `data/survival-saved/` | `/home/dune/server/DuneSandbox/Saved` |
+| Overmap | `data/server-saved/overmap/` | `/home/dune/server/DuneSandbox/Saved` |
+
+Separate host directories are required so each partition gets its own independent `UserSettings/`
+tree. Without this, both containers would write to the same ini file and whichever started last
+would overwrite the other's name.
+
+> **Adding a third partition:** Create `data/<new-partition-saved>/` (use the
+> `docker run --rm -v /path/to/data:/data alpine sh -c 'mkdir -p /data/new-dir'` trick --
+> the `data/` directory is root-owned), add a `PARTITION_DISPLAY_NAME` env var in the compose
+> override, and mount the new directory to the same container path.
 
 ### `config/UserGame.ini`
 

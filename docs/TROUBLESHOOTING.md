@@ -76,7 +76,9 @@
 - Confirm the SteamCMD download completed without errors
 - Verify `DUNE_STEAM_SERVER_DIR` points at the folder containing the server payload
 - Check whether the update/load script expects tarballs or already-extracted files
-- Re-download the package with `steamcmd +login anonymous +app_update 3104830 validate +quit`
+- Re-download the package with `steamcmd +login anonymous +app_update 4754530 validate +quit`
+- **Use App ID `4754530` (retail)**. App ID `3104830` is the Public Test Client (PTC) build and is
+  invisible to players running the retail game. See the [PTC vs Retail](#ptc-vs-retail-wrong-steam-app-id) section below.
 
 ## Gateway Patch Needed After Restart
 
@@ -135,6 +137,7 @@ These messages appear in normal operation and do not indicate a problem:
 | Director | `Failed to process travel queue for partition 2` | Partition 2 does not exist in a single-survival setup (only partition 113). The director retries harmlessly. |
 | Overmap | `Could not serialize <hostname>` | DNS lookup for the external hostname fails inside the Docker network. Cosmetic only. |
 | RabbitMQ | `management_metrics_collection` deprecation | Suppressed by config. If the warning persists, verify `rabbitmq-admin.conf` and `rabbitmq-game.conf` include `deprecated_features.permit` lines. |
+| Gateway | `function get_active_servers_for_gateway() does not exist` | The `1973075` retail schema does not include this stored procedure. The gateway falls back to RMQ-based server discovery automatically (~50 s after startup). No action needed. |
 | PostgreSQL | `duplicate key value violates unique constraint "world_partition_label_key"` | Ghost server entries from previous runs. Handled by partition-repair. |
 
 ## Overmap Partition Load Failure (LoadPartitionDefinition)
@@ -189,7 +192,8 @@ for servers to register in `farm_state`, then ensures matching `world_partition`
 ## Server Not Appearing in Game Browser
 
 **Symptoms:** All containers are healthy, FLS heartbeats succeed, but the server does not
-appear under the Experimental tab in the game's server browser.
+appear under the **Private** tab in the game's server browser. (The tab was labelled
+"Experimental" before patch 1.4.0.1.)
 
 ### Quick Diagnosis Checklist
 
@@ -491,3 +495,127 @@ Rotate credentials carefully so connected services stay in sync.
    ```bash
    docker compose restart dashboard-api
    ```
+
+## Multiple or Duplicate Entries in Server Browser (Ghost Servers)
+
+**Symptoms:** The server browser shows 3, 5, or more copies of your server even though only 2
+partitions are running (Overmap + Survival).
+
+**Root cause:** Every time a game server process starts, it generates a **new random server ID**.
+Funcom Live Services (FLS) tracks each ID independently. When you restart a container (whether via
+`docker compose restart`, `docker compose up -d`, or a crash recovery), FLS registers a fresh
+entry for the new ID while the old entry remains until its heartbeat TTL expires. Multiple
+rapid restarts accumulate stale entries.
+
+**Important:** `docker compose restart` does **not** preserve the server ID. Each process
+invocation produces a unique ID.
+
+**How long do ghost entries last?** Based on observed behaviour, FLS TTL appears to be
+45-60 minutes or more after the last heartbeat. Ghost entries clear on their own -- they just
+take time.
+
+**What to do right now:**
+
+1. Stop restarting containers (additional restarts only add more ghost entries).
+2. Verify the *currently running* entries are healthy:
+   ```bash
+   docker logs dune-awakening-director-1 --since 5m 2>&1 | grep '"displayName"' | tail -4
+   ```
+   The two current entries should show your configured display names with `"ready":true`.
+3. Wait 45-60 minutes. Stale entries expire automatically.
+
+**How to identify the current entries:**
+
+```bash
+# Get the current server IDs from gateway logs
+docker logs dune-awakening-gateway-1 2>&1 | grep 'came up' | tail -4
+```
+
+The last line for each partition index (1 = Survival, 2 = Overmap) is the active entry.
+All earlier entries for the same partition index are ghosts.
+
+**Prevention:**
+
+- Batch all necessary configuration changes and do a single clean restart rather than
+  multiple sequential ones.
+- When changing display names, update `.env` and `data/*/UserSettings/UserEngine.ini` on
+  disk before restarting -- the pre-start script handles this automatically now.
+- Prefer `docker compose up -d <service>` over repeated `docker compose restart` when
+  iterating on configuration.
+
+## PTC vs Retail: Wrong Steam App ID {#ptc-vs-retail-wrong-steam-app-id}
+
+**Symptom:** Server appears online (director reports `DeclareBattlegroupUpdates` success) but
+is completely invisible to players running the retail game. Or the server is visible but
+players receive a version mismatch error when connecting.
+
+**Cause:** There are two separate dedicated server packages on Steam:
+
+| Steam App ID | Build | Who can connect |
+|---|---|---|
+| `4754530` | Retail (Production) | All retail game clients |
+| `3104830` | PTC (Public Test Client) | Only PTC game clients |
+
+Running the PTC build when your players use the retail game (or vice versa) means the server
+is invisible on the correct FLS environment.
+
+**Fix:**
+
+1. Verify your `.env`:
+   ```bash
+   grep STEAM_APP_ID .env
+   # Should be: STEAM_APP_ID=4754530
+   grep DUNE_IMAGE_TAG .env
+   # Retail image tag example: DUNE_IMAGE_TAG=1973075-0-shipping
+   ```
+
+2. Download the retail server with the correct App ID:
+   ```bash
+   steamcmd +login anonymous +app_update 4754530 validate +quit
+   ```
+
+3. Load and tag the new image (Funcom ships tarballs; the loaded image has a `registry.funcom.com`
+   prefix that must be re-tagged to match the compose file):
+   ```bash
+   # Load the tarball (adjust filename to match downloaded version)
+   docker load < server-1973075-0-shipping.tar.gz
+   # Re-tag to the short name used by docker-compose.yml
+   docker tag registry.funcom.com/funcom/self-hosting/seabass-server:1973075-0-shipping \
+     funcom/self-hosting/seabass-server:1973075-0-shipping
+   ```
+
+4. Update `.env` and reinitialize the database (the schema changes between major versions):
+   ```bash
+   # Update image tag
+   sed -i 's/DUNE_IMAGE_TAG=.*/DUNE_IMAGE_TAG=1973075-0-shipping/' .env
+   sed -i 's/STEAM_APP_ID=.*/STEAM_APP_ID=4754530/' .env
+
+   # Stop all services
+   docker compose -f docker-compose.yml -f docker-compose.basic.yml down
+
+   # Drop and recreate the database (WARNING: destroys world data -- backup first)
+   docker exec dune-awakening-postgres-1 psql -U dune -d postgres \
+     -c "DROP DATABASE IF EXISTS dune_sb_1_4_0_0;"
+   docker exec dune-awakening-postgres-1 psql -U dune -d postgres \
+     -c "CREATE DATABASE dune_sb_1_4_0_0 OWNER dune;"
+
+   # Re-initialize schema
+   docker compose -f docker-compose.yml up db-init --force-recreate
+
+   # Start everything
+   docker compose -f docker-compose.yml -f docker-compose.basic.yml up -d
+   ```
+
+5. After the stack is up, restart the director to clear any `QueryPlayerOnlineStates`
+   exceptions that occur immediately after a DB re-init:
+   ```bash
+   docker compose -f docker-compose.yml restart director
+   ```
+
+**Identifying the current image tag:**
+
+```bash
+docker images funcom/self-hosting/seabass-server
+# or check the running container
+docker inspect dune-awakening-survival-1 --format '{{.Config.Image}}'
+```

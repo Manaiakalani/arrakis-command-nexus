@@ -14,6 +14,10 @@ docker compose restart
 
 ### Restart only the game server layer
 
+> **FLS server ID warning:** Every game server restart generates a new server ID registered with
+> Funcom Live Services. Old IDs linger as ghost entries in the server browser for 45-60 minutes.
+> Batch your changes and restart once rather than iterating repeatedly.
+
 Restart a single shard or map service:
 
 ```bash
@@ -307,12 +311,12 @@ docker compose exec -T admin-rmq rabbitmqctl change_password admin "$NEW_PASSWOR
 
 #### Check for updates
 
-Via Dashboard: Navigate to Updates page → Check for Updates
+Via Dashboard: Navigate to Updates page -> Check for Updates
 
 Via CLI:
 ```bash
-bash scripts/check-steam-build.sh 3104830  # Beta
-bash scripts/check-steam-build.sh 4754530  # Production
+bash scripts/check-steam-build.sh 3104830  # PTC (Public Test Client)
+bash scripts/check-steam-build.sh 4754530  # Retail (Production) -- use this one
 ```
 
 #### Apply updates
@@ -328,6 +332,51 @@ bash scripts/backup.sh --scope full
 # 4. Verify health
 docker compose ps
 ./dune status
+```
+
+#### After an Image Version Upgrade (DB Re-Init Required)
+
+When the Funcom server image changes to a **new major version** (e.g. `1968181` to `1973075`),
+the game schema changes and the existing database must be recreated. `bootstrap_db.py` has an
+early-exit guard that skips initialization if the schema already exists, so you must drop and
+recreate the database manually.
+
+> **Warning:** This destroys all world data. Take a full backup first.
+
+```bash
+# 1. Back up everything
+bash scripts/backup.sh --scope full
+
+# 2. Load the new server image (Funcom ships tarballs via Steam)
+# Funcom tarballs load with a registry.funcom.com prefix -- must re-tag to match compose
+docker load < server-<new-tag>-shipping.tar.gz
+docker tag registry.funcom.com/funcom/self-hosting/seabass-server:<new-tag>-shipping \
+  funcom/self-hosting/seabass-server:<new-tag>-shipping
+
+# 3. Update .env
+sed -i 's/DUNE_IMAGE_TAG=.*/DUNE_IMAGE_TAG=<new-tag>-shipping/' .env
+# Confirm STEAM_APP_ID=4754530 (retail) not 3104830 (PTC)
+
+# 4. Stop all game services (leave postgres running)
+docker compose -f docker-compose.yml -f docker-compose.basic.yml down
+
+# 5. Drop and recreate the database
+docker compose -f docker-compose.yml up -d postgres
+sleep 5
+docker exec dune-awakening-postgres-1 psql -U dune -d postgres \
+  -c "DROP DATABASE IF EXISTS dune_sb_1_4_0_0;"
+docker exec dune-awakening-postgres-1 psql -U dune -d postgres \
+  -c "CREATE DATABASE dune_sb_1_4_0_0 OWNER dune;"
+
+# 6. Initialize fresh schema
+docker compose -f docker-compose.yml up db-init --force-recreate
+
+# 7. Start the full stack
+docker compose -f docker-compose.yml -f docker-compose.basic.yml up -d
+
+# 8. Restart director after DB init (clears QueryPlayerOnlineStates errors)
+sleep 30
+docker compose -f docker-compose.yml restart director
 ```
 
 ### Disk Space Management
@@ -346,11 +395,34 @@ docker image prune -a
 find ./backups -name "*.dump" -mtime +30 -delete
 ```
 
+### Data Directory and Partition Volumes
+
+The `data/` directory is created by the stack and owned by `root`. You cannot create
+subdirectories inside it as a regular user. Use a temporary Alpine container to create new
+directories:
+
+```bash
+# Create a new per-partition saved directory (e.g. for a second survival shard)
+docker run --rm \
+  -v /home/dunebrah/dune-server-docker/data:/data \
+  alpine sh -c 'mkdir -p /data/survival-saved-2 && chown 1000:65534 /data/survival-saved-2'
+```
+
+**Existing partition volume layout (basic profile):**
+
+| Partition | Host path | Notes |
+|---|---|---|
+| Survival_1 | `data/survival-saved/` | Contains `UserSettings/UserEngine.ini` with display name |
+| Overmap | `data/server-saved/overmap/` | Contains both `UserSettings/UserEngine.ini` (root) and `Overmap/UserSettings/UserEngine.ini` (map-specific) |
+
+> **Do not merge these directories.** Each partition needs its own Saved tree so per-partition
+> display names, logs, and crash dumps stay isolated.
+
 ### Scaling
 
 #### Adjust resource limits
 
-Via Dashboard: System → Resources
+Via Dashboard: System -> Resources
 
 Or edit `.env`:
 ```bash
@@ -392,7 +464,7 @@ DEPLOYMENT_PROFILE=standard  # Options: basic, standard, full
 
 ### Setting Up Alerts
 
-Dashboard → System → Discord → Add Webhook
+Dashboard -> System -> Discord -> Add Webhook
 
 Configure alert types:
 - Container restarts
@@ -439,5 +511,5 @@ docker compose exec <service-name> bash
 
 ---
 
-**Last updated:** 2026-05-26  
-**Version:** 1.1
+**Last updated:** 2026-05-27  
+**Version:** 1.2

@@ -101,6 +101,9 @@ Also allow the same ports through the host firewall.
 
 ## Next Steps
 
+- Check the **Private** tab in the game's server browser (renamed from "Experimental" in
+  patch 1.4.0.1). Your server should appear there within 5-10 minutes of starting.
 - See [Configuration](./CONFIGURATION.md) to tune gameplay and engine settings
 - See [Networking](./NETWORKING.md) before opening the server to the internet
 - See [Profiles](./PROFILES.md) if you need to resize the battlegroup later
+- See [Troubleshooting](./TROUBLESHOOTING.md) if the server does not appear in the browser
