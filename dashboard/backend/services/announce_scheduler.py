@@ -14,7 +14,7 @@ from services.announce_service import AnnounceService
 
 logger = logging.getLogger(__name__)
 
-_PERSIST_PATH = Path("/workspace/config/scheduled_announcements.json")
+_PERSIST_PATH = Path("/workspace/data/scheduled_announcements.json")
 _DEFAULT_CHECK_INTERVAL_SECONDS = 30
 
 
