@@ -511,7 +511,7 @@ rapid restarts accumulate stale entries.
 invocation produces a unique ID.
 
 **How long do ghost entries last?** Based on observed behaviour, FLS TTL appears to be
-45-60 minutes or more after the last heartbeat. Ghost entries clear on their own -- they just
+12-24 hours after the last heartbeat for self-hosted servers. Ghost entries clear on their own -- they just
 take time.
 
 **What to do right now:**
@@ -522,7 +522,7 @@ take time.
    docker logs dune-awakening-director-1 --since 5m 2>&1 | grep '"displayName"' | tail -4
    ```
    The two current entries should show your configured display names with `"ready":true`.
-3. Wait 45-60 minutes. Stale entries expire automatically.
+3. Wait 12-24 hours. Stale entries expire automatically.
 
 **How to identify the current entries:**
 
@@ -619,3 +619,182 @@ docker images funcom/self-hosting/seabass-server
 # or check the running container
 docker inspect dune-awakening-survival-1 --format '{{.Config.Image}}'
 ```
+
+## "Destination Unavailable" When Joining
+
+**Symptoms:** Player clicks "Join" in the server browser and gets `sb5Q2$ Destination unavailable 5Q2`.
+
+**Cause:** The director cannot find a valid partition for the player. This happens when:
+- The `partition_id` on the player's actors references a partition that does not exist in `world_partition`
+- Most commonly occurs after a database re-initialization where partition IDs changed (e.g., PTC partition 19 became retail partition 1)
+
+**Diagnosis:**
+
+```bash
+# Check what partition the player's actors reference
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT a.id, a.partition_id, a.map
+  FROM dune.actors a
+  JOIN dune.encrypted_player_state eps ON a.id IN (eps.player_controller_id, eps.player_pawn_id, eps.player_state_id)
+"
+
+# Check what partitions actually exist
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT partition_id, map, server_id FROM dune.world_partition
+"
+```
+
+**Fix:**
+
+```sql
+-- Update actors to reference the correct current partition_id
+-- Example: PTC used partition_id=19 for HaggaBasin, retail uses partition_id=1
+UPDATE dune.actors SET partition_id = 1
+WHERE map = 'HaggaBasin' AND (partition_id = 19 OR partition_id IS NULL);
+
+-- Clear stale server_id references on player state
+UPDATE dune.encrypted_player_state SET server_id = NULL WHERE server_id IS NOT NULL;
+
+-- Ensure all players are marked offline
+UPDATE dune.encrypted_player_state SET online_status = 'Offline';
+```
+
+Restart the director after making changes:
+```bash
+docker compose -f docker-compose.yml restart director
+```
+
+## "A Storm Has Reset the Map" / Missing Buildings
+
+**Symptoms:** After restoring player data from a backup, the game shows "A storm has reset the map" and player bases are missing, even though building data exists in the database.
+
+**Cause:** The `world_partition_reset_seed` table tracks a reset counter per partition. When the game server sees a different seed than expected, it triggers a "storm reset" and hides or deletes buildings.
+
+This commonly happens after restoring a PTC backup to a retail database, where partition IDs changed (PTC partition 19 with seed 1 becomes retail partition 1 with seed 2).
+
+**Diagnosis:**
+
+```bash
+# Check current reset seeds
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT * FROM dune.world_partition_reset_seed
+"
+
+# Verify buildings still exist in DB
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT count(*) as buildings FROM dune.buildings;
+  SELECT count(*) as pieces FROM dune.building_instances;
+  SELECT count(*) as placeables FROM dune.placeables;
+"
+```
+
+**Fix:**
+
+Set the partition reset seed to match what the backup data expects:
+
+```sql
+-- If buildings were created under seed 1, set partition 1 back to seed 1
+UPDATE dune.world_partition_reset_seed SET world_reset_seed = 1 WHERE partition_id = 1;
+```
+
+Then restart the survival server to re-read the corrected seed:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.basic.yml up -d survival_1
+```
+
+**Important:** Use `docker compose up -d` (not `docker compose restart`) if you also changed `.env`. The game server must restart to pick up the corrected seed from the database. This will create one more ghost entry in the browser (clears in 12-24 hours).
+
+## Restoring Player Data After DB Re-Init
+
+When the database is dropped and recreated for a major version upgrade, all player data (characters, bases, items, progression) is lost. If you have a pre-upgrade backup, you can restore it.
+
+**Prerequisites:**
+- A pre-upgrade PostgreSQL backup (created by `scripts/backup.sh --scope db` or the automatic pre-update backup)
+- The backup must be from a compatible server version
+
+### Full Restore from pg_dump Backup
+
+If your backup is a `pg_dump` custom format (`.dump` file):
+
+```bash
+# Stop game servers first
+docker compose -f docker-compose.yml -f docker-compose.basic.yml stop survival_1 overmap
+
+# Restore into the game database
+docker exec -i dune-awakening-postgres-1 pg_restore -U dune -d dune_sb_1_4_0_0 \
+  --clean --if-exists < backups/your-backup-file.dump
+
+# Restart everything
+docker compose -f docker-compose.yml -f docker-compose.basic.yml up -d
+```
+
+### Selective Restore from SQL Backup
+
+If your backup is a gzipped SQL dump (`.sql.gz`), you can extract and restore specific tables. Key player data tables:
+
+| Category | Tables |
+|---|---|
+| Accounts | `encrypted_accounts`, `encrypted_player_state` |
+| Characters | `actors`, `actor_fgl_entities`, `fgl_entities`, `actor_state` |
+| Inventory | `inventories`, `actor_inventories`, `items` |
+| Bases | `buildings`, `building_instances`, `building_favorites`, `building_progression`, `totems`, `placeables`, `permission_actor`, `permission_actor_rank` |
+| Progression | `journey_story_node`, `player_markers`, `markers`, `map_areas`, `lore_pickups`, `dialogue_met_npcs`, `dialogue_taken_nodes`, `tutorial_per_player` |
+| Vehicles | `vehicles`, `vehicle_modules` |
+| World state | `actor_spawners`, `resourcefield_state`, `game_events`, `factions` |
+
+**Critical post-restore steps:**
+
+1. **Fix partition IDs** if migrating between PTC and retail (partition numbering differs):
+   ```sql
+   UPDATE dune.actors SET partition_id = 1
+   WHERE map = 'HaggaBasin' AND partition_id NOT IN (
+     SELECT partition_id FROM dune.world_partition
+   );
+   ```
+
+2. **Clear stale server references:**
+   ```sql
+   UPDATE dune.encrypted_player_state SET server_id = NULL, online_status = 'Offline';
+   ```
+
+3. **Fix reset seeds** to prevent "storm reset" (see above section).
+
+4. **Reset sequences** to avoid primary key conflicts:
+   ```sql
+   SELECT setval('dune.actors_id_seq', COALESCE((SELECT MAX(id) FROM dune.actors), 1));
+   SELECT setval('dune.inventories_id_seq', COALESCE((SELECT MAX(id) FROM dune.inventories), 1));
+   SELECT setval('dune.items_id_seq', COALESCE((SELECT MAX(id) FROM dune.items), 1));
+   ```
+
+5. **Restart the director** to refresh its cache:
+   ```bash
+   docker compose -f docker-compose.yml restart director
+   ```
+
+### Backup Best Practices
+
+- **Always back up before updates:** `scripts/update.sh` now creates an automatic pre-update backup
+- **Manual backup:** `bash scripts/backup.sh --scope full`
+- **Keep multiple backups:** Set `BACKUP_RETENTION_DAYS` in `.env` (default: 7 days)
+- **Test restores periodically** to ensure backups are valid
+
+## `docker restart` vs `docker compose up -d`
+
+**Symptom:** You changed `.env` (display name, password, image tag) and restarted the container, but the change did not take effect.
+
+**Cause:** `docker compose restart` restarts the existing container with its original environment. It does NOT re-read `.env` or recreate the container.
+
+**Fix:** Use `docker compose up -d <service>` instead. This recreates the container with the updated environment:
+
+```bash
+# This picks up .env changes:
+docker compose -f docker-compose.yml -f docker-compose.basic.yml up -d survival_1
+
+# This does NOT pick up .env changes:
+docker compose restart survival_1
+```
+
+**When to use each:**
+- `docker compose restart` - Quick restart, no config changes needed
+- `docker compose up -d` - After changing `.env`, compose files, or image tags

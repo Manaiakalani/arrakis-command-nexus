@@ -19,7 +19,7 @@ restore_database_dump() {
   run_compose up -d postgres >/dev/null
 
   log_step "Restoring database from $dump_file"
-  run_compose exec -T postgres pg_restore -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-dune}" --clean --if-exists < "$dump_file"
+  run_compose exec -T postgres pg_restore -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-dune_sb_1_4_0_0}" --clean --if-exists < "$dump_file"
 }
 
 restore_config_archive() {

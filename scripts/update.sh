@@ -25,6 +25,10 @@ old_tag="$(strip_wrapping_quotes "${DUNE_IMAGE_TAG:-unknown}")"
 steam_dir="$(strip_wrapping_quotes "${DUNE_STEAM_SERVER_DIR:-}")"
 steam_app_id="$(strip_wrapping_quotes "${STEAM_APP_ID:-}")"
 
+# Auto-backup before updating (critical for player data restoration if DB re-init is needed)
+log_step 'Creating pre-update backup...'
+"$SCRIPT_DIR/backup.sh" --scope full || log_warn 'Pre-update backup failed. Proceeding anyway.'
+
 if ! have_command steamcmd; then
   log_warn 'steamcmd is not installed.'
   if confirm 'Install steamcmd automatically (requires sudo)?' 'N'; then

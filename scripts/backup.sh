@@ -52,7 +52,7 @@ declare -a created_files=()
 backup_database() {
   local dump_file="$BACKUP_DIR/dune-db-${scope}__${timestamp}.dump"
   log_step "Creating PostgreSQL backup: $dump_file"
-  run_compose exec -T postgres pg_dump -Fc -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-dune}" > "$dump_file"
+  run_compose exec -T postgres pg_dump -Fc -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-dune_sb_1_4_0_0}" > "$dump_file"
   created_files+=("$dump_file")
 }
 

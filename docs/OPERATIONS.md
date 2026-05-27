@@ -15,7 +15,7 @@ docker compose restart
 ### Restart only the game server layer
 
 > **FLS server ID warning:** Every game server restart generates a new server ID registered with
-> Funcom Live Services. Old IDs linger as ghost entries in the server browser for 45-60 minutes.
+> Funcom Live Services. Old IDs linger as ghost entries in the server browser for 12-24 hours.
 > Batch your changes and restart once rather than iterating repeatedly.
 
 Restart a single shard or map service:
@@ -30,6 +30,10 @@ To restart several map services together:
 ```bash
 docker compose restart overmap survival_1 deepdesert_1
 ```
+
+> **Environment variable changes:** `docker compose restart` does NOT re-read `.env`. If you
+> changed `.env` (display names, passwords, image tags), you must use `docker compose up -d`
+> to recreate the container with the new environment.
 
 ### Restart only the dashboard
 
@@ -250,13 +254,13 @@ PostgreSQL uses normal auto-vacuum behavior. Routine manual vacuuming is not req
 #### Manual vacuum (if needed)
 
 ```bash
-docker compose exec -T postgres psql -U postgres -d dune -c "VACUUM ANALYZE;"
+docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "VACUUM ANALYZE;"
 ```
 
 #### Check database size
 
 ```bash
-docker compose exec -T postgres psql -U postgres -d dune -c "SELECT pg_size_pretty(pg_database_size('dune'));"
+docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "SELECT pg_size_pretty(pg_database_size('dune_sb_1_4_0_0'));"
 ```
 
 ### Credential Rotation
@@ -289,7 +293,7 @@ NEW_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 
 # For POSTGRES_DUNE_PASSWORD:
 # 1. Change password in database:
-docker compose exec -T postgres psql -U postgres -d dune -c "ALTER USER dune PASSWORD '$NEW_PASSWORD';"
+docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "ALTER USER dune PASSWORD '$NEW_PASSWORD';"
 # 2. Update .env
 # 3. Restart services: docker compose restart dashboard-api survival_1 overmap director partition-repair
 ```
@@ -342,6 +346,10 @@ early-exit guard that skips initialization if the schema already exists, so you 
 recreate the database manually.
 
 > **Warning:** This destroys all world data. Take a full backup first.
+>
+> **Player data can be restored** from the pre-upgrade backup after re-initialization.
+> See [Troubleshooting - Restoring Player Data After DB Re-Init](./TROUBLESHOOTING.md#restoring-player-data-after-db-re-init)
+> for the full procedure. The `update.sh` script now creates an automatic backup before proceeding.
 
 ```bash
 # 1. Back up everything
@@ -503,7 +511,7 @@ bash scripts/restore.sh <backup-id>
 ./dune update
 
 # Database console
-docker compose exec -T postgres psql -U postgres -d dune
+docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0
 
 # Container shell
 docker compose exec <service-name> bash
@@ -512,4 +520,4 @@ docker compose exec <service-name> bash
 ---
 
 **Last updated:** 2026-05-27  
-**Version:** 1.2
+**Version:** 1.3

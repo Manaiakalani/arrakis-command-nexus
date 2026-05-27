@@ -73,7 +73,7 @@ else
 fi
 
 if have_command docker && service_exists postgres 2>/dev/null; then
-  if run_compose exec -T postgres pg_isready -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-dune}" >/dev/null 2>&1; then
+  if run_compose exec -T postgres pg_isready -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-dune_sb_1_4_0_0}" >/dev/null 2>&1; then
     add_result pass 'Postgres' 'Database is accepting connections.' ''
   else
     add_result fail 'Postgres' 'Database is not accepting connections yet.' 'Check postgres logs and verify credentials in .env.'

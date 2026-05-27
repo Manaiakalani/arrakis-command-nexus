@@ -149,13 +149,13 @@ log_step "Database status"
     pg_container=$(docker ps --format '{{.Names}}' | grep -i dune | grep -i postgres | head -1)
     if [[ -n "$pg_container" ]]; then
       echo "=== Database size ==="
-      docker exec "$pg_container" psql -U dune -d dune -c "SELECT pg_size_pretty(pg_database_size('dune'));" 2>/dev/null || echo "(query failed)"
+      docker exec "$pg_container" psql -U dune -d dune_sb_1_4_0_0 -c "SELECT pg_size_pretty(pg_database_size('dune_sb_1_4_0_0'));" 2>/dev/null || echo "(query failed)"
       echo ""
       echo "=== Active connections ==="
-      docker exec "$pg_container" psql -U dune -d dune -c "SELECT count(*) AS active_connections FROM pg_stat_activity WHERE state = 'active';" 2>/dev/null || echo "(query failed)"
+      docker exec "$pg_container" psql -U dune -d dune_sb_1_4_0_0 -c "SELECT count(*) AS active_connections FROM pg_stat_activity WHERE state = 'active';" 2>/dev/null || echo "(query failed)"
       echo ""
       echo "=== Farm state ==="
-      docker exec "$pg_container" psql -U dune -d dune -c "SELECT server_id, map, alive, game_addr, game_port FROM dune.farm_state;" 2>/dev/null | redact || echo "(query failed)"
+      docker exec "$pg_container" psql -U dune -d dune_sb_1_4_0_0 -c "SELECT server_id, map, alive, game_addr, game_port FROM dune.farm_state;" 2>/dev/null | redact || echo "(query failed)"
     fi
   else
     echo "(postgres container not running)"
