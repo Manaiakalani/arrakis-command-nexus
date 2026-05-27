@@ -35,6 +35,7 @@ class DiscordService:
             "crash": "notify_crash",
             "player_join": "notify_player_join",
             "player_leave": "notify_player_leave",
+            "update_available": "notify_update_available",
         }
 
     async def start(self) -> None:

@@ -43,6 +43,7 @@ class DiscordWebhook(Base):
     notify_crash: Mapped[bool] = mapped_column(default=True)
     notify_player_join: Mapped[bool] = mapped_column(default=False)
     notify_player_leave: Mapped[bool] = mapped_column(default=False)
+    notify_update_available: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 

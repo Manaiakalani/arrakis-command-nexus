@@ -91,6 +91,10 @@ class UpdateService:
             
             self._persist_state()
             
+            # Send Discord notification if update is available
+            if self._update_available:
+                await self._notify_update_available(current_build, latest_build)
+            
             # Log to audit trail
             await self._log_audit("update_check_completed", {
                 "current_build": current_build,
@@ -195,6 +199,25 @@ class UpdateService:
         except Exception as e:
             logger.warning(f"Error reading installed build ID: {e}")
             return self.current_tag
+
+    async def _notify_update_available(self, current_build: str, latest_build: str) -> None:
+        """Send Discord notification when update is available."""
+        try:
+            from services.discord_service import get_discord_service
+            
+            discord_service = get_discord_service()
+            await discord_service.send_event(
+                event_type="update_available",
+                title="🔄 Server Update Available",
+                description=f"A new Dune Awakening server version is available!\n\n"
+                           f"**Current Build:** `{current_build}`\n"
+                           f"**Latest Build:** `{latest_build}`\n\n"
+                           f"To update, run: `cd ~/dune-server-docker && ./dune update`",
+                color=0x3498DB,  # Blue
+            )
+            logger.info(f"Sent Discord notification for available update: {current_build} -> {latest_build}")
+        except Exception as e:
+            logger.warning(f"Failed to send Discord notification for update: {e}")
 
     async def trigger_update(self) -> dict[str, Any]:
         """
