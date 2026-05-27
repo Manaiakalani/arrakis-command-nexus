@@ -28,10 +28,10 @@ class UpdateService:
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
         
         self._last_check: Optional[datetime] = None
-        self._last_available_build: Optional[str] = None
-        self._last_installed_build: Optional[str] = None
+        self._latest_steam_build: Optional[str] = None
+        self._baseline_steam_build: Optional[str] = None  # what we consider "installed"
         self._update_available = False
-        
+
         # Load persisted state
         self._load_state()
 
@@ -42,8 +42,8 @@ class UpdateService:
                 data = json.loads(self.state_file.read_text())
                 if data.get("last_check"):
                     self._last_check = datetime.fromisoformat(data["last_check"])
-                self._last_available_build = data.get("last_available_build")
-                self._last_installed_build = data.get("last_installed_build")
+                self._latest_steam_build = data.get("latest_steam_build") or data.get("last_available_build")
+                self._baseline_steam_build = data.get("baseline_steam_build") or data.get("last_installed_build")
                 self._update_available = data.get("update_available", False)
             except Exception as e:
                 logger.warning(f"Failed to load update state: {e}")
@@ -53,8 +53,8 @@ class UpdateService:
         try:
             data = {
                 "last_check": self._last_check.isoformat() if self._last_check else None,
-                "last_available_build": self._last_available_build,
-                "last_installed_build": self._last_installed_build,
+                "latest_steam_build": self._latest_steam_build,
+                "baseline_steam_build": self._baseline_steam_build,
                 "update_available": self._update_available,
             }
             self.state_file.write_text(json.dumps(data, indent=2))
@@ -64,12 +64,13 @@ class UpdateService:
     async def check_for_updates(self) -> dict[str, Any]:
         """
         Check Steam for available updates without downloading.
-        Returns dict with current_build, latest_build, update_available.
+        Compares Steam's latest build ID against our saved baseline (the build ID
+        that was current when we last marked the server as up-to-date).
         """
         logger.info(f"Checking for updates to Steam App {self.steam_app_id}")
-        
+
         try:
-            # Get latest build ID from Steam
+            # Get latest build ID from Steam (numeric depot build ID, e.g. "23243500")
             latest_build = await self._get_latest_build_id()
             if not latest_build:
                 await self._log_audit("update_check_failed", {
@@ -80,34 +81,39 @@ class UpdateService:
                     "error": "Failed to retrieve build information from Steam",
                     "last_check": self._last_check.isoformat() if self._last_check else None,
                 }
-            
-            # Get currently installed build ID
-            current_build = await self._get_installed_build_id()
-            
+
             self._last_check = datetime.now()
-            self._last_available_build = latest_build
-            self._last_installed_build = current_build
-            self._update_available = (current_build != latest_build) if current_build else True
-            
+            self._latest_steam_build = latest_build
+
+            # Bootstrap baseline on first successful check so we don't false-alarm
+            if not self._baseline_steam_build:
+                logger.info(
+                    f"No baseline build recorded – treating current Steam build "
+                    f"{latest_build} as installed baseline"
+                )
+                self._baseline_steam_build = latest_build
+
+            # An update is available only when Steam has a newer build than our baseline
+            self._update_available = (latest_build != self._baseline_steam_build)
+
             self._persist_state()
-            
-            # Log to audit trail
+
             await self._log_audit("update_check_completed", {
-                "current_build": current_build,
+                "baseline_build": self._baseline_steam_build,
                 "latest_build": latest_build,
                 "update_available": self._update_available,
             })
-            
+
             return {
                 "success": True,
-                "current_build": current_build,
+                "current_build": self._baseline_steam_build,
                 "latest_build": latest_build,
                 "update_available": self._update_available,
                 "current_tag": self.current_tag,
                 "last_check": self._last_check.isoformat(),
                 "steam_app_id": self.steam_app_id,
             }
-            
+
         except Exception as e:
             logger.error(f"Error checking for updates: {e}", exc_info=True)
             await self._log_audit("update_check_failed", {"error": str(e)})
@@ -116,6 +122,31 @@ class UpdateService:
                 "error": str(e),
                 "last_check": self._last_check.isoformat() if self._last_check else None,
             }
+
+    async def mark_as_current(self) -> dict[str, Any]:
+        """
+        Mark the current Steam build as the installed baseline, clearing any pending
+        update notification.  Call this after successfully running './dune update'.
+        """
+        if not self._latest_steam_build:
+            # Do a fresh check first so we have a real build ID to store
+            result = await self.check_for_updates()
+            if not result.get("success"):
+                return result
+
+        self._baseline_steam_build = self._latest_steam_build
+        self._update_available = False
+        self._persist_state()
+
+        logger.info(f"Baseline updated to Steam build {self._baseline_steam_build}")
+        await self._log_audit("update_marked_current", {
+            "baseline_build": self._baseline_steam_build,
+        })
+        return {
+            "success": True,
+            "baseline_build": self._baseline_steam_build,
+            "message": "Server marked as up-to-date",
+        }
 
     async def _log_audit(self, action: str, details: dict[str, Any]):
         """Log update-related actions to audit trail."""
@@ -232,8 +263,8 @@ class UpdateService:
         """Get current update status from memory."""
         return {
             "current_tag": self.current_tag,
-            "current_build": self._last_installed_build,
-            "latest_build": self._last_available_build,
+            "current_build": self._baseline_steam_build,
+            "latest_build": self._latest_steam_build,
             "update_available": self._update_available,
             "last_check": self._last_check.isoformat() if self._last_check else None,
             "auto_update_enabled": self.auto_update_enabled,

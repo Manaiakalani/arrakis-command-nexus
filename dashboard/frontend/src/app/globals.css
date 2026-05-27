@@ -141,6 +141,16 @@ body {
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
   }
 
+  .dune-button-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-th-border bg-th-surface/70 px-4 py-2 text-sm font-semibold text-th-text
+      transition-[color,background-color,border-color,box-shadow,transform]
+      duration-[var(--duration-fast)]
+      ease-[var(--ease-out-expo)]
+      hover:border-th-border hover:bg-th-surface
+      active:scale-[0.97]
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+
   .dune-button-muted {
     @apply inline-flex items-center justify-center rounded-xl border border-th-border bg-th-surface-s/70 px-4 py-2 text-sm font-medium text-th-text
       transition-[color,background-color,border-color,box-shadow,transform]

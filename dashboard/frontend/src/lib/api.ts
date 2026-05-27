@@ -546,6 +546,15 @@ export class ApiClient {
     }>('/updates/check', { method: 'POST' });
   }
 
+  markUpdateAsCurrent() {
+    return this.request<{
+      success: boolean;
+      baseline_build?: string;
+      message?: string;
+      error?: string;
+    }>('/updates/mark-current', { method: 'POST' });
+  }
+
   triggerUpdate() {
     return this.request<{
       success: boolean;

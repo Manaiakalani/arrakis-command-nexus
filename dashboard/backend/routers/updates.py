@@ -51,6 +51,21 @@ async def check_for_updates():
     return result
 
 
+@router.post("/mark-current")
+async def mark_as_current():
+    """
+    Mark the current Steam build as installed baseline, clearing the update banner.
+    Call this after running './dune update' to dismiss the notification.
+    """
+    service = get_update_service()
+    result = await service.mark_as_current()
+
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Failed to mark as current"))
+
+    return result
+
+
 @router.post("/trigger")
 async def trigger_update():
     """
