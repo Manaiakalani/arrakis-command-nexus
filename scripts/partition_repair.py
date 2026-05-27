@@ -220,6 +220,7 @@ def fix_load_world_partition(log):
             log.info("Patched load_world_partition: map-agnostic primary + Overmap fallback")
 
 
+def repair_partitions(log):
     """Ensure every alive server has a valid world_partition row.
 
     All game servers (survival_1, overmap, etc.) register in farm_state with
