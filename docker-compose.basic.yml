@@ -83,7 +83,7 @@ services:
       - "7888:7888/udp"
     volumes:
       - .:/workspace:ro
-      - ./data/server-saved:/home/dune/server/DuneSandbox/Saved
+      - ./data/survival-saved:/home/dune/server/DuneSandbox/Saved
     depends_on:
       postgres:
         condition: service_healthy

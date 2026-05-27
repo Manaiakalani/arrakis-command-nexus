@@ -10,13 +10,7 @@ export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 # splits on spaces, so we write directly to the UserSettings ini file instead.
 # Each map writes to its own subdirectory (Survival_1 uses root Saved/UserSettings/,
 # all others use Saved/<MapName>/UserSettings/) matching UE5's per-map Saved layout.
-if [ "$MAP_NAME" = "Survival_1" ]; then
-  USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/UserSettings"
-else
-  # UE5 creates Saved/<map>/ subdirs using lowercase map name
-  MAP_DIR=$(echo "$MAP_NAME" | tr '[:upper:]' '[:lower:]')
-  USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/${MAP_DIR}/UserSettings"
-fi
+USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/UserSettings"
 # Per-partition display name overrides DUNE_SERVER_DISPLAY_NAME and WORLD_NAME
 DISPLAY_NAME="${PARTITION_DISPLAY_NAME:-${DUNE_SERVER_DISPLAY_NAME:-${WORLD_NAME:-}}}"
 if [ -n "$DISPLAY_NAME" ]; then
