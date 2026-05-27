@@ -8,21 +8,28 @@ export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 # Write Bgd.ServerDisplayName to UserEngine.ini before the game starts.
 # The -ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName= command-line arg
 # splits on spaces, so we write directly to the UserSettings ini file instead.
-# Each map writes to its own subdirectory (Survival_1 uses root Saved/UserSettings/,
-# all others use Saved/<MapName>/UserSettings/) matching UE5's per-map Saved layout.
-USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/UserSettings"
+# UE5 reads UserSettings from Saved/UserSettings/ (root) AND from
+# Saved/<MapName>/UserSettings/ (map-specific subdirectory). We write both
+# so the name is applied regardless of which path the binary uses.
+SAVED_ROOT="/home/dune/server/DuneSandbox/Saved"
 # Per-partition display name overrides DUNE_SERVER_DISPLAY_NAME and WORLD_NAME
 DISPLAY_NAME="${PARTITION_DISPLAY_NAME:-${DUNE_SERVER_DISPLAY_NAME:-${WORLD_NAME:-}}}"
 if [ -n "$DISPLAY_NAME" ]; then
-  mkdir -p "$USERSETTINGS_DIR"
-  # Always rewrite so display name changes take effect on restart.
-  # The marker lets us detect and skip files not managed by us.
-  cat > "$USERSETTINGS_DIR/UserEngine.ini" << EOF
-# arrakis-command-nexus managed — do not edit manually
+  write_usersettings_ini() {
+    local dir="$1"
+    mkdir -p "$dir"
+    # Always rewrite so display name changes take effect on restart.
+    cat > "$dir/UserEngine.ini" << INIEOF
+# arrakis-command-nexus managed -- do not edit manually
 [ConsoleVariables]
 Bgd.ServerDisplayName=$DISPLAY_NAME
-EOF
-  echo "[pre-start] Wrote Bgd.ServerDisplayName='$DISPLAY_NAME' to $USERSETTINGS_DIR/UserEngine.ini"
+INIEOF
+    echo "[pre-start] Wrote Bgd.ServerDisplayName='$DISPLAY_NAME' to $dir/UserEngine.ini"
+  }
+  # Root-level UserSettings (read by some map binaries)
+  write_usersettings_ini "$SAVED_ROOT/UserSettings"
+  # Map-specific subdirectory (UE5 per-map SavedDir — Overmap uses Saved/Overmap/, etc.)
+  write_usersettings_ini "$SAVED_ROOT/$MAP_NAME/UserSettings"
 fi
 
 # Crash-cooldown: if the server crashed recently, wait before restarting
