@@ -131,7 +131,95 @@ def fix_gateway_function(log):
                 log.info("Gateway function already patched or not found, skipping")
 
 
-def repair_partitions(log):
+def fix_load_world_partition(log):
+    """Patch load_world_partition() so Overmap servers can find their partition.
+
+    The stock function primary lookup filters by wp.map = in_map_name (always
+    'Survival_1').  Overmap servers have map='Overmap' in world_partition, so
+    the primary lookup returns 0 rows and the game crashes.
+
+    Patch 1 (primary): remove the map filter so server_id+dimension is enough.
+    Patch 2 (fallback): extend the fallback to also accept map='Overmap' rows,
+    so the game can self-assign even before partition_repair runs.
+    """
+    with get_connection() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT prosrc FROM pg_proc WHERE proname = 'load_world_partition' LIMIT 1")
+            row = cur.fetchone()
+            if row and "wp.map = in_map_name" not in (row[0] or ""):
+                log.info("load_world_partition already patched, skipping")
+                return
+            cur.execute("DROP FUNCTION IF EXISTS dune.load_world_partition(text,text,bigint,bigint)")
+            cur.execute("""
+                CREATE FUNCTION dune.load_world_partition(
+                    in_map_name TEXT, in_server_id TEXT,
+                    in_desired_dimension_index BIGINT, in_desired_partition_id BIGINT)
+                RETURNS TABLE(partition_id BIGINT, partition_definition JSONB,
+                              dimension_index INTEGER, blocked BOOLEAN, label TEXT)
+                LANGUAGE plpgsql AS $FUNC$
+                DECLARE
+                    tmp_partition RECORD;
+                BEGIN
+                    -- Primary: map-agnostic server_id lookup (handles Overmap servers)
+                    SELECT INTO tmp_partition
+                        wp.partition_id, wp.partition_definition,
+                        wp.dimension_index, wp.blocked, wp.label
+                    FROM world_partition wp
+                    WHERE wp.server_id = in_server_id
+                      AND wp.dimension_index = in_desired_dimension_index;
+                    IF tmp_partition.partition_id IS NOT NULL THEN
+                        RETURN QUERY SELECT
+                            tmp_partition.partition_id, tmp_partition.partition_definition,
+                            tmp_partition.dimension_index, tmp_partition.blocked, tmp_partition.label;
+                        RETURN;
+                    END IF;
+
+                    -- Fallback: claim an unassigned partition.
+                    -- Accept both the requested map AND 'Overmap' so the overmap server
+                    -- can self-assign even before partition_repair updates the row.
+                    SELECT INTO tmp_partition
+                        wp.partition_id, wp.partition_definition,
+                        wp.dimension_index, wp.blocked, wp.label
+                    FROM world_partition wp
+                    WHERE (wp.server_id IS NULL OR
+                           wp.server_id NOT IN (SELECT * FROM active_server_ids))
+                      AND (wp.map = in_map_name OR wp.map = 'Overmap')
+                      AND wp.dimension_index = in_desired_dimension_index
+                    ORDER BY (wp.map = in_map_name) DESC,
+                             (wp.partition_id = in_desired_partition_id) DESC,
+                             wp.partition_definition->'type',
+                             wp.partition_definition->'index',
+                             wp.partition_definition->'box'->'min_x',
+                             wp.partition_definition->'box'->'min_y'
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED;
+
+                    IF tmp_partition.partition_id IS NULL THEN
+                        RETURN;
+                    ELSE
+                        INSERT INTO farm_state(
+                            server_id, farm_id, outgoing_s2s_connections,
+                            incoming_s2s_connections, connected_players,
+                            igw_addr, igw_port, game_addr, game_port, map, revision)
+                        VALUES (in_server_id, '0', 0, 0, 0,
+                                '0.0.0.0', 0, '0.0.0.0', 0, '', 0)
+                        ON CONFLICT DO NOTHING;
+                        UPDATE world_partition
+                        SET server_id = in_server_id
+                        WHERE world_partition.partition_id = tmp_partition.partition_id;
+                        NOTIFY world_partition_update;
+                        RETURN QUERY SELECT
+                            tmp_partition.partition_id, tmp_partition.partition_definition,
+                            tmp_partition.dimension_index, tmp_partition.blocked, tmp_partition.label;
+                        RETURN;
+                    END IF;
+                END
+                $FUNC$;
+            """)
+            log.info("Patched load_world_partition: map-agnostic primary + Overmap fallback")
+
+
     """Ensure every alive server has a valid world_partition row.
 
     All game servers (survival_1, overmap, etc.) register in farm_state with
@@ -298,6 +386,7 @@ def main():
     log.info("Starting partition repair target=%s:%d/%s port_map=%s", HOST, PORT, DATABASE, PORT_MAP)
     wait_for_servers(log, min_servers=1)
     fix_gateway_function(log)
+    fix_load_world_partition(log)
     changes = repair_partitions(log)
 
     if changes == 0:

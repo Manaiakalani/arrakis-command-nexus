@@ -21,22 +21,21 @@ if [ -f "$CRASH_MARKER" ]; then
 fi
 date +%s > "$CRASH_MARKER"
 
-# Clear stale farm_state entries but keep world_partition rows intact.
-# partition_repair.py manages world_partition: it will update the server_id
-# on the existing row as soon as this server registers in farm_state.
-# Deleting world_partition here creates a race condition where load_world_partition
-# is called before the new partition record is ready.
+# Clear stale farm_state entries before restarting.
+# world_partition records are managed by partition_repair.py which updates the
+# server_id as soon as the new server_id appears in farm_state (~3 seconds).
+# The patched load_world_partition() fallback path now also accepts Overmap
+# partitions (map='Overmap' OR map=in_map_name), so even if partition_repair
+# hasn't run yet, the game can claim the unassigned Overmap partition directly.
 echo "[pre-start] Clearing stale farm_state data for map='$MAP_NAME'..."
 if [[ ! "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
   echo "[pre-start] ERROR: Invalid MAP_NAME '$MAP_NAME'"
   exit 1
 fi
 
-# Null out the server_id on any existing world_partition row for this map,
-# so partition_repair can reassign it to the new server_id quickly.
-# (MAP_NAME is validated above — alphanumeric/underscore/hyphen only)
-psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-  "UPDATE dune.world_partition SET server_id = NULL WHERE map = '$MAP_NAME';" 2>/dev/null || true
+# Clear stale farm_state entries (MAP_NAME is validated above).
+# Do NOT delete world_partition: the existing record (with old server_id) can be
+# claimed by the new server via the fallback path in load_world_partition().
 psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
   "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" 2>/dev/null || echo "[pre-start] Note: farm_state table may not exist yet (first boot). Continuing."
 
@@ -44,7 +43,7 @@ psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
 # can detect the server_id from stdout ("Server <ID> should be ready")
 # and then wait for that ID to appear in farm_state (FK requirement)
 # before inserting the world_partition row (fallback in case partition_repair
-# hasn't already assigned one via the UPDATE above).
+# hasn't already assigned one).
 echo "[pre-start] Starting game server for map='$MAP_NAME'..."
 
 FIFO_DIR="$(mktemp -d /tmp/.game_fifo.XXXXXX)"
