@@ -557,10 +557,26 @@ export class ApiClient {
 
   triggerUpdate() {
     return this.request<{
-      success: boolean;
+      status: string;
+      message?: string;
+      success?: boolean;
       error?: string;
-      manual_command?: string;
     }>('/updates/trigger', { method: 'POST' });
+  }
+
+  getTriggerStatus() {
+    return this.request<{
+      status: 'idle' | 'running' | 'done' | 'failed';
+      result?: { success: boolean; new_tag?: string; restarted?: string[]; error?: string };
+      error?: string;
+    }>('/updates/trigger/status');
+  }
+
+  setAutoUpdate(enabled: boolean) {
+    return this.request<{ auto_update_enabled: boolean }>('/updates/settings', {
+      method: 'POST',
+      body: JSON.stringify({ auto_update_enabled: enabled }),
+    });
   }
 }
 

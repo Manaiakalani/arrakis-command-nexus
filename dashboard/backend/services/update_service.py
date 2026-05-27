@@ -229,35 +229,163 @@ class UpdateService:
 
     async def trigger_update(self) -> dict[str, Any]:
         """
-        Trigger a server update by calling the update.sh script.
-        This is a long-running operation.
+        Trigger a server update:
+          1. Download the latest server files via steamcmd.
+          2. Load the new Docker image tarballs.
+          3. Update DUNE_IMAGE_TAG in .env.
+          4. Restart game server containers.
+          5. Mark the new Steam build as the installed baseline.
         """
+        steam_dir = self.steam_dir or "/workspace/steam"
+        steam_app_id = self.steam_app_id
+        env_file = Path("/workspace/.env")
+
         try:
-            logger.info("Triggering server update via update.sh script")
-            
-            # Run update script
-            script_path = Path(__file__).parent.parent.parent.parent / "scripts" / "update.sh"
-            
-            if not script_path.exists():
-                return {
-                    "success": False,
-                    "error": "update.sh script not found",
-                }
-            
-            # Note: This is a long-running operation that requires user input
-            # In production, this should be run as a background job with proper handling
+            logger.info("Auto-update: downloading server files via steamcmd (app_id=%s, dir=%s)", steam_app_id, steam_dir)
+
+            # Ensure target directory exists
+            Path(steam_dir).mkdir(parents=True, exist_ok=True)
+
+            # Run steamcmd to download new server files
+            steamcmd_bin = self._find_steamcmd()
+            if not steamcmd_bin:
+                return {"success": False, "error": "steamcmd not found in container"}
+
+            proc = await asyncio.create_subprocess_exec(
+                steamcmd_bin,
+                "+force_install_dir", steam_dir,
+                "+login", "anonymous",
+                "+app_update", steam_app_id, "validate",
+                "+quit",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=1800)
+            stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
+            if proc.returncode != 0:
+                err = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else "unknown"
+                logger.error("steamcmd failed (rc=%d): %s", proc.returncode, err[:500])
+                return {"success": False, "error": f"steamcmd failed (rc={proc.returncode}): {err[:200]}"}
+            logger.info("steamcmd completed successfully")
+
+            # Find Docker image tarballs
+            import glob as _glob
+            tarballs = sorted(
+                _glob.glob(f"{steam_dir}/**/*.tar", recursive=True)
+                + _glob.glob(f"{steam_dir}/**/*.tar.gz", recursive=True)
+            )
+            if not tarballs:
+                return {"success": False, "error": f"No Docker image tarballs found under {steam_dir} after steamcmd update"}
+
+            # Load images via Docker SDK
+            loaded_tags: list[str] = []
+            from services.docker_service import DockerService
+            docker_svc = DockerService()
+            await asyncio.to_thread(docker_svc._connect)
+            if not docker_svc.client:
+                return {"success": False, "error": "Docker client unavailable — cannot load images"}
+
+            for tarball in tarballs:
+                logger.info("Loading Docker image: %s", tarball)
+                try:
+                    with open(tarball, "rb") as fh:
+                        imgs = await asyncio.to_thread(docker_svc.client.images.load, fh.read())
+                    for img in imgs:
+                        tags = img.tags if img.tags else []
+                        loaded_tags.extend(tags)
+                        logger.info("Loaded image tags: %s", tags)
+                except Exception as exc:
+                    logger.warning("Failed to load %s: %s", tarball, exc)
+
+            # Determine new image tag (prefer seabass-server / dune images)
+            new_tag = ""
+            for ref in loaded_tags:
+                if "seabass-server" in ref or "dune" in ref.lower():
+                    new_tag = ref.split(":")[-1]
+                    break
+            if not new_tag and loaded_tags:
+                new_tag = loaded_tags[-1].split(":")[-1]
+
+            if new_tag:
+                # Update DUNE_IMAGE_TAG in .env
+                if env_file.exists():
+                    lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
+                    updated = False
+                    for i, line in enumerate(lines):
+                        if line.startswith("DUNE_IMAGE_TAG="):
+                            lines[i] = f"DUNE_IMAGE_TAG={new_tag}\n"
+                            updated = True
+                            break
+                    if not updated:
+                        lines.append(f"DUNE_IMAGE_TAG={new_tag}\n")
+                    env_file.write_text("".join(lines), encoding="utf-8")
+                    logger.info("Updated DUNE_IMAGE_TAG=%s in .env", new_tag)
+
+                self.current_tag = new_tag
+
+            # Restart game server containers (survival_1, overmap, etc.)
+            restarted = []
+            errors = {}
+            try:
+                containers = await docker_svc.list_containers()
+                game_containers = [
+                    c for c in containers
+                    if any(kw in (c.name or "").lower() for kw in ("survival", "overmap", "sietch"))
+                ]
+                for container in game_containers:
+                    try:
+                        await docker_svc.restart_container(container.name)
+                        restarted.append(container.name)
+                        logger.info("Restarted container: %s", container.name)
+                    except Exception as exc:
+                        errors[container.name] = str(exc)
+                        logger.warning("Failed to restart %s: %s", container.name, exc)
+            except Exception as exc:
+                logger.warning("Container restart phase failed: %s", exc)
+
+            # Mark new build as current baseline
+            if self._latest_steam_build:
+                self._baseline_steam_build = self._latest_steam_build
+            self._update_available = False
+            self._last_check = datetime.now()
+            self._persist_state()
+
+            await self._log_audit("update_triggered", {
+                "new_tag": new_tag,
+                "loaded_tags": loaded_tags,
+                "restarted": restarted,
+                "errors": errors,
+                "steam_dir": steam_dir,
+            })
+
             return {
-                "success": False,
-                "error": "Automated updates not yet implemented. Please run './dune update' manually on the host.",
-                "manual_command": "cd ~/dune-server-docker && ./dune update",
+                "success": True,
+                "new_tag": new_tag,
+                "loaded_tags": loaded_tags,
+                "restarted": restarted,
+                "errors": errors,
             }
-            
-        except Exception as e:
-            logger.error(f"Error triggering update: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": str(e),
-            }
+
+        except asyncio.TimeoutError:
+            return {"success": False, "error": "Update timed out (30 minute limit exceeded)"}
+        except Exception as exc:
+            logger.error("trigger_update failed: %s", exc, exc_info=True)
+            await self._log_audit("update_trigger_failed", {"error": str(exc)})
+            return {"success": False, "error": str(exc)}
+
+    def _find_steamcmd(self) -> str | None:
+        """Find the steamcmd binary in common locations."""
+        import shutil
+        candidates = [
+            "/home/app/steamcmd/steamcmd.sh",
+            "/usr/local/bin/steamcmd",
+            "/usr/games/steamcmd",
+        ]
+        for path in candidates:
+            if Path(path).exists():
+                return path
+        found = shutil.which("steamcmd")
+        return found
 
     def get_status(self) -> dict[str, Any]:
         """Get current update status from memory."""

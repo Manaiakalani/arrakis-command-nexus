@@ -60,7 +60,7 @@ class UpdateScheduler:
             await asyncio.sleep(interval_seconds)
 
     async def _check_and_notify(self):
-        """Check for updates and send notifications if needed."""
+        """Check for updates and send notifications (or auto-apply) if needed."""
         logger.info("Running scheduled update check")
 
         try:
@@ -79,8 +79,28 @@ class UpdateScheduler:
                 f"available={update_available}"
             )
 
-            # Send notification if update is newly available
-            if update_available and latest_build != self._last_notified_build:
+            if not update_available:
+                return
+
+            # Auto-update path
+            if self.update_service.auto_update_enabled:
+                logger.info("Auto-update enabled — triggering update for build %s", latest_build)
+                await self._send_pre_update_notification(current_build or "unknown", latest_build or "unknown")
+                update_result = await self.update_service.trigger_update()
+                if update_result.get("success"):
+                    await self._send_update_complete_notification(
+                        new_tag=update_result.get("new_tag", "unknown"),
+                        restarted=update_result.get("restarted", []),
+                    )
+                    self._last_notified_build = latest_build
+                else:
+                    err = update_result.get("error", "Unknown error")
+                    logger.error("Auto-update failed: %s", err)
+                    await self._send_update_failed_notification(latest_build or "unknown", err)
+                return
+
+            # Notification-only path (no auto-update)
+            if latest_build != self._last_notified_build:
                 await self._send_update_notification(
                     current_build=current_build or "unknown",
                     latest_build=latest_build or "unknown",
@@ -115,6 +135,54 @@ class UpdateScheduler:
 
         except Exception as e:
             logger.error(f"Failed to send update notification: {e}", exc_info=True)
+
+    async def _send_pre_update_notification(self, current_build: str, latest_build: str):
+        """Notify Discord that auto-update is about to start."""
+        try:
+            await self.discord_service.enqueue(
+                event_type="update_available",
+                message=(
+                    f"⚙️ **Auto-Update Starting**\n\n"
+                    f"📦 Current: `{current_build}`  →  🆕 Latest: `{latest_build}`\n\n"
+                    f"The server will restart momentarily. Please find a safe location."
+                ),
+                title="🔄 Auto-Update Starting",
+            )
+        except Exception as e:
+            logger.error("Failed to send pre-update notification: %s", e)
+
+    async def _send_update_complete_notification(self, new_tag: str, restarted: list):
+        """Notify Discord that auto-update completed successfully."""
+        try:
+            containers = ", ".join(restarted) if restarted else "none"
+            await self.discord_service.enqueue(
+                event_type="update_available",
+                message=(
+                    f"✅ **Auto-Update Complete**\n\n"
+                    f"🏷️ New image tag: `{new_tag}`\n"
+                    f"🔁 Restarted containers: {containers}\n\n"
+                    f"The server is back online."
+                ),
+                title="✅ Auto-Update Complete",
+            )
+        except Exception as e:
+            logger.error("Failed to send update-complete notification: %s", e)
+
+    async def _send_update_failed_notification(self, latest_build: str, error: str):
+        """Notify Discord that auto-update failed."""
+        try:
+            await self.discord_service.enqueue(
+                event_type="update_available",
+                message=(
+                    f"❌ **Auto-Update Failed**\n\n"
+                    f"🆕 Target build: `{latest_build}`\n"
+                    f"⚠️ Error: {error[:300]}\n\n"
+                    f"Manual update required: `./dune update`"
+                ),
+                title="❌ Auto-Update Failed",
+            )
+        except Exception as e:
+            logger.error("Failed to send update-failed notification: %s", e)
 
 
 # Global singleton

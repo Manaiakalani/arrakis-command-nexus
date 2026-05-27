@@ -38,7 +38,23 @@ class BackupScheduler:
                 self.last_run_at = datetime.fromisoformat(last_run_str)
             except (ValueError, TypeError):
                 pass
-        self.next_run_at: datetime | None = self._compute_next_run() if self.enabled else None
+
+        # Compute next_run_at from last_run_at so restarts don't reset the schedule.
+        # If last_run_at + interval is still in the future, keep that schedule;
+        # otherwise run soon (5 minutes from now, to let the system stabilise).
+        if not self.enabled:
+            self.next_run_at: datetime | None = None
+        elif self.last_run_at:
+            candidate = self.last_run_at + timedelta(hours=self.interval_hours)
+            now = datetime.now(timezone.utc)
+            if candidate > now:
+                self.next_run_at = candidate
+            else:
+                # Overdue — run soon rather than immediately to avoid hammering
+                # on rapid restart cycles.
+                self.next_run_at = now + timedelta(minutes=5)
+        else:
+            self.next_run_at = self._compute_next_run()
         self._task: asyncio.Task | None = None
         self._stop_event = asyncio.Event()
         self._wake_event = asyncio.Event()
