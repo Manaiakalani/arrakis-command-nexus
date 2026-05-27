@@ -5,6 +5,27 @@ MAP_NAME="${PARTITION_MAP_NAME:-Survival_1}"
 DB_NAME="${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}"
 export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 
+# Write Bgd.ServerDisplayName to UserEngine.ini before the game starts.
+# The -ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName= command-line arg
+# splits on spaces, so we write directly to the UserSettings ini file instead.
+# Both survival_1 and overmap share the same Saved volume so this runs twice;
+# the second write is a no-op since the content is identical.
+USERSETTINGS_DIR="/home/dune/server/DuneSandbox/Saved/UserSettings"
+DISPLAY_NAME="${DUNE_SERVER_DISPLAY_NAME:-${WORLD_NAME:-}}"
+if [ -n "$DISPLAY_NAME" ]; then
+  mkdir -p "$USERSETTINGS_DIR"
+  # Write [ConsoleVariables] block; preserve any existing sections if the file
+  # already exists and was not written by us (check for our marker comment).
+  if ! grep -qs "# arrakis-command-nexus" "$USERSETTINGS_DIR/UserEngine.ini" 2>/dev/null; then
+    cat > "$USERSETTINGS_DIR/UserEngine.ini" << EOF
+# arrakis-command-nexus managed — do not edit manually
+[ConsoleVariables]
+Bgd.ServerDisplayName=$DISPLAY_NAME
+EOF
+    echo "[pre-start] Wrote Bgd.ServerDisplayName='$DISPLAY_NAME' to UserEngine.ini"
+  fi
+fi
+
 # Crash-cooldown: if the server crashed recently, wait before restarting
 # to avoid CPU/memory thrashing from rapid restart loops.
 CRASH_MARKER="/tmp/.dune_server_crash_marker"

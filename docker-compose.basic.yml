@@ -19,7 +19,7 @@ services:
       - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
       - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
       - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
-      - '-ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName="${WORLD_NAME}"'
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName=${WORLD_NAME}
       - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
@@ -123,7 +123,7 @@ services:
       - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
       - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
       - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
-      - '-ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName="${WORLD_NAME}"'
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName=${WORLD_NAME}
       - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
       - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
