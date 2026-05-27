@@ -49,10 +49,23 @@ if [[ -z "$discovered_tag" ]]; then
   discovered_tag="${loaded_tags[-1]##*:}"
 fi
 
-set_env_value DUNE_IMAGE_TAG "$discovered_tag"
-load_env_file
+# Never downgrade: compare the numeric CL of the discovered tag against the
+# currently configured tag and keep whichever is higher.
+current_tag="$(strip_wrapping_quotes "${DUNE_IMAGE_TAG:-0}")"
+current_cl="${current_tag%%-*}"
+discovered_cl="${discovered_tag%%-*}"
 
 printf '\nLoaded image tags:\n'
 printf '  - %s\n' "${loaded_tags[@]}"
 printf '\nDetected image tag: %s\n' "$discovered_tag"
-log_success 'Updated DUNE_IMAGE_TAG in .env.'
+
+if [[ "$discovered_cl" =~ ^[0-9]+$ && "$current_cl" =~ ^[0-9]+$ ]] && \
+   (( discovered_cl < current_cl )); then
+  log_warn "Steam build CL ${discovered_cl} is older than the running CL ${current_cl}."
+  log_warn "Keeping DUNE_IMAGE_TAG=${current_tag} to avoid a downgrade."
+  log_warn "If you intentionally want to downgrade, edit DUNE_IMAGE_TAG in .env manually."
+else
+  set_env_value DUNE_IMAGE_TAG "$discovered_tag"
+  load_env_file
+  log_success "Updated DUNE_IMAGE_TAG in .env to ${discovered_tag}."
+fi

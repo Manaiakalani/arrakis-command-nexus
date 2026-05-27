@@ -15,6 +15,9 @@ router = APIRouter(prefix="/updates", tags=["updates"])
 _update_task: asyncio.Task | None = None
 _update_result: dict | None = None
 
+# Track in-progress background check
+_check_task: asyncio.Task | None = None
+
 
 class UpdateCheckResponse(BaseModel):
     """Response model for update check."""
@@ -53,14 +56,48 @@ async def get_update_status():
 
 @router.post("/check", response_model=UpdateCheckResponse)
 async def check_for_updates():
-    """Check Steam for available updates."""
+    """
+    Trigger a Steam update check in the background and return immediately.
+    The check runs asynchronously (steamcmd takes ~45s); poll GET /updates/status
+    for the result — last_check and latest_build update when it completes.
+    """
+    global _check_task
     service = get_update_service()
-    result = await service.check_for_updates()
 
-    if not result.get("success"):
-        raise HTTPException(status_code=500, detail=result.get("error", "Update check failed"))
+    # If a check is already running, return the cached status
+    if _check_task is not None and not _check_task.done():
+        status = service.get_status()
+        return {
+            "success": True,
+            "current_build": status.get("current_build"),
+            "latest_build": status.get("latest_build"),
+            "update_available": status.get("update_available", False),
+            "current_tag": status.get("current_tag"),
+            "last_check": status.get("last_check"),
+            "steam_app_id": status.get("steam_app_id"),
+            "error": None,
+        }
 
-    return result
+    async def _run_check():
+        try:
+            await service.check_for_updates()
+        except Exception:
+            logger.exception("Background update check failed")
+
+    _check_task = asyncio.create_task(_run_check(), name="update-check")
+
+    # Return the current cached state immediately
+    status = service.get_status()
+    return {
+        "success": True,
+        "current_build": status.get("current_build"),
+        "latest_build": status.get("latest_build"),
+        "update_available": status.get("update_available", False),
+        "current_tag": status.get("current_tag"),
+        "last_check": status.get("last_check"),
+        "steam_app_id": status.get("steam_app_id"),
+        "error": None,
+    }
 
 
 @router.post("/mark-current")

@@ -40,23 +40,33 @@ export default function UpdatesPage() {
 
   const checkForUpdates = async () => {
     setChecking(true);
+    const previousLastCheck = status?.last_check ?? null;
     try {
-      const result = await apiClient.checkForUpdates();
-      if (result.success) {
-        toast(
-          result.update_available
-            ? 'Update available! See instructions below.'
-            : 'Server is up to date',
-          result.update_available ? 'warning' : 'success'
-        );
-        await loadStatus();
-      } else {
-        toast(result.error || 'Failed to check for updates', 'error');
-      }
+      // POST /updates/check now returns immediately (check runs in background)
+      await apiClient.checkForUpdates();
+      toast('Checking for updates in the background\u2026', 'success');
+      // Poll /updates/status until last_check advances (up to 90s)
+      const deadline = Date.now() + 90_000;
+      const poll = setInterval(async () => {
+        try {
+          const fresh = await apiClient.getUpdateStatus();
+          setStatus(fresh);
+          if (fresh.last_check !== previousLastCheck || Date.now() > deadline) {
+            clearInterval(poll);
+            setChecking(false);
+            if (fresh.update_available) {
+              toast('Update available! See instructions below.', 'warning');
+            } else if (fresh.last_check !== previousLastCheck) {
+              toast('Server is up to date', 'success');
+            }
+          }
+        } catch (e) {
+          clearInterval(poll);
+          setChecking(false);
+        }
+      }, 5_000);
     } catch (error: any) {
       toast(error?.message || 'Failed to check for updates', 'error');
-      console.error(error);
-    } finally {
       setChecking(false);
     }
   };
