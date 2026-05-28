@@ -198,27 +198,31 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
   /* Use full Hagga Basin bounds for click-to-coordinate mapping */
   const mapBounds = DEFAULT_HAGGA_BASIN_BOUNDS;
 
+  /* In tactical view, position everything using full map bounds so dots and pins
+     align with the HD background image. Chart view uses player-relative bounds. */
   const plottedPlayers = useMemo(() => {
-    const spanX = Math.max(bounds.maxX - bounds.minX, 1);
-    const spanY = Math.max(bounds.maxY - bounds.minY, 1);
+    const b = mapBounds;
+    const spanX = Math.max(b.maxX - b.minX, 1);
+    const spanY = Math.max(b.maxY - b.minY, 1);
 
     return normalizedPlayers.map((player) => ({
       ...player,
-      left: clamp(((player.x - bounds.minX) / spanX) * 100, 2, 98),
-      top: clamp(100 - ((player.y - bounds.minY) / spanY) * 100, 2, 98),
+      left: clamp(((player.x - b.minX) / spanX) * 100, 1, 99),
+      top: clamp(100 - ((player.y - b.minY) / spanY) * 100, 1, 99),
     }));
-  }, [bounds, normalizedPlayers]);
+  }, [mapBounds, normalizedPlayers]);
 
-  /* Convert a teleport target to percent position on the visible map */
+  /* Convert a teleport target to percent position on the map (same bounds as dots) */
   const targetPosition = useMemo(() => {
     if (!teleportTarget) return null;
-    const spanX = Math.max(bounds.maxX - bounds.minX, 1);
-    const spanY = Math.max(bounds.maxY - bounds.minY, 1);
+    const b = mapBounds;
+    const spanX = Math.max(b.maxX - b.minX, 1);
+    const spanY = Math.max(b.maxY - b.minY, 1);
     return {
-      left: clamp(((teleportTarget.x - bounds.minX) / spanX) * 100, 0, 100),
-      top: clamp(100 - ((teleportTarget.y - bounds.minY) / spanY) * 100, 0, 100),
+      left: clamp(((teleportTarget.x - b.minX) / spanX) * 100, 0, 100),
+      top: clamp(100 - ((teleportTarget.y - b.minY) / spanY) * 100, 0, 100),
     };
-  }, [teleportTarget, bounds]);
+  }, [teleportTarget, mapBounds]);
 
   /* Click on tactical map to place a teleport pin */
   const handleMapClick = useCallback(
@@ -485,10 +489,10 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             </div>
             <div className="pointer-events-none absolute right-4 top-4 flex flex-col items-end gap-1 text-[10px] text-th-text-m">
               <span className="rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-0.5">
-                X: {Math.round(bounds.minX).toLocaleString()} to {Math.round(bounds.maxX).toLocaleString()}
+                X: {Math.round(mapBounds.minX).toLocaleString()} to {Math.round(mapBounds.maxX).toLocaleString()}
               </span>
               <span className="rounded-full border border-th-border/80 bg-th-bg/70 px-2.5 py-0.5">
-                Y: {Math.round(bounds.minY).toLocaleString()} to {Math.round(bounds.maxY).toLocaleString()}
+                Y: {Math.round(mapBounds.minY).toLocaleString()} to {Math.round(mapBounds.maxY).toLocaleString()}
               </span>
             </div>
 
