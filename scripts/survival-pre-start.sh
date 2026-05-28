@@ -154,15 +154,31 @@ trap cleanup EXIT INT TERM
         # WORLD_RESET_SEED env var overrides the seed after startup to prevent this.
         RESET_SEED="${WORLD_RESET_SEED:-}"
         if [ -n "$RESET_SEED" ]; then
-          # Wait for the game server to finish writing its default seed value
-          sleep 15
-          PART_ID=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
-            "SELECT partition_id FROM dune.world_partition WHERE server_id = '$SID' LIMIT 1;" 2>/dev/null || echo "")
-          if [ -n "$PART_ID" ]; then
-            psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-              "UPDATE dune.world_partition_reset_seed SET world_reset_seed = $RESET_SEED WHERE partition_id = $PART_ID;" 2>/dev/null || true
-            echo "[pre-start] Fixed world_partition_reset_seed=$RESET_SEED for partition_id=$PART_ID"
-          fi
+          # The game server resets world_partition_reset_seed during its late
+          # initialization (after farm becomes READY). We run a retry loop that
+          # keeps overriding the seed until it sticks (server stops changing it).
+          (
+            PART_ID=""
+            for attempt in $(seq 1 6); do
+              sleep 20
+              if [ -z "$PART_ID" ]; then
+                PART_ID=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
+                  "SELECT partition_id FROM dune.world_partition WHERE server_id = '$SID' LIMIT 1;" 2>/dev/null || echo "")
+              fi
+              if [ -n "$PART_ID" ]; then
+                CUR_SEED=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
+                  "SELECT world_reset_seed FROM dune.world_partition_reset_seed WHERE partition_id = $PART_ID;" 2>/dev/null || echo "")
+                if [ "$CUR_SEED" != "$RESET_SEED" ]; then
+                  psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
+                    "UPDATE dune.world_partition_reset_seed SET world_reset_seed = $RESET_SEED WHERE partition_id = $PART_ID;" 2>/dev/null || true
+                  echo "[pre-start] Fixed world_partition_reset_seed=$RESET_SEED for partition_id=$PART_ID (attempt $attempt, was $CUR_SEED)"
+                else
+                  echo "[pre-start] world_partition_reset_seed=$CUR_SEED already correct for partition_id=$PART_ID (attempt $attempt)"
+                  break
+                fi
+              fi
+            done
+          ) &
         fi
       fi
     fi
