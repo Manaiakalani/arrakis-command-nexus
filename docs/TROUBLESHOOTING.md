@@ -672,6 +672,8 @@ docker compose -f docker-compose.yml restart director
 
 This commonly happens after restoring a PTC backup to a retail database, where partition IDs changed (PTC partition 19 with seed 1 becomes retail partition 1 with seed 2).
 
+**Critical detail:** The game server **overwrites** the reset seed to its default value (2) during late startup, roughly 30-60 seconds after the container starts. A one-time SQL fix will be reverted on the next restart unless you also enable the automated seed protection.
+
 **Diagnosis:**
 
 ```bash
@@ -688,22 +690,132 @@ docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
 "
 ```
 
-**Fix:**
-
-Set the partition reset seed to match what the backup data expects:
+**One-time fix** (will be reverted on next server restart unless automated):
 
 ```sql
 -- If buildings were created under seed 1, set partition 1 back to seed 1
 UPDATE dune.world_partition_reset_seed SET world_reset_seed = 1 WHERE partition_id = 1;
 ```
 
-Then restart the survival server to re-read the corrected seed:
+**Permanent fix (recommended):**
+
+Add `SURVIVAL_RESET_SEED=1` to your `.env` file. The `survival-pre-start.sh` entrypoint script runs a background retry loop (6 attempts, 20 seconds apart) that corrects the seed after the game server overwrites it during startup. This ensures buildings survive every restart.
+
+```bash
+# In .env
+SURVIVAL_RESET_SEED=1
+```
+
+Then restart the survival server:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.basic.yml up -d survival_1
 ```
 
+Watch the container logs to confirm the seed correction is working:
+
+```bash
+docker logs -f dune-awakening-survival-1-1 2>&1 | grep -i "reset.seed"
+```
+
+You should see output like:
+
+```
+[reset-seed] Attempt 1: current seed = 2, expected = 1 -- fixing
+[reset-seed] Attempt 2: current seed = 2, expected = 1 -- fixing
+[reset-seed] Attempt 3: current seed = 1 -- correct, stopping
+```
+
 **Important:** Use `docker compose up -d` (not `docker compose restart`) if you also changed `.env`. The game server must restart to pick up the corrected seed from the database. This will create one more ghost entry in the browser (clears in 12-24 hours).
+
+## Character Transfer Error M72
+
+**Symptoms:** A player sees "Transfer Character" on login but the transfer always fails with error M72. Cancelling the transfer via the Director's `/CancelTransfer` API appears to succeed, but the transfer is re-offered on the next login.
+
+**Cause:** Funcom Live Services (FLS) stores a pending character transfer token server-side. When a server is decommissioned (e.g., shutting down a PTC server) while a player has an active transfer, the token persists in FLS indefinitely. The local `CancelTransfer` only clears the local database state; FLS re-offers the transfer on every subsequent login.
+
+**Diagnosis:**
+
+```bash
+# Check the director logs for transfer-related errors
+docker logs dune-awakening-director-1 2>&1 | grep -i "transfer\|M72"
+
+# Check if the player has pending transfer state in the database
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT * FROM dune.character_transfers ORDER BY id DESC LIMIT 5;
+"
+```
+
+**Known workarounds (partial):**
+
+1. **Clear local transfer state:** Delete any rows in `dune.character_transfers` for the affected account. This does not fix the FLS-side token but prevents local errors.
+
+2. **Ignore the transfer prompt:** If the player can dismiss the transfer dialog, they can continue playing on their existing character.
+
+3. **Contact Funcom support:** The FLS-side token can only be cleared by Funcom. Open a support ticket referencing error M72 and provide the player's Steam ID.
+
+**This is a known limitation** of the self-hosted server architecture. There is currently no server-side API to clear FLS transfer tokens.
+
+## Teleport Puts Player Underground
+
+**Symptoms:** Using the dashboard map teleport feature, the player logs out and back in but spawns underneath the terrain, falling through the void.
+
+**Cause:** The game world terrain height (Z coordinate) varies wildly across the map, from Z=200 in low areas to Z=3500+ in elevated regions. A fixed default Z value will be underground in some areas. Additionally, building foundation Z values are typically 200-400 units below the player standing height at that location.
+
+**How the smart Z system works:**
+
+The teleport API automatically corrects the Z coordinate to prevent underground spawns. When you teleport via the dashboard:
+
+1. The backend queries all known actor positions (players, buildings) near the target X,Y
+2. It finds the nearest actor's Z coordinate
+3. It uses `max(nearest_z + 500, requested_z)` as the actual teleport Z
+4. This ensures the player spawns at least 500 units above the nearest known entity
+
+**Important: Player must log out FIRST**
+
+The game server holds player position in memory and periodically writes it to the database. If you teleport while the player is online:
+
+1. Dashboard writes new position to DB
+2. Player disconnects
+3. Game server flushes the player's in-game position to DB, **overwriting the teleport**
+4. Player reconnects at their original position
+
+**Correct procedure:**
+
+1. Player logs out of the game completely
+2. Set the teleport destination on the dashboard map
+3. Click the teleport button for the target player
+4. Player logs back in and spawns at the new location
+
+**Manual teleport via SQL (if the dashboard is unavailable):**
+
+```sql
+-- Find the player's actor ID
+SELECT eps.player_pawn_id, ea.platform_id
+FROM dune.encrypted_player_state eps
+JOIN dune.encrypted_accounts ea ON ea.id = eps.account_id;
+
+-- Teleport to specific coordinates (player must be offline)
+UPDATE dune.actors
+SET transform = ROW(
+    ROW(156733, 314506, 1200)::vector,
+    (transform).rotation
+)::transform
+WHERE id = <player_pawn_id>;
+```
+
+**Choosing safe coordinates:**
+
+Check where other players or bases are to find valid terrain Z values:
+
+```sql
+-- See all player and building positions
+SELECT a.id, a.transform::text
+FROM dune.actors a
+WHERE a.transform IS NOT NULL;
+```
+
+Use a Z value at least 300-500 units above any nearby actor's Z to ensure the player lands on the surface.
 
 ## Restoring Player Data After DB Re-Init
 
@@ -798,3 +910,8 @@ docker compose restart survival_1
 **When to use each:**
 - `docker compose restart` - Quick restart, no config changes needed
 - `docker compose up -d` - After changing `.env`, compose files, or image tags
+
+---
+
+**Last updated:** 2026-05-28  
+**Version:** 1.4

@@ -123,6 +123,13 @@ These are not part of the default `.env.example` but are supported when you need
 | `NEXT_PUBLIC_API_BASE_URL` | `/api` | Frontend override for dashboard API base URL. |
 | `NEXT_PUBLIC_ADMIN_TOKEN` | blank | Optional frontend token injection for trusted local admin environments. |
 
+### World and Partition Overrides
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SURVIVAL_RESET_SEED` | blank | When set, `survival-pre-start.sh` runs a background loop that forces the `world_partition_reset_seed` for partition 1 to this value. Required after restoring PTC backup data to prevent "A storm has reset the map" from destroying buildings on every server restart. Typical value: `1`. See [Troubleshooting](./TROUBLESHOOTING.md#a-storm-has-reset-the-map--missing-buildings). |
+| `STEAM_APP_ID` | `4754530` | Steam application ID for update checks. Use `4754530` for retail (production) or `3104830` for PTC (test). **Do not mix these** or the server will be invisible to players. |
+
 ## Config Files
 
 ### Per-Partition Display Names

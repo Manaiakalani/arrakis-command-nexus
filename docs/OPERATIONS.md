@@ -251,6 +251,11 @@ No manual logrotate job is required for container logs unless you change the Doc
 
 PostgreSQL uses normal auto-vacuum behavior. Routine manual vacuuming is not required for standard operation.
 
+> **Database name:** The game database is `dune_sb_1_4_0_0`, **not** `dune`. The `dune` user
+> owns the database, but all game tables live in the `dune` schema inside `dune_sb_1_4_0_0`.
+> Always use `-d dune_sb_1_4_0_0` in `psql` commands. Scripts that reference the wrong
+> database will silently succeed on an empty schema without errors.
+
 #### Manual vacuum (if needed)
 
 ```bash
@@ -261,6 +266,32 @@ docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "VACUUM A
 
 ```bash
 docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "SELECT pg_size_pretty(pg_database_size('dune_sb_1_4_0_0'));"
+```
+
+#### Quick health check queries
+
+```bash
+# Player count and online status
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT count(*) as total_accounts,
+    count(*) FILTER (WHERE online_status = 'Online') as online
+  FROM dune.encrypted_player_state;
+"
+
+# Building and base stats
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT
+    (SELECT count(*) FROM dune.buildings) as buildings,
+    (SELECT count(*) FROM dune.building_instances) as pieces,
+    (SELECT count(*) FROM dune.placeables) as placeables,
+    (SELECT count(*) FROM dune.totems) as totems;
+"
+
+# Partition and server health
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT server_id, map, alive, ready FROM dune.farm_state ORDER BY map;
+  SELECT partition_id, world_reset_seed FROM dune.world_partition_reset_seed;
+"
 ```
 
 ### Credential Rotation
@@ -460,6 +491,76 @@ DEPLOYMENT_PROFILE=standard  # Options: basic, standard, full
 
 ---
 
+## Dashboard Map and Teleport
+
+The Arrakis Command Nexus dashboard includes a **Hagga Basin Tactical Overlay** with live player positions, base markers, and click-to-teleport.
+
+### Map Features
+
+- **Live player positions:** Amber dots show online players with coordinates updated from the game server telemetry feed
+- **Player bases:** Green building icons show all player bases stored in the database, with piece count and owner info on hover
+- **Click-to-teleport:** Click anywhere on the map to place a cyan teleport pin, then select a player to teleport
+- **Preset locations:** Dropdown with player bases (from DB) and static landmarks for quick teleport targeting
+- **Manual coordinates:** Enter exact X, Y, Z values for precise teleport placement
+- **Teleport-to-player:** Click the teleport button on any player card to teleport another player to their location
+
+### Teleport Workflow
+
+**The player must log out of the game BEFORE you click teleport.** The game server holds positions in memory and overwrites the database on disconnect. If the player is online when you teleport, the game server will overwrite your change.
+
+1. Ask the player to log out
+2. Open the Hagga Basin Tactical Overlay on the dashboard
+3. Set the destination: click the map, select a preset/base, or enter coordinates
+4. Click the teleport button next to the target player's name
+5. The dashboard confirms the teleport with the actual Z coordinate used
+6. Player logs back in at the new location
+
+### Smart Z (Underground Prevention)
+
+The teleport system automatically corrects the Z coordinate to prevent underground spawns. Terrain height varies from Z=200 to Z=3500+ across the map. When you teleport:
+
+- The API queries all nearby actors (players and buildings) in the database
+- It finds the nearest actor's Z value
+- It uses `max(nearest_z + 500, requested_z)` as the final Z
+- This ensures the player spawns above the surface, not underground
+
+### Bases Toggle
+
+Click the green **Bases** button in the teleport toolbar to show or hide player base markers on the map. Clicking a base marker sets the teleport pin to that base's exact coordinates with smart Z correction.
+
+### Database Reference for Map/Teleport
+
+The game database is `dune_sb_1_4_0_0` (not `dune`). All tables are in the `dune` schema.
+
+```bash
+# Connect to the game database
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0
+
+# View all player positions
+SELECT a.id, a.transform::text
+FROM dune.actors a
+JOIN dune.encrypted_player_state eps ON eps.player_pawn_id = a.id;
+
+# View all building positions
+SELECT b.id, a.transform::text,
+  (SELECT count(*) FROM dune.building_instances bi WHERE bi.building_id = b.id) AS pieces
+FROM dune.buildings b
+JOIN dune.actors a ON a.id = b.id;
+```
+
+**Key ID relationships:**
+
+| ID Type | Example | Where to Find |
+|---|---|---|
+| FLS user ID (hex) | `35E6117067FC3FF3` | `encrypted_accounts."user"` column |
+| Account ID (int) | `14` | `encrypted_accounts.id` |
+| Steam platform ID | `76561198002238062` | `encrypted_accounts.platform_id` |
+| Player pawn ID | `160` | `encrypted_player_state.player_pawn_id` (FK to `actors.id`) |
+
+**Transform format:** `("(x,y,z)","(rx,ry,rz,rw)")` where translation is a `vector` and rotation is a `quat`. The Z axis is vertical (higher = more above ground).
+
+---
+
 ## Monitoring
 
 ### Key Metrics
@@ -519,5 +620,5 @@ docker compose exec <service-name> bash
 
 ---
 
-**Last updated:** 2026-05-27  
-**Version:** 1.3
+**Last updated:** 2026-05-28  
+**Version:** 1.4

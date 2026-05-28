@@ -21,7 +21,7 @@ This project automates the moving parts required to self-host Dune Awakening:
 - Docker Compose definitions for core infrastructure and game shards
 - Profile-based deployments for `basic`, `standard`, and `full` battlegroups
 - `dune` CLI for setup, startup, updates, backups, and diagnostics
-- Arrakis Command Nexus dashboard for map orchestration, player visibility, player connection history, logs, backups, configuration, and public status sharing
+- [Arrakis Command Nexus dashboard](./OPERATIONS.md#dashboard-map-and-teleport) for map orchestration, player visibility, player connection history, logs, backups, configuration, map teleport, base tracking, and public status sharing
 - Security-focused defaults including local-only admin bindings and secret file support
 
 ## Architecture
