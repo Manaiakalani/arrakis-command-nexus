@@ -435,7 +435,11 @@ class CharacterService:
                 return {"success": True, "solari_added": amount, "new_total": amount, **result}
 
     async def teleport(self, character_id: str, x: float, y: float, z: float) -> dict[str, Any]:
-        """Teleport a character by updating their actor transform. Takes effect on relog."""
+        """Teleport a character by updating their actor transform. Takes effect on relog.
+
+        Z-coordinate is auto-corrected to avoid underground spawns:
+        the nearest known actor's Z is used as a floor (+ 500 buffer).
+        """
         if not self.mutations_enabled:
             raise PermissionError("Mutations disabled. Set DUNE_ADMIN_MUTATIONS_ENABLED=true")
 
@@ -467,6 +471,13 @@ class CharacterService:
 
             pawn_id = pawn["player_pawn_id"]
 
+            # Smart Z: find nearest actor's Z to avoid underground teleport.
+            # Terrain height varies wildly (274 to 3500+), so a fixed default
+            # is unreliable.  We sample all actors with valid transforms,
+            # compute 2D distance to the target, pick the closest, and use
+            # its Z + 500 as a floor value.
+            safe_z = await self._compute_safe_z(connection, pawn_id, x, y, z)
+
             # Update transform keeping existing rotation
             await connection.execute("""
                 UPDATE dune.actors
@@ -475,15 +486,67 @@ class CharacterService:
                     (transform).rotation
                 )::transform
                 WHERE id = $1
-            """, pawn_id, x, y, z)
+            """, pawn_id, x, y, safe_z)
 
-            logger.info("Teleported account %d to (%.1f, %.1f, %.1f)", account_id, x, y, z)
+            logger.info(
+                "Teleported account %d to (%.1f, %.1f, %.1f) [requested Z=%.1f, safe Z=%.1f]",
+                account_id, x, y, safe_z, z, safe_z,
+            )
             return {
                 "success": True,
                 "character_id": character_id,
-                "position": {"x": x, "y": y, "z": z},
-                "note": "Player must relog for teleport to take effect.",
+                "position": {"x": x, "y": y, "z": safe_z},
+                "requested_z": z,
+                "note": "Player must log out FIRST, then teleport will apply on next login.",
             }
+
+    @staticmethod
+    async def _compute_safe_z(
+        connection: Any,
+        exclude_actor_id: int,
+        target_x: float,
+        target_y: float,
+        requested_z: float,
+        z_buffer: float = 500.0,
+    ) -> float:
+        """Return a Z value guaranteed to be above terrain at (target_x, target_y).
+
+        Strategy: query all actors with transforms, find the nearest one by 2D
+        distance, and use max(its Z + buffer, requested_z).  If no reference
+        actors exist, return max(requested_z, 3000) as a generous fallback.
+        """
+        import re
+
+        rows = await connection.fetch("""
+            SELECT id, transform::text AS t
+            FROM dune.actors
+            WHERE transform IS NOT NULL
+              AND id != $1
+        """, exclude_actor_id)
+
+        best_dist_sq: float | None = None
+        best_z: float = 0.0
+
+        for row in rows:
+            nums = re.findall(r'-?[\d.]+(?:e[+-]?\d+)?', row["t"])
+            if len(nums) < 3:
+                continue
+            ax, ay, az = float(nums[0]), float(nums[1]), float(nums[2])
+            dist_sq = (ax - target_x) ** 2 + (ay - target_y) ** 2
+            if best_dist_sq is None or dist_sq < best_dist_sq:
+                best_dist_sq = dist_sq
+                best_z = az
+
+        if best_dist_sq is not None:
+            safe = best_z + z_buffer
+            logger.debug(
+                "Safe Z: nearest actor Z=%.1f, buffer=%d, safe=%.1f (requested=%.1f)",
+                best_z, z_buffer, safe, requested_z,
+            )
+            return max(safe, requested_z)
+
+        # No reference actors at all -- use generous fallback
+        return max(requested_z, 3000.0)
 
     # Known item template IDs derived from recipes, game data, and community
     # databases (dune.gaming.tools, n0logic/dune-linux-tools canonical list).

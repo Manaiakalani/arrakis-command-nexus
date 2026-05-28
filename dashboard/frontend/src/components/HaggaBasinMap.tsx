@@ -268,8 +268,9 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       try {
         // The API expects account_id (character_id), not steamId. Find the matching player.
         // For now, use steamId as character_id since that's how the API works
-        await apiClient.teleportCharacter(steamId, teleportTarget.x, teleportTarget.y, teleportTarget.z);
-        setTeleportResult({ success: true, message: `Teleported to (${Math.round(teleportTarget.x)}, ${Math.round(teleportTarget.y)}). Relog to apply.` });
+        const result = await apiClient.teleportCharacter(steamId, teleportTarget.x, teleportTarget.y, teleportTarget.z);
+        const pos = result.position ?? { x: teleportTarget.x, y: teleportTarget.y, z: teleportTarget.z };
+        setTeleportResult({ success: true, message: `Teleported to (${Math.round(pos.x)}, ${Math.round(pos.y)}, Z:${Math.round(pos.z)}). Log out first, then log back in.` });
       } catch (err) {
         setTeleportResult({ success: false, message: err instanceof Error ? err.message : 'Teleport failed' });
       } finally {
