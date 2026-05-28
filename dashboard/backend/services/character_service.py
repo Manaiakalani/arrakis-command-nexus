@@ -443,8 +443,20 @@ class CharacterService:
         if pool is None:
             raise PermissionError("No database connection")
 
-        account_id = int(character_id)
         async with pool.acquire() as connection:
+            # character_id may be a numeric account_id or a hex FLS user ID
+            try:
+                account_id = int(character_id)
+            except ValueError:
+                # Look up account_id from the FLS user hex ID
+                row = await connection.fetchrow(
+                    'SELECT id FROM dune.encrypted_accounts WHERE "user" = $1',
+                    character_id,
+                )
+                if row is None:
+                    raise KeyError(character_id)
+                account_id = row["id"]
+
             pawn = await connection.fetchrow("""
                 SELECT eps.player_pawn_id
                 FROM dune.encrypted_player_state eps
