@@ -2,6 +2,7 @@ import {
   AnnouncementHistoryEntry,
   BackupEntry,
   BackupSchedule,
+  BaseRecord,
   ScheduledAnnouncement,
   ScheduledAnnouncementMutation,
   BanEntry,
@@ -165,6 +166,10 @@ export class ApiClient {
 
   getPlayerPositions() {
     return this.request<PlayerPosition[]>('/players/positions');
+  }
+
+  getBases() {
+    return this.request<BaseRecord[]>('/maps/bases');
   }
 
   kickPlayer(steamId: string, reason?: string) {

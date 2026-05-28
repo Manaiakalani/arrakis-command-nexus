@@ -1,6 +1,6 @@
 'use client';
 
-import { LocateFixed, MapPin, Minus, Navigation, Plus, RotateCcw, Send, Users, X } from 'lucide-react';
+import { Building2, LocateFixed, MapPin, Minus, Navigation, Plus, RotateCcw, Send, Users, X } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts';
 
@@ -8,21 +8,22 @@ import { useApi } from '@/hooks/useApi';
 import { useMapZoom } from '@/hooks/useMapZoom';
 import { apiClient } from '@/lib/api';
 import { DEFAULT_HAGGA_BASIN_BOUNDS, formatSessionDuration, getPlayerMapBounds, normalizePlayerMapData, type NormalizedPlayerMapPoint, type PlayerMapSource } from '@/lib/player-map';
+import type { BaseRecord } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const GRID_DIVISIONS = 8;
 
 type ViewMode = 'tactical' | 'chart';
 
-/* Preset POI locations on Hagga Basin */
+/* Default safe terrain height -- game terrain Z generally ranges 200-3000 */
+const SAFE_DEFAULT_Z = 2000;
+
+/* Static preset POI locations -- Z values from real terrain measurements */
 const PRESET_LOCATIONS = [
-  { name: 'Arrakeen Landing', x: -50_000, y: 50_000, z: 0 },
-  { name: 'Spice Fields North', x: -150_000, y: 200_000, z: 0 },
-  { name: 'Deep Canyon', x: 100_000, y: -100_000, z: -5_000 },
-  { name: 'Southern Wastes', x: 50_000, y: -300_000, z: 0 },
-  { name: 'Map Center', x: -50_000, y: -50_000, z: 0 },
-  { name: 'Northwest Ridge', x: -350_000, y: 250_000, z: 2_000 },
-  { name: 'Eastern Dunes', x: 250_000, y: 0, z: 0 },
+  { name: 'Map Center', x: -50_000, y: -50_000, z: SAFE_DEFAULT_Z },
+  { name: 'Northwest Highlands', x: -350_000, y: 250_000, z: SAFE_DEFAULT_Z },
+  { name: 'Eastern Dunes', x: 250_000, y: 0, z: SAFE_DEFAULT_Z },
+  { name: 'Southern Wastes', x: 50_000, y: -300_000, z: SAFE_DEFAULT_Z },
 ];
 
 interface TeleportTarget {
@@ -185,10 +186,14 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
   const [teleportResult, setTeleportResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showManualInput, setShowManualInput] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
+  const [showBases, setShowBases] = useState(true);
   const zoom = useMapZoom();
   const { data: polledPlayers } = useApi(() => apiClient.getPlayerPositions(), {
     enabled: refreshIntervalMs > 0,
     refreshInterval: refreshIntervalMs || undefined,
+  });
+  const { data: bases } = useApi(() => apiClient.getBases(), {
+    refreshInterval: 60_000,
   });
 
   const sourcePlayers = polledPlayers ?? players;
@@ -211,6 +216,19 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       top: clamp(100 - ((player.y - b.minY) / spanY) * 100, 1, 99),
     }));
   }, [mapBounds, normalizedPlayers]);
+
+  /* Convert base positions to map percentages */
+  const plottedBases = useMemo(() => {
+    if (!bases) return [];
+    const b = mapBounds;
+    const spanX = Math.max(b.maxX - b.minX, 1);
+    const spanY = Math.max(b.maxY - b.minY, 1);
+    return bases.map((base) => ({
+      ...base,
+      left: clamp(((base.x - b.minX) / spanX) * 100, 1, 99),
+      top: clamp(100 - ((base.y - b.minY) / spanY) * 100, 1, 99),
+    }));
+  }, [bases, mapBounds]);
 
   /* Convert a teleport target to percent position on the map (same bounds as dots) */
   const targetPosition = useMemo(() => {
@@ -235,7 +253,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       const spanY = mapBounds.maxY - mapBounds.minY;
       const gameX = mapBounds.minX + pctX * spanX;
       const gameY = mapBounds.maxY - pctY * spanY; // Y is inverted (top=maxY)
-      setTeleportTarget({ x: gameX, y: gameY, z: 0 });
+      setTeleportTarget({ x: gameX, y: gameY, z: SAFE_DEFAULT_Z });
       setTeleportResult(null);
     },
     [mapBounds, zoom.scale],
@@ -321,7 +339,34 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
               Presets
             </button>
             {showPresets ? (
-              <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-xl border border-amber-500/20 bg-th-bg/95 py-1 shadow-2xl backdrop-blur-xl">
+              <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-64 overflow-y-auto rounded-xl border border-amber-500/20 bg-th-bg/95 py-1 shadow-2xl backdrop-blur-xl">
+                {/* Player bases from DB */}
+                {bases && bases.length > 0 ? (
+                  <>
+                    <p className="px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-emerald-400">Player Bases</p>
+                    {bases.map((base) => (
+                      <button
+                        key={`base-${base.id}`}
+                        type="button"
+                        onClick={() => {
+                          setTeleportTarget({ x: base.x, y: base.y, z: base.z, label: `Base #${base.id} (${base.piece_count} pcs)` });
+                          setShowPresets(false);
+                          setTeleportResult(null);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-emerald-500/10"
+                      >
+                        <Building2 className="h-3 w-3 shrink-0 text-emerald-400/60" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-th-text">Base #{base.id} <span className="text-th-text-m">({base.piece_count} pieces)</span></p>
+                          <p className="font-mono text-[10px] text-th-text-m">{Math.round(base.x).toLocaleString()}, {Math.round(base.y).toLocaleString()}, Z:{Math.round(base.z).toLocaleString()}</p>
+                        </div>
+                      </button>
+                    ))}
+                    <div className="mx-3 my-1 border-t border-th-border-m/40" />
+                  </>
+                ) : null}
+                {/* Static POI presets */}
+                <p className="px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-amber-500/70">Landmarks</p>
                 {PRESET_LOCATIONS.map((loc) => (
                   <button
                     key={loc.name}
@@ -356,6 +401,21 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             )}
           >
             Coordinates
+          </button>
+
+          {/* Show/hide bases toggle */}
+          <button
+            type="button"
+            onClick={() => setShowBases(!showBases)}
+            className={cn(
+              'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+              showBases
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                : 'border-th-border-m/60 text-th-text-m hover:border-emerald-500/30 hover:text-th-text',
+            )}
+          >
+            <Building2 className="mr-1.5 inline-block h-3 w-3" />
+            Bases {bases ? `(${bases.length})` : ''}
           </button>
 
           {/* Clear pin */}
@@ -462,6 +522,34 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                     <span className="mt-1 block font-mono text-[10px] text-th-text-m">
                       X: {Math.round(player.x).toLocaleString()} &bull; Y: {Math.round(player.y).toLocaleString()}{player.z !== null ? ` • Z: ${Math.round(player.z).toLocaleString()}` : ''}
                     </span>
+                  </span>
+                </button>
+              ))}
+
+              {/* Base markers */}
+              {showBases && plottedBases.map((base) => (
+                <button
+                  key={`base-${base.id}`}
+                  type="button"
+                  className="group absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${base.left}%`, top: `${base.top}%` }}
+                  aria-label={`Base #${base.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTeleportTarget({ x: base.x, y: base.y, z: base.z, label: `Base #${base.id} (${base.piece_count} pieces)` });
+                    setTeleportResult(null);
+                  }}
+                >
+                  <span className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-emerald-400/20 blur-sm" />
+                  <Building2 className="relative h-4 w-4 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)] transition-transform group-hover:scale-125" />
+                  <span className="pointer-events-none absolute bottom-[calc(100%+0.75rem)] left-1/2 hidden min-w-max -translate-x-1/2 rounded-xl border border-emerald-500/20 bg-th-bg/95 px-3 py-2 text-left text-xs text-th-text-s shadow-2xl group-hover:block">
+                    <span className="block font-semibold text-emerald-400">Base #{base.id}</span>
+                    {base.owner_name ? <span className="mt-1 block text-th-text-m">{base.owner_name}</span> : null}
+                    <span className="mt-1 block text-th-text-m">{base.piece_count} building pieces</span>
+                    <span className="mt-1 block font-mono text-[10px] text-th-text-m">
+                      X: {Math.round(base.x).toLocaleString()} &bull; Y: {Math.round(base.y).toLocaleString()} &bull; Z: {Math.round(base.z).toLocaleString()}
+                    </span>
+                    <span className="mt-1 block text-[10px] text-cyan-400">Click to set teleport pin</span>
                   </span>
                 </button>
               ))}

@@ -8,6 +8,57 @@ router = APIRouter(tags=["maps"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("/maps/bases")
+async def list_bases(request: Request) -> list[dict]:
+    """Return all player bases (buildings + totems) with world coordinates."""
+    pool = getattr(request.app.state.postgres_service, "pool", None)
+    if pool is None:
+        return []
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                b.id,
+                b.owner_id,
+                a.transform,
+                a.partition_id,
+                ea.platform_id,
+                (SELECT count(*) FROM dune.building_instances bi WHERE bi.building_id = b.id) AS piece_count
+            FROM dune.buildings b
+            JOIN dune.actors a ON a.id = b.id
+            LEFT JOIN dune.encrypted_accounts ea ON ea.id = b.owner_id
+        """)
+
+    bases = []
+    for row in rows:
+        transform_str = str(row["transform"]) if row["transform"] else ""
+        x, y, z = _parse_transform(transform_str)
+        owner_name = None
+        # Try to find owner name from online players
+        if row["platform_id"]:
+            owner_name = f"Steam:{row['platform_id']}"
+        bases.append({
+            "id": row["id"],
+            "owner_id": row["owner_id"],
+            "owner_name": owner_name,
+            "x": x,
+            "y": y,
+            "z": z,
+            "partition_id": row["partition_id"],
+            "piece_count": row["piece_count"],
+        })
+    return bases
+
+
+def _parse_transform(transform_str: str) -> tuple[float, float, float]:
+    """Extract x, y, z from a Postgres composite transform string."""
+    import re
+    numbers = re.findall(r'-?[\d.]+(?:e[+-]?\d+)?', transform_str)
+    if len(numbers) >= 3:
+        return float(numbers[0]), float(numbers[1]), float(numbers[2])
+    return 0.0, 0.0, 0.0
+
+
 @router.get("/maps")
 async def list_maps(request: Request) -> list[dict]:
     raw_maps = await request.app.state.docker_service.list_map_statuses()

@@ -50,6 +50,17 @@ export interface PlayerPosition {
   sessionSeconds: number;
 }
 
+export interface BaseRecord {
+  id: number;
+  owner_id: number | null;
+  owner_name: string | null;
+  x: number;
+  y: number;
+  z: number;
+  partition_id: number;
+  piece_count: number;
+}
+
 export interface Player {
   name: string;
   steamId: string;
