@@ -146,6 +146,24 @@ trap cleanup EXIT INT TERM
         if [ "$ASSIGNED" -eq 0 ]; then
           echo "[pre-start] WARNING: farm_state registration timed out for $SID"
         fi
+
+        # Fix world_partition_reset_seed after the game server initializes.
+        # The game server resets this value to its default (2) on every boot.
+        # If we restored buildings from a backup with a different seed (e.g. 1),
+        # the mismatch triggers "A storm has reset the map" and hides all buildings.
+        # WORLD_RESET_SEED env var overrides the seed after startup to prevent this.
+        RESET_SEED="${WORLD_RESET_SEED:-}"
+        if [ -n "$RESET_SEED" ]; then
+          # Wait for the game server to finish writing its default seed value
+          sleep 15
+          PART_ID=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
+            "SELECT partition_id FROM dune.world_partition WHERE server_id = '$SID' LIMIT 1;" 2>/dev/null || echo "")
+          if [ -n "$PART_ID" ]; then
+            psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
+              "UPDATE dune.world_partition_reset_seed SET world_reset_seed = $RESET_SEED WHERE partition_id = $PART_ID;" 2>/dev/null || true
+            echo "[pre-start] Fixed world_partition_reset_seed=$RESET_SEED for partition_id=$PART_ID"
+          fi
+        fi
       fi
     fi
   done < "$FIFO"
