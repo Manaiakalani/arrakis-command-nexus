@@ -551,13 +551,17 @@ players receive a version mismatch error when connecting.
 
 **Cause:** There are two separate dedicated server packages on Steam:
 
-| Steam App ID | Build | Who can connect |
-|---|---|---|
-| `4754530` | Retail (Production) | All retail game clients |
-| `3104830` | PTC (Public Test Client) | Only PTC game clients |
+| Steam App ID | Build | Who can connect | Anonymous steamcmd? |
+|---|---|---|---|
+| `4754530` | Retail (Production) | Retail game clients | Login required (game ownership) |
+| `3104830` | PTC (Public Test Client) | PTC game clients | Yes (anonymous works) |
 
 Running the PTC build when your players use the retail game (or vice versa) means the server
-is invisible on the correct FLS environment.
+is invisible on the correct FLS environment. **Both apps are valid choices** — pick whichever
+matches your players' clients. PTC is easier to download (anonymous steamcmd works); retail
+requires Steam credentials of an account that owns the game. **`STEAM_APP_ID` in `.env` MUST
+match the manifest in `steam/steamapps/appmanifest_*.acf`** or update checks will compare
+against the wrong app and produce false-positive "update available" notifications.
 
 **Fix:**
 
