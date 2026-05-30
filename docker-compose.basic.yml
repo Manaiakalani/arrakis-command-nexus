@@ -143,11 +143,11 @@ services:
     environment:
       POD_IP: 10.80.0.11
       NODE_NAME: dune-node
-      # Overmap = partition 2 / dimension "Overland" of the Survival_1 level. It runs
-      # the Survival_1 world at runtime and registers under map='Survival_1', so the
-      # world_partition fallback lookup must match Survival_1 (not Overmap) or a fresh
-      # Overmap restart cannot self-assign partition 2 → CF4 on login.
-      PARTITION_MAP_NAME: Survival_1
+      # Overmap = partition 2 / dimension "Overland". Despite running the Survival_1
+      # UE level at runtime, world_partition labels partition 2 as 'Overmap' so the
+      # FLS browser shows it as a separate entry from partition 1 (Abbir/Hagga Basin)
+      # and the pre-start SKIP-LOCKED claim is unambiguous (one partition per map).
+      PARTITION_MAP_NAME: Overmap
       GAME_PORT: 7778
       PARTITION_DISPLAY_NAME: ${OVERMAP_DISPLAY_NAME:-${WORLD_NAME:-}}
       POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}

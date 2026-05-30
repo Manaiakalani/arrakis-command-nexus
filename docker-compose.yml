@@ -247,14 +247,19 @@ services:
       PARTITION_REPAIR_WATCH: "true"
       # Poll every 3s so new server registrations are caught within ~14s crash window
       PARTITION_REPAIR_WATCH_INTERVAL: "3"
-      # Maps game_port → exact world map name each server registers under.
-      # The Overmap (port 7778) is partition 2 / dimension "Overland" of the SAME
-      # Survival_1 UE level, so at runtime it reports map='Survival_1' in both its
-      # RMQ travel-completion message AND the gateway came-up event. world_partition
-      # must therefore label partition 2 as Survival_1 (not Overmap) or the login
-      # Completion stage fails "Failed to find server for partition for 2" (CF4).
+      # Maps game_port → exact world map name labeling each server's partition row
+      # in world_partition. partition 1 (port 7777) = Survival_1 / Hagga Basin.
+      # partition 2 (port 7778) = Overmap / Deep Desert. Even though the Overmap
+      # game server runs the Survival_1 UE level at runtime and reports
+      # map='Survival_1' in the gateway came-up event, world_partition MUST keep
+      # partition 2 labeled as 'Overmap' so:
+      #   1. The FLS server browser shows both partitions as separate entries
+      #      (FLS dedupes by map name; sharing 'Survival_1' makes one disappear).
+      #   2. The pre-start SKIP-LOCKED claim subquery in survival-pre-start.sh
+      #      can unambiguously resolve "the partition for this server's map"
+      #      (two partitions sharing a map name cause UPDATE 0 and a crash loop).
       # Must match -PartitionIndex=N in each game server container command.
-      PARTITION_PORT_MAP: '{"7777":"Survival_1","7778":"Survival_1"}'
+      PARTITION_PORT_MAP: '{"7777":"Survival_1","7778":"Overmap"}'
     command:
       - /workspace/scripts/partition_repair.py
     volumes:
