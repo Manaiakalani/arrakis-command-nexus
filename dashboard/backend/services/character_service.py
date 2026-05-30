@@ -300,25 +300,65 @@ class CharacterService:
 
         account_id = int(character_id)
         async with pool.acquire() as connection:
-            # Validate template_id exists in the game data (items or recipes)
+            # Resolve the template to an actual ITEM template id. The game
+            # instantiates inventory items by item template, NOT by crafting
+            # recipe name. Granting a recipe name (e.g. "T2_Material_Silicone",
+            # whose produced item template is actually "Silicone") writes a row
+            # the server cannot instantiate -- it becomes an invisible "ghost"
+            # slot in-game. Map such names to the real item template.
+            template_note: str | None = None
             if template_id not in self.KNOWN_TEMPLATES:
-                exists = await connection.fetchval("""
-                    SELECT EXISTS(
-                        SELECT 1 FROM dune.items WHERE template_id = $1
-                        UNION ALL
-                        SELECT 1 FROM dune.actors,
-                            jsonb_array_elements(
-                                properties->'CraftingRecipesLibraryActorComponent'->'m_KnownItemRecipes'
-                            ) recipe
-                        WHERE properties ? 'CraftingRecipesLibraryActorComponent'
-                          AND recipe->'BaseRecipeId'->>'Name' ILIKE '%' || $1 || '%'
-                    )
-                """, template_id)
-                if not exists:
-                    raise ValueError(
-                        f"Unknown template '{template_id}'. "
-                        "Use the item search to find valid template IDs."
-                    )
+                item_exists = await connection.fetchval(
+                    "SELECT 1 FROM dune.items WHERE template_id = $1 LIMIT 1",
+                    template_id,
+                )
+                if not item_exists:
+                    # Resolve a recipe-style name to its item template by matching
+                    # the trailing segment (T2_Material_Silicone -> Silicone)
+                    # against templates the game already renders.
+                    tail = template_id.rsplit("_", 1)[-1]
+                    resolved = None
+                    if tail and tail != template_id:
+                        resolved = await connection.fetchval(
+                            "SELECT template_id FROM dune.items "
+                            "WHERE template_id ILIKE $1 ORDER BY template_id LIMIT 1",
+                            tail,
+                        )
+                    if resolved:
+                        template_note = (
+                            f"Resolved '{template_id}' to item template '{resolved}'. "
+                            "(The original is a crafting-recipe name, which the game "
+                            "does not render as an item.)"
+                        )
+                        logger.info(
+                            "grant_item resolved recipe-style template %s -> %s",
+                            template_id, resolved,
+                        )
+                        template_id = resolved
+                    else:
+                        # It may still exist purely as a recipe name -- which does
+                        # NOT render in-game -- so reject with clear guidance.
+                        recipe_only = await connection.fetchval("""
+                            SELECT EXISTS(
+                                SELECT 1 FROM dune.actors,
+                                    jsonb_array_elements(
+                                        properties->'CraftingRecipesLibraryActorComponent'->'m_KnownItemRecipes'
+                                    ) recipe
+                                WHERE properties ? 'CraftingRecipesLibraryActorComponent'
+                                  AND recipe->'BaseRecipeId'->>'Name' ILIKE '%' || $1 || '%'
+                            )
+                        """, template_id)
+                        if recipe_only:
+                            raise ValueError(
+                                f"'{template_id}' is a crafting-recipe name, not an item "
+                                "template. Items render by item template id (e.g. "
+                                "'Silicone', not 'T2_Material_Silicone'). Use the item "
+                                "search to find the correct template id."
+                            )
+                        raise ValueError(
+                            f"Unknown template '{template_id}'. "
+                            "Use the item search to find valid template IDs."
+                        )
 
             import json
             import time
@@ -335,6 +375,8 @@ class CharacterService:
             player_online = (online_status or "").lower() == "online"
 
             warnings: list[str] = []
+            if template_note:
+                warnings.append(template_note)
             # The running game server loads each player's inventory into memory
             # at startup and only WRITES back to the database during its
             # lifetime -- it never re-reads item rows for an already-loaded

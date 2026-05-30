@@ -821,6 +821,20 @@ Use a Z value at least 300-500 units above any nearby actor's Z to ensure the pl
 
 **Symptoms:** You grant an item (or solari) to a character through the dashboard or directly via SQL. The API reports success and the row is present in the `dune.items` table, but the item never shows up in the player's inventory in-game, even after the player logs out and back in.
 
+**Cause #0 (the most common one): wrong `template_id` -- a recipe name, not an item template.** The game instantiates inventory items by their **item template id**, which is frequently different from the **crafting-recipe name**. For example, the recipe that produces silicon is named `T2_Material_Silicone`, but the item template the game actually renders is just `Silicone`. If you grant `T2_Material_Silicone`, a row is written and even passes a naive "does this name exist in game data?" check (it matches the recipe), but the server cannot instantiate it on load -- it reserves the inventory slot as an invisible "ghost" and never draws the item. The dashboard now resolves recipe-style names (trailing segment match, e.g. `T2_Material_Silicone` -> `Silicone`) and rejects names that exist only as recipes. To find a correct template id, look at what real items use:
+
+```sql
+-- Find the actual item template the game renders (not the recipe name)
+SELECT DISTINCT template_id FROM dune.items WHERE template_id ILIKE '%silic%';
+-- -> "Silicone"  (NOT "T2_Material_Silicone")
+```
+
+If you already injected a ghost row with a bad template, fix it in place and cold-load (restart) the server:
+
+```sql
+UPDATE dune.items SET template_id = 'Silicone' WHERE id = <ghost_item_id>;
+```
+
 **Cause (the important one): the running server never re-reads item rows.** The game server loads each player's inventory into memory when it starts up and treats that in-memory copy as the source of truth for its entire uptime. During operation it only ever **writes** inventory back to the database; it does **not** read item rows back for an already-loaded player, **not even on relog**. A directly inserted item row is therefore invisible in-game until the server cold-loads the database, which only happens on a **server restart**.
 
 This is different from teleport. The pawn transform (position) IS re-read when the player's pawn spawns on login, which is why the log-out / teleport / log-in flow works for movement but **not** for inventory. Do not assume a relog is enough for items; it is not.
