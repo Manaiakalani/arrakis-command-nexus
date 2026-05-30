@@ -817,6 +817,37 @@ WHERE a.transform IS NOT NULL;
 
 Use a Z value at least 300-500 units above any nearby actor's Z to ensure the player lands on the surface.
 
+## Granted Items Not Appearing In-Game
+
+**Symptoms:** You grant an item (or solari) to a character through the dashboard. The API reports success and the row appears in the database, but the item never shows up in the player's inventory in-game, or it vanishes a short time later.
+
+**Cause:** The game server loads each online player's inventory into memory on login and treats that in-memory copy as the source of truth. Direct database inserts for an **online** player are invisible in-game, and the server may overwrite or delete them on its next inventory flush, wiping the granted item.
+
+This is the same in-memory caching problem that affects teleport (see "Teleport Puts Player Underground" above). Inventory and position are both cached in RAM while the player is connected.
+
+**Correct procedure:**
+
+1. Have the player **log out** of the game completely.
+2. Grant the item through the dashboard (Characters page) or via SQL.
+3. The player logs back in. The server reloads inventory from the database and the item is present.
+
+**Dashboard behavior:** The grant API checks the player's `online_status` before writing. If the player is online, the response includes a `player_online: true` flag and a `warning` message ("Player is ONLINE ... have the player LOG OUT first"). The Characters page surfaces this warning in red so the operator knows the grant will not take effect until the player relogs.
+
+**Verify the row was written (player offline):**
+
+```sql
+-- Items in a player's backpack (inventory_type 0)
+SELECT it.id, it.template_id, it.stack_size, it.position_index
+FROM dune.items it
+JOIN dune.inventories inv ON inv.id = it.inventory_id
+JOIN dune.actors a ON a.id = inv.actor_id
+WHERE a.owner_account_id = <account_id>
+  AND inv.inventory_type = 0
+ORDER BY it.position_index;
+```
+
+**Oversized stacks:** If you request a `stack_size` larger than the largest stack the game normally uses for that item, the grant still succeeds but the API adds a warning. The server may cap, split, or move the oversized stack to overflow inventory on login. Prefer granting multiple normal-sized stacks over one huge stack.
+
 ## Restoring Player Data After DB Re-Init
 
 When the database is dropped and recreated for a major version upgrade, all player data (characters, bases, items, progression) is lost. If you have a pre-upgrade backup, you can restore it.

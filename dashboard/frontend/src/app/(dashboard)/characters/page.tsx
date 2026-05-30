@@ -274,11 +274,11 @@ export default function CharactersPage() {
     setGrantResult(null);
     try {
       const result = await apiClient.grantItem(selectedId, tid, qty);
-      const msg = `Granted ${qty}x ${tid} (item #${result.item_id}). Relog to pick up.`;
+      const msg = `Granted ${qty}x ${tid} (item #${result.item_id}).`;
       if (result.warning) {
-        setGrantResult({ tone: 'success', message: `${msg}\n⚠️ ${result.warning}` });
+        setGrantResult({ tone: result.player_online ? 'error' : 'success', message: `${msg}\n⚠️ ${result.warning}` });
       } else {
-        setGrantResult({ tone: 'success', message: msg });
+        setGrantResult({ tone: 'success', message: `${msg} Relog to pick up.` });
       }
       if (!templateId) { setGrantTemplate(''); setGrantAmount('1'); }
     } catch (error) {

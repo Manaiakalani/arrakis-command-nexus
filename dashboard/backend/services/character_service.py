@@ -323,13 +323,37 @@ class CharacterService:
             import json
             import time
 
+            # Check whether the player is currently online. The game server
+            # holds inventory in memory for online players, so direct DB
+            # inserts are invisible in-game and may be wiped when the server
+            # next flushes its in-memory inventory back to the database.
+            # Items must be granted while the player is OFFLINE.
+            online_status = await connection.fetchval("""
+                SELECT online_status::text FROM dune.encrypted_player_state
+                WHERE account_id = $1
+            """, account_id)
+            player_online = (online_status or "").lower() == "online"
+
+            warnings: list[str] = []
+            if player_online:
+                warnings.append(
+                    "Player is ONLINE. The game server caches inventory in memory, "
+                    "so this item will not appear in-game and may be deleted on the "
+                    "next inventory flush. Have the player LOG OUT first, then grant "
+                    "the item, then log back in."
+                )
+                logger.warning(
+                    "Granting item %s to account %d while player is ONLINE -- "
+                    "item may not appear in-game or may be wiped on flush.",
+                    template_id, account_id,
+                )
+
             # Check the max stack size observed for this item type in the DB
             observed_max = await connection.fetchval("""
                 SELECT MAX(stack_size) FROM dune.items WHERE template_id = $1
             """, template_id)
-            warning = None
             if observed_max and stack_size > observed_max:
-                warning = (
+                warnings.append(
                     f"Requested stack_size {stack_size} exceeds the largest observed "
                     f"stack of {observed_max} for '{template_id}'. The game server may "
                     f"cap, split, or move oversized stacks to overflow inventory."
@@ -338,6 +362,7 @@ class CharacterService:
                     "Grant stack_size %d exceeds observed max %d for %s (account %d)",
                     stack_size, observed_max, template_id, account_id,
                 )
+            warning = " ".join(warnings) if warnings else None
 
             # Copy stats from an existing item of the same type if available
             existing_stats = await connection.fetchval("""
@@ -393,6 +418,7 @@ class CharacterService:
                 "stack_size": stack_size,
                 "inventory_type": "backpack",
                 "position_index": int(max_pos),
+                "player_online": player_online,
             }
             if warning:
                 result["warning"] = warning
