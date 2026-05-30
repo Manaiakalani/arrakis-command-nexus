@@ -986,14 +986,13 @@ LogDuneS2sController: Error: Failing battlegroup director travel validation: Fai
 LogIGW: Display: Refusing player by sending NMT_Failure with message: Internal error in authentication.
 ```
 
-**Cause:** The Director keeps two separate views of the game servers:
+This is **not** a network or port problem: the client reaches the server (you will see its `RemoteAddr` in the game server log). The login fails at the **Completion** stage, when the game server makes a server-to-server call asking the Director to validate travel to its partition, and the Director cannot find a server for that partition.
 
-1. A **routing/grant** view fed continuously by RMQ `ServerState` messages (used to queue travel and issue grants).
-2. A **travel-validation registry** populated only by one-time gateway **"server came up"** events (used by the game server's server-to-server call at the login **Completion** stage).
+**Root cause (the farm_state coupling bug):** Both the Survival and Overmap game servers run the *same* underlying Unreal level (`Survival_1.Survival_1`); the Overmap is just a different partition/dimension ("Overland", partition 2) of that level. Because of this, **both servers report `farm_state.map = 'Survival_1'`** even though `world_partition` labels partition 2 as `Overmap`.
 
-If the Director is restarted on its own, it loses the validation registry and does **not** receive fresh "came up" events (the game servers only emit those at their own boot, via the gateway). The grant path still works, so travel is queued, but the final S2S validation fails with `Failed to find server for partition for N`. The game server then refuses the player with `Internal error in authentication`, which the client reports as CF4 / Pending Connection Failure. This is **not** a network or port problem: the client reaches the server (you will see its `RemoteAddr` in the game server log).
+Older versions of `scripts/survival-pre-start.sh` cleared stale registrations with `DELETE FROM dune.farm_state WHERE map = '<MAP_NAME>'`. When the **Survival** server restarted, `MAP_NAME='Survival_1'`, so that delete also removed the **live Overmap** row. The Overmap kept running and re-reported its `farm_state` row, but the Director's partition-2 association was left half-broken: the grant path still worked (travel was queued and the client was sent to port 7778), but the Completion-stage validation failed with `Failed to find server for partition for 2`. Players in the Deep Desert could not log in; Survival (partition 1) logins were unaffected.
 
-**Do not restart the Director by itself.** Doing so wipes the validation registry without regenerating the "came up" events it depends on.
+Restarting the Director or the gateway does **not** fix this, because the broken association lives with the Overmap server's own registration. Only re-registering the Overmap repairs it.
 
 **Confirm the diagnosis:**
 
@@ -1003,33 +1002,36 @@ docker logs --since 15m dune-awakening-overmap-1 2>&1 | grep -E "travel validati
 
 # Director cannot validate the destination partition
 docker logs --since 15m dune-awakening-director-1 2>&1 | grep "Failed to find server"
+
+# Both servers report map=Survival_1; note the Overmap is game_port 7778
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c \
+  "SELECT server_id, game_port, map, ready, alive FROM dune.farm_state ORDER BY game_port;"
 ```
 
-**Fix:** Regenerate the gateway "came up" events so the Director rebuilds its validation registry. Restarting the **gateway** does this for every running server at once, without reloading any game world:
+**Immediate fix:** Restart the Overmap server so it re-registers partition 2 cleanly (new `server_id` claimed into `world_partition`, fresh `farm_state` row, fresh gateway "came up"). Check for online players first; a world reload takes 2-3 minutes.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml restart gateway
-# Optional: confirm the RMQ HTTP flag survived the restart
-./scripts/gateway-patch.sh
+docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml restart overmap
 ```
 
-**Verify (give the gateway about 60-90 seconds; it has a built-in warmup):**
+**Verify (give the Overmap about 2-3 minutes to load):**
 
 ```bash
-# Both partitions should re-announce (1 = Survival, 2 = Overmap)
-docker logs --since 2m dune-awakening-gateway-1 2>&1 | grep "came up"
+# world_partition partition 2 should show the NEW overmap server_id, map=Overmap
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c \
+  "SELECT partition_id, server_id, map FROM dune.world_partition WHERE partition_id IN (1,2) ORDER BY partition_id;"
 
 # Should print 0
-docker logs --since 90s dune-awakening-director-1 2>&1 | grep -c "Failed to find server"
+docker logs --since 3m dune-awakening-director-1 2>&1 | grep -c "Failed to find server"
 ```
 
 Then have the affected player reconnect.
 
-**Alternative:** Restarting the individual game servers also regenerates their "came up" events, but it reloads the world and takes longer. Prefer the gateway restart.
+**Permanent fix (already applied):** `scripts/survival-pre-start.sh` now scopes the cleanup to the instance's own game port (`DELETE FROM dune.farm_state WHERE game_port = $GAME_PORT`), driven by a `GAME_PORT` env var (`7777` survival, `7778` overmap) set in `docker-compose.basic.yml`. A Survival restart can no longer wipe the live Overmap row. The change takes effect the next time the game-server containers are recreated (`docker compose up -d survival_1 overmap`).
 
-**Prevention:** Never restart the Director in isolation. If the Director must be restarted, restart the **gateway** immediately afterward (or restart the game servers) so the validation registry is repopulated.
+**Prevention:** Never clear `farm_state` by `map` for these servers - they share the `Survival_1` map name. Always scope by `game_port` (or `server_id`). If you ever see `Failed to find server for partition for 2`, restart the **Overmap** (the partition-2 server), not the Director or gateway.
 
 ---
 
 **Last updated:** 2026-05-30  
-**Version:** 1.5
+**Version:** 1.6
