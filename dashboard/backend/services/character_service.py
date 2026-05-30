@@ -372,10 +372,15 @@ class CharacterService:
             import time
 
             # Check whether the player is currently online. The game server
-            # holds inventory in memory for online players, so direct DB
-            # inserts are invisible in-game and may be wiped when the server
-            # next flushes its in-memory inventory back to the database.
-            # Items must be granted while the player is OFFLINE.
+            # holds inventory in memory for online players and only WRITES it
+            # back to the database during a session. It re-reads inventory rows
+            # from the database when the player's character loads from
+            # persistence -- which happens on LOGIN (LoadPlayerActors). A
+            # directly inserted item therefore appears after the player relogs
+            # (returns to the main menu and rejoins); a full server restart is
+            # NOT required (a restart only works because it forces every player
+            # to relog). Granting while online carries a small risk that the
+            # logout flush rewrites the slot, so prefer granting at the menu.
             online_status = await connection.fetchval("""
                 SELECT online_status::text FROM dune.encrypted_player_state
                 WHERE account_id = $1
@@ -385,29 +390,31 @@ class CharacterService:
             warnings: list[str] = []
             if template_note:
                 warnings.append(template_note)
-            # The running game server loads each player's inventory into memory
-            # at startup and only WRITES back to the database during its
-            # lifetime -- it never re-reads item rows for an already-loaded
-            # player, not even on relog. Directly inserted items therefore do
-            # NOT appear in-game until the server cold-loads the database, i.e.
-            # on the next SERVER RESTART. (Position/teleport is different: the
-            # pawn transform is re-read per login.)
+            # The game server reads a player's inventory from the database when
+            # their character loads from persistence, which happens on LOGIN.
+            # A directly inserted item therefore appears after the player relogs
+            # (returns to the main menu and rejoins) -- no server restart is
+            # required. (A server restart works only because it forces every
+            # player to relog.)
             warnings.append(
-                "Item written to the database, but the running game server will "
-                "not load it until it is RESTARTED. A player relog is not enough "
-                "-- the server only reads item rows on a cold start. The item "
-                "will appear after the next server restart."
+                "Item written to the database. It will appear in-game after the "
+                "player relogs: have them return to the main menu and rejoin the "
+                "server. On login the server loads the inventory from the "
+                "database. A full server restart is NOT required."
             )
             if player_online:
                 warnings.append(
-                    "Player is also ONLINE. The server owns the live inventory and "
-                    "may overwrite or delete this row when the player next logs out "
-                    "(it flushes its in-memory copy over the slots it manages). "
-                    "Grant while the player is OFFLINE, then restart the server."
+                    "Player is currently ONLINE, so the item is not visible yet. "
+                    "Have them log out to the main menu and log back in to load "
+                    "it. Note: granting while online carries a small risk that the "
+                    "server's logout flush rewrites the slot; if the item does not "
+                    "appear after relogging, re-grant it while the player sits at "
+                    "the main menu, then have them rejoin."
                 )
                 logger.warning(
                     "Granting item %s to account %d while player is ONLINE -- "
-                    "row may be overwritten on the player's next logout flush.",
+                    "item loads on the player's next relog; small risk the logout "
+                    "flush rewrites the slot.",
                     template_id, account_id,
                 )
 

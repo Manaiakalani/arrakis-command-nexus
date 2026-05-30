@@ -819,7 +819,7 @@ Use a Z value at least 300-500 units above any nearby actor's Z to ensure the pl
 
 ## Granted Items Not Appearing In-Game
 
-**Symptoms:** You grant an item (or solari) to a character through the dashboard or directly via SQL. The API reports success and the row is present in the `dune.items` table, but the item never shows up in the player's inventory in-game, even after the player logs out and back in.
+**Symptoms:** You grant an item (or solari) to a character through the dashboard or directly via SQL. The API reports success and the row is present in the `dune.items` table, but the item never shows up in the player's inventory in-game -- even after the player logs out and back in. This almost always means the `template_id` is wrong (a recipe name, not an item template); a correctly-templated grant *does* appear after the player relogs.
 
 **Cause #0 (the most common one): wrong `template_id` -- a recipe name, not an item template.** The game instantiates inventory items by their **item template id**, which is frequently different from the **crafting-recipe name**. For example, the recipe that produces silicon is named `T2_Material_Silicone`, but the item template the game actually renders is just `Silicone`. If you grant `T2_Material_Silicone`, a row is written and even passes a naive "does this name exist in game data?" check (it matches the recipe), but the server cannot instantiate it on load -- it reserves the inventory slot as an invisible "ghost" and never draws the item. The dashboard now resolves recipe-style names (trailing segment match, e.g. `T2_Material_Silicone` -> `Silicone`) for **every** grant -- including curated catalog entries such as the tier-prefixed names `T3_Material_CopperBar` -> `CopperBar`, `T2_MiscEquipment_PowerPack` -> `PowerPack`, and `T3_Tool_SurveyProbeLauncher` -> `SurveyProbeLauncher` -- and rejects names that exist only as recipes. To find a correct template id, look at what real items use:
 
@@ -829,32 +829,30 @@ SELECT DISTINCT template_id FROM dune.items WHERE template_id ILIKE '%silic%';
 -- -> "Silicone"  (NOT "T2_Material_Silicone")
 ```
 
-If you already injected a ghost row with a bad template, fix it in place and cold-load (restart) the server:
+If you already injected a ghost row with a bad template, fix it in place. The corrected item loads the next time the player joins the server (see below) -- a relog, not a full restart, is sufficient:
 
 ```sql
 UPDATE dune.items SET template_id = 'Silicone' WHERE id = <ghost_item_id>;
 ```
 
-**Cause (the important one): the running server never re-reads item rows.** The game server loads each player's inventory into memory when it starts up and treats that in-memory copy as the source of truth for its entire uptime. During operation it only ever **writes** inventory back to the database; it does **not** read item rows back for an already-loaded player, **not even on relog**. A directly inserted item row is therefore invisible in-game until the server cold-loads the database, which only happens on a **server restart**.
+**Cause (the important one): the server reads inventory from the database on player LOGIN.** The game server holds a player's inventory in memory while they are connected and only **writes** it back to the database during the session. It **re-reads** the inventory rows from the database when the player's character loads from persistence -- which happens on **login** (`LoadPlayerActors` / `LoadPawn` / `SpawnPawnFromPersistence` in the server log). A directly inserted item therefore appears after the player **relogs**: return to the main menu and rejoin the server. A full **server restart is NOT required** -- a restart only works because it forces every player to relog.
 
-This is different from teleport. The pawn transform (position) IS re-read when the player's pawn spawns on login, which is why the log-out / teleport / log-in flow works for movement but **not** for inventory. Do not assume a relog is enough for items; it is not.
+> Verified empirically: an item written ~31 minutes into server uptime (`RestartCount=0`, no restart) appeared in-game after the player logged out (`UNetConnection::Close`) and logged back in (`LoadPlayerActors`). An earlier belief that "a relog is not enough, only a cold restart works" was a misdiagnosis caused by a ghost `template_id` -- the relog *was* reading the database, but the recipe-named ghost item could not be instantiated, so nothing was drawn.
 
-**Secondary issue (granting while online):** If you insert an item while the player is online, the server owns the live inventory and may overwrite or delete your row on the player's next logout flush (it rewrites the slots it manages). Always grant while the player is OFFLINE.
+This is the same mechanism as teleport: the pawn transform and the inventory are both re-read when the player's character spawns on login.
+
+**Secondary issue (granting while online):** If you insert an item while the player is online, the server owns the live inventory and *may* overwrite or delete your row on the player's next logout flush (it rewrites the slots it manages). In practice a row written to a free slot usually survives the flush and loads on the next login, but to be safe prefer granting while the player sits at the main menu, then have them rejoin. If an online grant does not appear after relogging, re-grant at the menu and rejoin.
 
 **Tertiary issue (slot capacity):** Each inventory has a `max_item_count` (a default backpack is 35). Items written to a `position_index` at or above that count exist in the database but are never rendered. The dashboard now allocates the first free slot within `[0, max_item_count)` automatically; if you insert via raw SQL, pick a free slot below `max_item_count`.
 
 **Correct, reliable procedure:**
 
-1. Have the player **log out** completely (so the server is not holding their live inventory).
-2. **Stop** the game server so nothing can overwrite the row:
-   `docker compose stop survival_1`
-3. Insert the item (via the dashboard while it can still reach the DB, or via SQL). Use a free slot below `max_item_count`.
-4. **Start** the server: `docker compose up -d survival_1`. It cold-loads the database, including your item.
-5. The player logs in and the item is present.
+1. Insert the item (via the dashboard, or via SQL into a free slot below `max_item_count`). Use the correct **item template id**, not a recipe name.
+2. Have the player **return to the main menu** and **rejoin** the server. On login the server loads the inventory from the database, including your item.
 
-If a brief restart is unacceptable, the granted row will simply appear on the **next scheduled server restart** -- it stays safely in the database until then.
+That is all -- no `docker compose stop`/`up` is needed. (If you prefer to eliminate any chance of the logout flush touching the row, grant while the player is already at the main menu, then have them join.) The granted row stays safely in the database until the player next logs in, so it will also appear after any scheduled server restart if the player does not relog sooner.
 
-**Dashboard behavior:** The grant API always returns a `warning` noting that the item will not appear until the server restarts, and adds a second warning (and sets `player_online: true`) if the player is online. The Characters page surfaces the warning, in red when the player is online.
+**Dashboard behavior:** The grant API returns a `warning` noting that the item appears after the player relogs (no restart required), and adds a second note (and sets `player_online: true`) if the player is currently online. The Characters page surfaces this as a "Relog to load the item" panel.
 
 **Verify the row was written:**
 

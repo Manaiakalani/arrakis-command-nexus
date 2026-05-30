@@ -5,7 +5,6 @@ import {
   Backpack,
   BookOpen,
   Check,
-  Copy,
   Coins,
   Droplets,
   Flame,
@@ -38,12 +37,9 @@ type GrantResult = {
   tone: 'success' | 'error' | 'staged';
   title: string;
   message: string;
-  restartRequired?: boolean;
+  relogRequired?: boolean;
   online?: boolean;
 };
-
-const RESTART_COMMAND =
-  'ssh dunebrah@daspicebox "cd ~/dune-server-docker && docker compose stop survival_1 && docker compose up -d survival_1"';
 
 type CategoryKey = 'stats' | 'spice' | 'economy' | 'specialization';
 
@@ -122,7 +118,6 @@ export default function CharactersPage() {
   const [grantAmount, setGrantAmount] = useState('1');
   const [grantSearch, setGrantSearch] = useState('');
   const [grantResult, setGrantResult] = useState<GrantResult | null>(null);
-  const [copiedCmd, setCopiedCmd] = useState(false);
   const [granting, setGranting] = useState(false);
   const [grantingLabel, setGrantingLabel] = useState<string | null>(null);
   const [templateResults, setTemplateResults] = useState<{ id: string; name?: string; count: number; source?: string; category?: string }[]>([]);
@@ -293,7 +288,7 @@ export default function CharactersPage() {
         tone: 'staged',
         title: `Staged ${qty}x ${tid}`,
         message: `Item #${result.item_id} written to the database.${result.warning ? `\n${result.warning}` : ''}`,
-        restartRequired: true,
+        relogRequired: true,
         online: result.player_online,
       });
       if (!templateId) { setGrantTemplate(''); setGrantAmount('1'); }
@@ -321,7 +316,7 @@ export default function CharactersPage() {
       }
     }
     if (granted === items.length) {
-      setGrantResult({ tone: 'staged', title: `Staged ${granted} items`, message: `${granted} item rows written to the database.`, restartRequired: true });
+      setGrantResult({ tone: 'staged', title: `Staged ${granted} items`, message: `${granted} item rows written to the database.`, relogRequired: true });
     } else if (granted > 0) {
       setGrantResult({ tone: 'error', title: `Partial: ${granted}/${items.length}`, message: `Last error: ${lastError}` });
     } else {
@@ -338,7 +333,7 @@ export default function CharactersPage() {
     setGrantResult(null);
     try {
       const result = await apiClient.grantSolari(selectedId, amount);
-      setGrantResult({ tone: 'staged', title: `Staged ${result.solari_added} Solari`, message: `New total: ${result.new_total}.`, restartRequired: true });
+      setGrantResult({ tone: 'staged', title: `Staged ${result.solari_added} Solari`, message: `New total: ${result.new_total}.`, relogRequired: true });
     } catch (error) {
       setGrantResult({ tone: 'error', title: 'Grant failed', message: error instanceof Error ? error.message : 'Grant failed.' });
     } finally {
@@ -748,29 +743,14 @@ export default function CharactersPage() {
                       {grantResult.message ? <p className="mt-0.5 whitespace-pre-line text-xs opacity-90">{grantResult.message}</p> : null}
                     </div>
                   </div>
-                  {grantResult.restartRequired ? (
+                  {grantResult.relogRequired ? (
                     <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-                      <p className="text-xs font-semibold">Pending a server restart</p>
+                      <p className="text-xs font-semibold">Relog to load the item</p>
                       <p className="mt-1 text-xs opacity-90">
                         {grantResult.online
-                          ? 'The player is online. Have them log out, then restart the server. The running server holds inventory in memory and only loads granted items on a cold start.'
-                          : 'The running server keeps inventory in memory and only loads granted items on a cold start. A player relog is not enough.'}
+                          ? 'The player is online, so the item is not visible yet. Have them return to the main menu and rejoin the server -- the inventory is read from the database on login. No server restart is needed. (If it does not appear after relogging, re-grant while the player sits at the main menu, then rejoin.)'
+                          : 'The item is staged in the database. It loads when the player next joins the server -- the inventory is read from the database on login. No server restart is needed.'}
                       </p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <code className="flex-1 overflow-x-auto rounded-lg bg-black/30 px-2 py-1.5 font-mono text-[11px] leading-snug">{RESTART_COMMAND}</code>
-                        <button
-                          type="button"
-                          title="Copy restart command"
-                          className="dune-button-muted shrink-0 px-2 py-1.5 text-xs"
-                          onClick={() => {
-                            void navigator.clipboard.writeText(RESTART_COMMAND);
-                            setCopiedCmd(true);
-                            setTimeout(() => setCopiedCmd(false), 2000);
-                          }}
-                        >
-                          {copiedCmd ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -778,7 +758,7 @@ export default function CharactersPage() {
 
               <div className="mt-5">
                 <p className="text-sm font-semibold text-th-text">Quick Grants</p>
-                <p className="mt-1 text-xs text-th-text-m">One-click common items and resources. Granted items are staged in the database and appear after the next server restart.</p>
+                <p className="mt-1 text-xs text-th-text-m">One-click common items and resources. Granted items are staged in the database and appear after the player relogs (no server restart needed).</p>
                 <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-4">
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantSolari(1000)}>
                     <Coins className="mr-1.5 h-3.5 w-3.5" /> +1,000 Solari
