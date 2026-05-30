@@ -789,12 +789,17 @@ class CharacterService:
         "OldImperialComponent1": ("Components", "Advanced Servoks"),
         "OldImperialComponent2": ("Components", "Particle Capacitor"),
         "D_OldImperialComponent9": ("Components", "Optimized Servoks"),
-        # Consumables - real Unreal ids verified against awakening.wiki
-        # Note: bare "HealthPack" is a ghost name; use HealthPack_Channeled* tiers.
-        "HealthPack_Channeled": ("Consumables", "Healkit (Mk1)"),
-        "HealthPack_Channeled_2": ("Consumables", "Healkit Mk2"),
-        "HealthPack_Channeled_3": ("Consumables", "Healkit Mk4"),
-        "HealthPack_Channeled_4": ("Consumables", "Healkit Mk6"),
+        # Consumables - real Unreal ids verified against awakening.wiki AND
+        # cross-checked against live `dune.items` inventory rows. The wiki uses
+        # PascalCase (HealthPack_Channeled) but on this server the lowercase
+        # variant (healthpack_channeled) is the real id with non-zero instance
+        # count. Always verify with `SELECT count(*) FROM dune.items WHERE
+        # template_id=...` before adding new entries.
+        "healthpack_channeled": ("Consumables", "Healkit (Standard)"),
+        "HealthPack_Channeled": ("Consumables", "Healkit (Mk1, wiki spelling)"),
+        "HealthPack_Channeled_2": ("Consumables", "Healkit Mk2 (wiki, unverified)"),
+        "HealthPack_Channeled_3": ("Consumables", "Healkit Mk4 (wiki, unverified)"),
+        "HealthPack_Channeled_4": ("Consumables", "Healkit Mk6 (wiki, unverified)"),
         "Bloodsack_01": ("Consumables", "Small Blood Sack"),
         "Bloodsack_02": ("Consumables", "Medium Blood Sack"),
         "Bloodsack_03": ("Consumables", "Large Blood Sack"),
