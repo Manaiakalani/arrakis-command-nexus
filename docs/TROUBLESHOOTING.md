@@ -977,44 +977,57 @@ docker compose restart survival_1
 - `docker compose restart` - Quick restart, no config changes needed
 - `docker compose up -d` - After changing `.env`, compose files, or image tags
 
-## "Connection failure CF4" / Cannot Join After a Server Restart
+## "Connection failure CF4" / "Pending Connection Failure" After a Restart
 
-**Symptoms:** Players see a client error such as **CF4** when trying to connect, or specifically when their character was last in the Overmap (Deep Desert overland). The Survival map may be joinable while the Overmap is not.
+**Symptoms:** Players see client error **CF4** or **"Pending Connection Failure"**, most often when their character was last in the Overmap (Deep Desert). The client reaches the game server but is dropped during login, and the game server log shows:
 
-**Cause:** The Director keeps an in-memory routing table mapping each partition to the game server that owns it. When a single game server is restarted (for example `survival_1`), the Director can lose its routing entry for the **other** partition (typically the Overmap, partition 2). The database is still correct, but the Director reports `Travel Completion handling failed: Failed to find server for partition for 2` and refuses to place arriving players, surfacing as CF4 on the client.
+```
+LogDuneS2sController: Error: Failing battlegroup director travel validation: Failed to find server for partition for 2
+LogIGW: Display: Refusing player by sending NMT_Failure with message: Internal error in authentication.
+```
+
+**Cause:** The Director keeps two separate views of the game servers:
+
+1. A **routing/grant** view fed continuously by RMQ `ServerState` messages (used to queue travel and issue grants).
+2. A **travel-validation registry** populated only by one-time gateway **"server came up"** events (used by the game server's server-to-server call at the login **Completion** stage).
+
+If the Director is restarted on its own, it loses the validation registry and does **not** receive fresh "came up" events (the game servers only emit those at their own boot, via the gateway). The grant path still works, so travel is queued, but the final S2S validation fails with `Failed to find server for partition for N`. The game server then refuses the player with `Internal error in authentication`, which the client reports as CF4 / Pending Connection Failure. This is **not** a network or port problem: the client reaches the server (you will see its `RemoteAddr` in the game server log).
+
+**Do not restart the Director by itself.** Doing so wipes the validation registry without regenerating the "came up" events it depends on.
 
 **Confirm the diagnosis:**
 
 ```bash
-# Repeated travel failures in the Director point at lost partition routing
-docker logs --since 30m dune-awakening-director-1 2>&1 | grep "Failed to find server"
+# Game server refuses login at the Completion stage
+docker logs --since 15m dune-awakening-overmap-1 2>&1 | grep -E "travel validation|Internal error in authentication"
 
-# The database is usually fine: both partitions present and both server ids active
-docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
-  SELECT partition_id, server_id, map FROM dune.world_partition ORDER BY partition_id;
-  SELECT * FROM dune.active_server_ids;
-"
+# Director cannot validate the destination partition
+docker logs --since 15m dune-awakening-director-1 2>&1 | grep "Failed to find server"
 ```
 
-If `world_partition` and `active_server_ids` look correct but the Director keeps logging `Failed to find server`, the routing table is stale.
-
-**Fix:** Restart the Director so it rebuilds its partition routing from the live server state. It is a coordination service with no player-facing world state, so this is safe (still check that no players are mid-travel first).
+**Fix:** Regenerate the gateway "came up" events so the Director rebuilds its validation registry. Restarting the **gateway** does this for every running server at once, without reloading any game world:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml restart director
+docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml restart gateway
+# Optional: confirm the RMQ HTTP flag survived the restart
+./scripts/gateway-patch.sh
 ```
 
-**Verify (give it about 60 seconds):**
+**Verify (give the gateway about 60-90 seconds; it has a built-in warmup):**
 
 ```bash
+# Both partitions should re-announce (1 = Survival, 2 = Overmap)
+docker logs --since 2m dune-awakening-gateway-1 2>&1 | grep "came up"
+
 # Should print 0
-docker logs --since 2m dune-awakening-director-1 2>&1 | grep -c "Failed to find server"
-
-# Both partitions should report ready:true (1 = Survival, 2 = Overmap)
-docker logs --since 2m dune-awakening-director-1 2>&1 | grep -oE 'partitionId.:[12]' | sort | uniq -c
+docker logs --since 90s dune-awakening-director-1 2>&1 | grep -c "Failed to find server"
 ```
 
-**Prevention:** After restarting any individual game server, restart the Director as well so its routing table cannot drift out of sync with the partitions it did not restart.
+Then have the affected player reconnect.
+
+**Alternative:** Restarting the individual game servers also regenerates their "came up" events, but it reloads the world and takes longer. Prefer the gateway restart.
+
+**Prevention:** Never restart the Director in isolation. If the Director must be restarted, restart the **gateway** immediately afterward (or restart the game servers) so the validation registry is repopulated.
 
 ---
 
