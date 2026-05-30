@@ -856,47 +856,244 @@ export default function CharactersPage() {
               </div>
 
               <div className="mt-5">
-                <p className="text-sm font-semibold text-th-text">Vehicles and Transport</p>
-                <p className="mt-1 text-xs text-th-text-m">Sandbike crafting components, assembly parts, and full vehicle kits.</p>
+                <p className="text-sm font-semibold text-th-text">Sandbike (Mk6)</p>
+                <p className="mt-1 text-xs text-th-text-m">Top-tier sandbike parts. Click "Full Kit" to grant a complete buildable set.</p>
                 <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
                   <button type="button" className="dune-button text-xs col-span-2 md:col-span-3" disabled={granting} onClick={() => void handleGrantBatch([
-                    { templateId: 'T2_Vehicle_Ground__SandBikeBodyHull', quantity: 1 },
-                    { templateId: 'T2_Vehicle_Ground__SandBikeChassis', quantity: 1 },
-                    { templateId: 'T2_SandbikeEngine', quantity: 1 },
-                    { templateId: 'T2_Vehicle_Ground__SandBikeTreads', quantity: 1 },
-                    { templateId: 'T2_Vehicle_Ground__SandBikeInventoryModule', quantity: 1 },
-                    { templateId: 'SandbikeEngine_1', quantity: 1 },
-                    { templateId: 'SandbikeLocomotion_1', quantity: 1 },
+                    { templateId: 'SandbikeChassis_6', quantity: 1 },
+                    { templateId: 'SandbikeEngine_6', quantity: 1 },
+                    { templateId: 'SandbikeHull_6', quantity: 1 },
+                    { templateId: 'SandbikeLocomotion_6', quantity: 1 },
+                    { templateId: 'SandbikeGenerator_6', quantity: 1 },
+                    { templateId: 'SandbikeBoost_6', quantity: 1 },
+                    { templateId: 'SandbikeInventory_2', quantity: 1 },
                     { templateId: 'SandbikeSeat_1', quantity: 1 },
                   ])}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Full Sandbike Kit (all parts)
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Full Sandbike Mk6 Kit
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeBodyHull', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Body Hull
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeChassis_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Chassis Mk6
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeChassis', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Chassis
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeEngine_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine Mk6
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_SandbikeEngine', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine (Crafting)
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeHull_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Hull Mk6
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeTreads', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Treads
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeLocomotion_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Tread Mk6
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T2_Vehicle_Ground__SandBikeInventoryModule', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Inventory Module
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeGenerator_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> PSU Mk6
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeEngine_1', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine (Assembly)
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeBoost_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Booster Mk6
                   </button>
-                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeLocomotion_1', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Locomotion Module
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeInventory_2', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Inventory Mk2
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeSeat_1', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Seat Module
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Backseat Mk1
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeScanner_2', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Scanner Mk2
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-th-text">Buggy (Mk6)</p>
+                <p className="mt-1 text-xs text-th-text-m">Top-tier buggy parts including weapons and mining attachments.</p>
+                <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
+                  <button type="button" className="dune-button text-xs col-span-2 md:col-span-3" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'BuggyChassis_6', quantity: 1 },
+                    { templateId: 'BuggyEngine_6', quantity: 1 },
+                    { templateId: 'BuggyHullFront_6', quantity: 1 },
+                    { templateId: 'BuggyHullBack_6', quantity: 1 },
+                    { templateId: 'BuggyGenerator_6', quantity: 1 },
+                    { templateId: 'BuggyLocomotion_6', quantity: 1 },
+                    { templateId: 'BuggyBoost_6', quantity: 1 },
+                    { templateId: 'BuggyInventory_6', quantity: 1 },
+                  ])}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Full Buggy Mk6 Kit
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyChassis_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Chassis Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyEngine_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyHullFront_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Hull Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyHullBack_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Rear Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyHullBackExtra_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Utility Rear Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyGenerator_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> PSU Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyLocomotion_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Tread Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyBoost_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Booster Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyInventory_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Storage Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyMining_6', 1)}>
+                    <Pickaxe className="mr-1.5 h-3.5 w-3.5" /> Cutteray Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BuggyLauncher_6', 1)}>
+                    <Swords className="mr-1.5 h-3.5 w-3.5" /> Rocket Launcher Mk6
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-th-text">Sandcrawler (Mk6)</p>
+                <p className="mt-1 text-xs text-th-text-m">Endgame spice-harvesting vehicle. Mk6 is the only tier.</p>
+                <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
+                  <button type="button" className="dune-button text-xs col-span-2 md:col-span-3" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'SandcrawlerChassis_6', quantity: 1 },
+                    { templateId: 'SandcrawlerEngine_6', quantity: 1 },
+                    { templateId: 'SandcrawlerHull_6', quantity: 1 },
+                    { templateId: 'SandcrawlerGenerator_6', quantity: 1 },
+                    { templateId: 'SandcrawlerLocomotion_6', quantity: 1 },
+                    { templateId: 'SandcrawlerSpiceContainer_6', quantity: 1 },
+                    { templateId: 'SandcrawlerSpiceHeader_6', quantity: 1 },
+                  ])}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Full Sandcrawler Kit
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandcrawlerChassis_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Chassis Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandcrawlerEngine_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandcrawlerHull_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Cabin Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandcrawlerGenerator_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> PSU Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandcrawlerLocomotion_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Tread Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandcrawlerSpiceContainer_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Centrifuge Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandcrawlerSpiceHeader_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Vacuum Mk6
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-th-text">Scout Ornithopter (Mk6)</p>
+                <p className="mt-1 text-xs text-th-text-m">Light flying vehicle for exploration and Deep Desert travel.</p>
+                <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
+                  <button type="button" className="dune-button text-xs col-span-2 md:col-span-3" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'OrnithopterLightChassis_6', quantity: 1 },
+                    { templateId: 'OrnithopterLightEngine_6', quantity: 1 },
+                    { templateId: 'OrnithopterLightHullFront_6', quantity: 1 },
+                    { templateId: 'OrnithopterLightHullBack_6', quantity: 1 },
+                    { templateId: 'OrnithopterLightGenerator_6', quantity: 1 },
+                    { templateId: 'OrnithopterLightBoost_6', quantity: 1 },
+                    { templateId: 'OrnithopterLightInventory_4', quantity: 1 },
+                    { templateId: 'OrnithopterLightScanner_4', quantity: 1 },
+                  ])}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Full Scout Mk6 Kit
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightChassis_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Chassis Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightEngine_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightHullFront_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Cockpit Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightHullBack_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Hull Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightGenerator_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Generator Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightBoost_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Thruster Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightInventory_4', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Storage Mk4
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightScanner_4', 1)}>
+                    <Search className="mr-1.5 h-3.5 w-3.5" /> Scan Module
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterLightLauncher_6', 1)}>
+                    <Swords className="mr-1.5 h-3.5 w-3.5" /> Rocket Launcher Mk6
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-th-text">Assault Ornithopter (Mk6)</p>
+                <p className="mt-1 text-xs text-th-text-m">Heavy combat ornithopter with rocket launchers and large cabin.</p>
+                <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
+                  <button type="button" className="dune-button text-xs col-span-2 md:col-span-3" disabled={granting} onClick={() => void handleGrantBatch([
+                    { templateId: 'OrnithopterMediumChassis_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumEngine_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumHull_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumHullFront_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumHullBack_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumLocomotion_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumGenerator_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumBoost_6', quantity: 1 },
+                    { templateId: 'OrnithopterMediumInventory_5', quantity: 1 },
+                  ])}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Full Assault Mk6 Kit
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumChassis_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Chassis Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumEngine_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Engine Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumHull_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Cabin Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumHullFront_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Cockpit Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumHullBack_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Tail Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumLocomotion_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Wing Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumGenerator_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Generator Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumBoost_6', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Thruster Mk6
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumInventory_5', 1)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Storage Mk5
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('OrnithopterMediumLauncher_6', 1)}>
+                    <Swords className="mr-1.5 h-3.5 w-3.5" /> Rocket Launcher Mk6
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-th-text">Vehicle Schematics & Other</p>
+                <p className="mt-1 text-xs text-th-text-m">Unique schematics, respawn beacons, etc.</p>
+                <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SandbikeEngine_Unique_Speed_1_Schematic', 1)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> Speed Engine Schematic
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> Mohandis Engine Schematic
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T1_Structure_RespawnBeacon1', 1)}>
                     <MapPin className="mr-1.5 h-3.5 w-3.5" /> Respawn Beacon
