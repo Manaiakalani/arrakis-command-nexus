@@ -734,6 +734,8 @@ class CharacterService:
         "Stone": ("Resources", "Stone"),
         "PlantFiber": ("Resources", "Plant Fiber"),
         "Oil": ("Resources", "Oil"),
+        "WindTurbineLubricant1": ("Resources", "Low-grade Lubricant"),
+        "WindTurbineLubricant2": ("Resources", "Industrial-grade Lubricant"),
         "AzuriteOre": ("Resources", "Azurite Ore"),
         "BauxiteOre": ("Resources", "Aluminum Ore"),
         "IronBar": ("Resources", "Iron Bar"),
