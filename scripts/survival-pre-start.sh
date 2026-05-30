@@ -5,6 +5,12 @@ MAP_NAME="${PARTITION_MAP_NAME:-Survival_1}"
 DB_NAME="${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}"
 export PGPASSWORD="${POSTGRES_DUNE_PASSWORD:-change-me-dune-db}"
 
+# MAP_NAME is interpolated into SQL below; validate it as a strict identifier.
+if [[ ! "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "[pre-start] ERROR: Invalid MAP_NAME '$MAP_NAME'"
+  exit 1
+fi
+
 # Write Bgd.ServerDisplayName to UserEngine.ini before the game starts.
 # The -ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName= command-line arg
 # splits on spaces, so we write directly to the UserSettings ini file instead.
@@ -54,17 +60,24 @@ date +%s > "$CRASH_MARKER"
 # The patched load_world_partition() fallback path now also accepts Overmap
 # partitions (map='Overmap' OR map=in_map_name), so even if partition_repair
 # hasn't run yet, the game can claim the unassigned Overmap partition directly.
-echo "[pre-start] Clearing stale farm_state data for map='$MAP_NAME'..."
-if [[ ! "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
-  echo "[pre-start] ERROR: Invalid MAP_NAME '$MAP_NAME'"
-  exit 1
+# Clear stale farm_state entries for THIS server instance only.
+#
+# CRITICAL: do NOT delete by map. Both the Survival and Overmap servers run the
+# same underlying UE level (Survival_1.Survival_1) and therefore BOTH report
+# farm_state.map='Survival_1'. Deleting by map='Survival_1' on a survival restart
+# would also wipe the *live* Overmap row, breaking partition-2 (Overmap) travel
+# routing and causing client connection failures (CF4 / "Pending Connection
+# Failure") for players in the Deep Desert. Scope the cleanup by this instance's
+# unique game port instead. world_partition is left intact: the existing record
+# (with the old server_id) is re-claimed by the new server via the fallback path
+# in load_world_partition().
+if [[ "${GAME_PORT:-}" =~ ^[0-9]+$ ]]; then
+  echo "[pre-start] Clearing stale farm_state for game_port=$GAME_PORT (map='$MAP_NAME')..."
+  psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
+    "DELETE FROM dune.farm_state WHERE game_port = $GAME_PORT;" 2>/dev/null || echo "[pre-start] Note: farm_state table may not exist yet (first boot). Continuing."
+else
+  echo "[pre-start] WARNING: GAME_PORT unset/invalid ('${GAME_PORT:-}'); skipping farm_state cleanup to avoid wiping the other map's live registration."
 fi
-
-# Clear stale farm_state entries (MAP_NAME is validated above).
-# Do NOT delete world_partition: the existing record (with old server_id) can be
-# claimed by the new server via the fallback path in load_world_partition().
-psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-  "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" 2>/dev/null || echo "[pre-start] Note: farm_state table may not exist yet (first boot). Continuing."
 
 # --- Reset-seed protection (PRE-GAME) ---------------------------------------
 # The game server hides/deletes player buildings when the world reset seed it
