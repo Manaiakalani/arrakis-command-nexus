@@ -741,7 +741,7 @@ class CharacterService:
         "T2HeavyComponent": ("Components", "Heavy Component (T2)"),
         "FremenComponent1": ("Components", "Fremen Component 1"),
         "FremenComponent2": ("Components", "Fremen Component 2"),
-        "OldImperialComponent1": ("Components", "Old Imperial Component 1"),
+        "OldImperialComponent1": ("Components", "Advanced Servoks"),
         "OldImperialComponent2": ("Components", "Old Imperial Component 2"),
         "GreatHouseComponent1": ("Components", "Great House Component 1"),
         "GreatHouseComponent2": ("Components", "Mechanical Parts"),
