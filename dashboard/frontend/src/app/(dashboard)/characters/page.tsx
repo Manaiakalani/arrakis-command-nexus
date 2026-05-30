@@ -857,7 +857,7 @@ export default function CharactersPage() {
 
               <div className="mt-5">
                 <p className="text-sm font-semibold text-th-text">Sandbike (Mk6)</p>
-                <p className="mt-1 text-xs text-th-text-m">Top-tier sandbike parts. Click "Full Kit" to grant a complete buildable set.</p>
+                <p className="mt-1 text-xs text-th-text-m">Top-tier sandbike parts. Click Full Kit to grant a complete buildable set.</p>
                 <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-3">
                   <button type="button" className="dune-button text-xs col-span-2 md:col-span-3" disabled={granting} onClick={() => void handleGrantBatch([
                     { templateId: 'SandbikeChassis_6', quantity: 1 },
