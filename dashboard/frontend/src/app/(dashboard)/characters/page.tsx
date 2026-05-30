@@ -937,6 +937,15 @@ export default function CharactersPage() {
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('IronBar', 50)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Iron Bars
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('Silicone', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Silicon
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SteelBar', 50)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Steel Ingots
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('CobaltBar', 50)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 50 Cobalt Paste
+                  </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('T1UniqueComponent', 20)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 20 T1 Unique Parts
                   </button>
