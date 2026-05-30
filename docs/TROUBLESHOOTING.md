@@ -977,7 +977,46 @@ docker compose restart survival_1
 - `docker compose restart` - Quick restart, no config changes needed
 - `docker compose up -d` - After changing `.env`, compose files, or image tags
 
+## "Connection failure CF4" / Cannot Join After a Server Restart
+
+**Symptoms:** Players see a client error such as **CF4** when trying to connect, or specifically when their character was last in the Overmap (Deep Desert overland). The Survival map may be joinable while the Overmap is not.
+
+**Cause:** The Director keeps an in-memory routing table mapping each partition to the game server that owns it. When a single game server is restarted (for example `survival_1`), the Director can lose its routing entry for the **other** partition (typically the Overmap, partition 2). The database is still correct, but the Director reports `Travel Completion handling failed: Failed to find server for partition for 2` and refuses to place arriving players, surfacing as CF4 on the client.
+
+**Confirm the diagnosis:**
+
+```bash
+# Repeated travel failures in the Director point at lost partition routing
+docker logs --since 30m dune-awakening-director-1 2>&1 | grep "Failed to find server"
+
+# The database is usually fine: both partitions present and both server ids active
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
+  SELECT partition_id, server_id, map FROM dune.world_partition ORDER BY partition_id;
+  SELECT * FROM dune.active_server_ids;
+"
+```
+
+If `world_partition` and `active_server_ids` look correct but the Director keeps logging `Failed to find server`, the routing table is stale.
+
+**Fix:** Restart the Director so it rebuilds its partition routing from the live server state. It is a coordination service with no player-facing world state, so this is safe (still check that no players are mid-travel first).
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml restart director
+```
+
+**Verify (give it about 60 seconds):**
+
+```bash
+# Should print 0
+docker logs --since 2m dune-awakening-director-1 2>&1 | grep -c "Failed to find server"
+
+# Both partitions should report ready:true (1 = Survival, 2 = Overmap)
+docker logs --since 2m dune-awakening-director-1 2>&1 | grep -oE 'partitionId.:[12]' | sort | uniq -c
+```
+
+**Prevention:** After restarting any individual game server, restart the Director as well so its routing table cannot drift out of sync with the partitions it did not restart.
+
 ---
 
-**Last updated:** 2026-05-28  
-**Version:** 1.4
+**Last updated:** 2026-05-30  
+**Version:** 1.5
