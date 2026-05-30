@@ -668,18 +668,22 @@ docker compose -f docker-compose.yml restart director
 
 **Symptoms:** After restoring player data from a backup, the game shows "A storm has reset the map" and player bases are missing, even though building data exists in the database.
 
-**Cause:** The `world_partition_reset_seed` table tracks a reset counter per partition. When the game server sees a different seed than expected, it triggers a "storm reset" and hides or deletes buildings.
+**Cause:** Three tables track a reset counter for the world: `world_partition_reset_seed` (per partition), `world_map_reset_seed` (per map), and `world_farm_reset_seed`. When the game server reads a different seed than the one the buildings were created under, it triggers a "storm reset" and hides the buildings in-game. The building rows usually remain in the database, so this is most often a display problem, not data loss.
 
 This commonly happens after restoring a PTC backup to a retail database, where partition IDs changed (PTC partition 19 with seed 1 becomes retail partition 1 with seed 2).
 
-**Critical detail:** The game server **overwrites** the reset seed to its default value (2) during late startup, roughly 30-60 seconds after the container starts. A one-time SQL fix will be reverted on the next restart unless you also enable the automated seed protection.
+**Critical detail:** The game server **overwrites** the reset seed back to its default value (2) during late startup, roughly 30-60 seconds after the container starts, and again during runtime. The fix must therefore force the seed **before** the game server reads it at boot, and re-assert it afterward. A one-time SQL fix run against a live server will be reverted on the next restart unless the automated seed protection is enabled.
+
+**Confirm it is a display issue, not data loss:** Building counts that are stable across backups (for example `building_instances` holding steady at the same number for days) mean nothing was deleted. The bases are intact and only hidden by the seed mismatch. Correcting the seed and restarting the affected map server makes them reappear; no backup restore is required.
 
 **Diagnosis:**
 
 ```bash
-# Check current reset seeds
+# Check current reset seeds (all three tables)
 docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
-  SELECT * FROM dune.world_partition_reset_seed
+  SELECT * FROM dune.world_partition_reset_seed;
+  SELECT * FROM dune.world_map_reset_seed;
+  SELECT * FROM dune.world_farm_reset_seed;
 "
 
 # Verify buildings still exist in DB
@@ -690,16 +694,21 @@ docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c "
 "
 ```
 
-**One-time fix** (will be reverted on next server restart unless automated):
+**One-time fix** (will be reverted on next server restart unless the automated protection below is enabled):
 
 ```sql
--- If buildings were created under seed 1, set partition 1 back to seed 1
-UPDATE dune.world_partition_reset_seed SET world_reset_seed = 1 WHERE partition_id = 1;
+-- If buildings were created under seed 1, set every seed table back to 1
+UPDATE dune.world_partition_reset_seed SET world_reset_seed = 1;
+UPDATE dune.world_map_reset_seed       SET world_reset_seed = 1;
+UPDATE dune.world_farm_reset_seed      SET world_reset_seed = 1;
 ```
 
 **Permanent fix (recommended):**
 
-Add `SURVIVAL_RESET_SEED=1` to your `.env` file. The `survival-pre-start.sh` entrypoint script runs a background retry loop (6 attempts, 20 seconds apart) that corrects the seed after the game server overwrites it during startup. This ensures buildings survive every restart.
+Add `SURVIVAL_RESET_SEED=1` to your `.env` file. The `survival-pre-start.sh` entrypoint script then protects the seed in two stages:
+
+1. **Pre-game enforcement** - before launching the game server, it forces `world_partition_reset_seed`, `world_map_reset_seed`, and `world_farm_reset_seed` to the configured value. This closes the race window where the game server's storm-reset check ran before the seed could be corrected (the root cause of bases being "wiped again" after a restart).
+2. **Post-start backstop** - a background loop monitors all three tables for about 10 minutes after boot and re-asserts the seed whenever the game server drifts it back to the default, so the value reliably holds through and beyond the storm-reset check.
 
 ```bash
 # In .env

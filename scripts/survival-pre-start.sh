@@ -66,6 +66,32 @@ fi
 psql -v ON_ERROR_STOP=1 -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
   "DELETE FROM dune.farm_state WHERE map = '$MAP_NAME';" 2>/dev/null || echo "[pre-start] Note: farm_state table may not exist yet (first boot). Continuing."
 
+# --- Reset-seed protection (PRE-GAME) ---------------------------------------
+# The game server hides/deletes player buildings when the world reset seed it
+# reads at boot differs from the seed the buildings were created under, showing
+# "A storm has reset the map". The server rewrites these seeds to its default
+# (2) during runtime, so we must force them back to WORLD_RESET_SEED *before*
+# the game reads them at startup. Setting them here (before run.sh) closes the
+# race window where the old post-start loop fixed the seed only AFTER the
+# storm-reset check had already run -- the root cause of bases being "wiped
+# again" after restarts. We enforce every seed table (partition, map, farm),
+# not just this server's partition row, because Hagga Basin bases are evaluated
+# against all three.
+RESET_SEED="${WORLD_RESET_SEED:-}"
+enforce_reset_seed() {
+  local phase="$1"
+  [ -z "$RESET_SEED" ] && return 0
+  psql -h postgres -p 5432 -U dune -d "$DB_NAME" -v ON_ERROR_STOP=0 >/dev/null 2>&1 <<SQL || true
+UPDATE dune.world_partition_reset_seed SET world_reset_seed = $RESET_SEED WHERE world_reset_seed <> $RESET_SEED;
+UPDATE dune.world_map_reset_seed       SET world_reset_seed = $RESET_SEED WHERE world_reset_seed <> $RESET_SEED;
+UPDATE dune.world_farm_reset_seed      SET world_reset_seed = $RESET_SEED WHERE world_reset_seed <> $RESET_SEED;
+SQL
+  echo "[pre-start] Enforced world reset seed=$RESET_SEED across partition/map/farm tables ($phase)"
+}
+if [ -n "$RESET_SEED" ]; then
+  enforce_reset_seed "pre-game"
+fi
+
 # Start the game server. Tee output to a FIFO so a background scanner
 # can detect the server_id from stdout ("Server <ID> should be ready")
 # and then wait for that ID to appear in farm_state (FK requirement)
@@ -147,35 +173,24 @@ trap cleanup EXIT INT TERM
           echo "[pre-start] WARNING: farm_state registration timed out for $SID"
         fi
 
-        # Fix world_partition_reset_seed after the game server initializes.
-        # The game server resets this value to its default (2) on every boot.
-        # If we restored buildings from a backup with a different seed (e.g. 1),
-        # the mismatch triggers "A storm has reset the map" and hides all buildings.
-        # WORLD_RESET_SEED env var overrides the seed after startup to prevent this.
-        RESET_SEED="${WORLD_RESET_SEED:-}"
+        # Backstop: re-enforce the world reset seed after the game server
+        # initializes. The server rewrites these seeds to its default (2) during
+        # late initialization (after farm becomes READY), which can land AFTER
+        # our pre-game enforcement. We monitor for ~10 minutes and re-enforce
+        # across all seed tables whenever drift is detected, so the seed reliably
+        # holds at WORLD_RESET_SEED through and beyond the storm-reset check.
+        # This (plus the pre-game enforcement) prevents bases being "wiped again".
         if [ -n "$RESET_SEED" ]; then
-          # The game server resets world_partition_reset_seed during its late
-          # initialization (after farm becomes READY). We run a retry loop that
-          # keeps overriding the seed until it sticks (server stops changing it).
           (
-            PART_ID=""
-            for attempt in $(seq 1 6); do
+            for attempt in $(seq 1 30); do
               sleep 20
-              if [ -z "$PART_ID" ]; then
-                PART_ID=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
-                  "SELECT partition_id FROM dune.world_partition WHERE server_id = '$SID' LIMIT 1;" 2>/dev/null || echo "")
-              fi
-              if [ -n "$PART_ID" ]; then
-                CUR_SEED=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
-                  "SELECT world_reset_seed FROM dune.world_partition_reset_seed WHERE partition_id = $PART_ID;" 2>/dev/null || echo "")
-                if [ "$CUR_SEED" != "$RESET_SEED" ]; then
-                  psql -h postgres -p 5432 -U dune -d "$DB_NAME" -c \
-                    "UPDATE dune.world_partition_reset_seed SET world_reset_seed = $RESET_SEED WHERE partition_id = $PART_ID;" 2>/dev/null || true
-                  echo "[pre-start] Fixed world_partition_reset_seed=$RESET_SEED for partition_id=$PART_ID (attempt $attempt, was $CUR_SEED)"
-                else
-                  echo "[pre-start] world_partition_reset_seed=$CUR_SEED already correct for partition_id=$PART_ID (attempt $attempt)"
-                  break
-                fi
+              DRIFT=$(psql -h postgres -p 5432 -U dune -d "$DB_NAME" -t -A -c \
+                "SELECT
+                   (SELECT count(*) FROM dune.world_partition_reset_seed WHERE world_reset_seed <> $RESET_SEED)
+                 + (SELECT count(*) FROM dune.world_map_reset_seed       WHERE world_reset_seed <> $RESET_SEED)
+                 + (SELECT count(*) FROM dune.world_farm_reset_seed      WHERE world_reset_seed <> $RESET_SEED);" 2>/dev/null || echo "")
+              if [ -n "$DRIFT" ] && [ "$DRIFT" != "0" ]; then
+                enforce_reset_seed "backstop attempt $attempt, drift=$DRIFT"
               fi
             done
           ) &
