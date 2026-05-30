@@ -335,16 +335,29 @@ class CharacterService:
             player_online = (online_status or "").lower() == "online"
 
             warnings: list[str] = []
+            # The running game server loads each player's inventory into memory
+            # at startup and only WRITES back to the database during its
+            # lifetime -- it never re-reads item rows for an already-loaded
+            # player, not even on relog. Directly inserted items therefore do
+            # NOT appear in-game until the server cold-loads the database, i.e.
+            # on the next SERVER RESTART. (Position/teleport is different: the
+            # pawn transform is re-read per login.)
+            warnings.append(
+                "Item written to the database, but the running game server will "
+                "not load it until it is RESTARTED. A player relog is not enough "
+                "-- the server only reads item rows on a cold start. The item "
+                "will appear after the next server restart."
+            )
             if player_online:
                 warnings.append(
-                    "Player is ONLINE. The game server caches inventory in memory, "
-                    "so this item will not appear in-game and may be deleted on the "
-                    "next inventory flush. Have the player LOG OUT first, then grant "
-                    "the item, then log back in."
+                    "Player is also ONLINE. The server owns the live inventory and "
+                    "may overwrite or delete this row when the player next logs out "
+                    "(it flushes its in-memory copy over the slots it manages). "
+                    "Grant while the player is OFFLINE, then restart the server."
                 )
                 logger.warning(
                     "Granting item %s to account %d while player is ONLINE -- "
-                    "item may not appear in-game or may be wiped on flush.",
+                    "row may be overwritten on the player's next logout flush.",
                     template_id, account_id,
                 )
 

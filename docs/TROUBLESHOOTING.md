@@ -819,21 +819,30 @@ Use a Z value at least 300-500 units above any nearby actor's Z to ensure the pl
 
 ## Granted Items Not Appearing In-Game
 
-**Symptoms:** You grant an item (or solari) to a character through the dashboard. The API reports success and the row appears in the database, but the item never shows up in the player's inventory in-game, or it vanishes a short time later.
+**Symptoms:** You grant an item (or solari) to a character through the dashboard or directly via SQL. The API reports success and the row is present in the `dune.items` table, but the item never shows up in the player's inventory in-game, even after the player logs out and back in.
 
-**Cause:** The game server loads each online player's inventory into memory on login and treats that in-memory copy as the source of truth. Direct database inserts for an **online** player are invisible in-game, and the server may overwrite or delete them on its next inventory flush, wiping the granted item.
+**Cause (the important one): the running server never re-reads item rows.** The game server loads each player's inventory into memory when it starts up and treats that in-memory copy as the source of truth for its entire uptime. During operation it only ever **writes** inventory back to the database; it does **not** read item rows back for an already-loaded player, **not even on relog**. A directly inserted item row is therefore invisible in-game until the server cold-loads the database, which only happens on a **server restart**.
 
-This is the same in-memory caching problem that affects teleport (see "Teleport Puts Player Underground" above). Inventory and position are both cached in RAM while the player is connected.
+This is different from teleport. The pawn transform (position) IS re-read when the player's pawn spawns on login, which is why the log-out / teleport / log-in flow works for movement but **not** for inventory. Do not assume a relog is enough for items; it is not.
 
-**Correct procedure:**
+**Secondary issue (granting while online):** If you insert an item while the player is online, the server owns the live inventory and may overwrite or delete your row on the player's next logout flush (it rewrites the slots it manages). Always grant while the player is OFFLINE.
 
-1. Have the player **log out** of the game completely.
-2. Grant the item through the dashboard (Characters page) or via SQL.
-3. The player logs back in. The server reloads inventory from the database and the item is present.
+**Tertiary issue (slot capacity):** Each inventory has a `max_item_count` (a default backpack is 35). Items written to a `position_index` at or above that count exist in the database but are never rendered. The dashboard now allocates the first free slot within `[0, max_item_count)` automatically; if you insert via raw SQL, pick a free slot below `max_item_count`.
 
-**Dashboard behavior:** The grant API checks the player's `online_status` before writing. If the player is online, the response includes a `player_online: true` flag and a `warning` message ("Player is ONLINE ... have the player LOG OUT first"). The Characters page surfaces this warning in red so the operator knows the grant will not take effect until the player relogs.
+**Correct, reliable procedure:**
 
-**Verify the row was written (player offline):**
+1. Have the player **log out** completely (so the server is not holding their live inventory).
+2. **Stop** the game server so nothing can overwrite the row:
+   `docker compose stop survival_1`
+3. Insert the item (via the dashboard while it can still reach the DB, or via SQL). Use a free slot below `max_item_count`.
+4. **Start** the server: `docker compose up -d survival_1`. It cold-loads the database, including your item.
+5. The player logs in and the item is present.
+
+If a brief restart is unacceptable, the granted row will simply appear on the **next scheduled server restart** -- it stays safely in the database until then.
+
+**Dashboard behavior:** The grant API always returns a `warning` noting that the item will not appear until the server restarts, and adds a second warning (and sets `player_online: true`) if the player is online. The Characters page surfaces the warning, in red when the player is online.
+
+**Verify the row was written:**
 
 ```sql
 -- Items in a player's backpack (inventory_type 0)
@@ -844,9 +853,13 @@ JOIN dune.actors a ON a.id = inv.actor_id
 WHERE a.owner_account_id = <account_id>
   AND inv.inventory_type = 0
 ORDER BY it.position_index;
+
+-- Confirm the slot is below the backpack capacity
+SELECT id, inventory_type, max_item_count
+FROM dune.inventories WHERE id = <inventory_id>;
 ```
 
-**Oversized stacks:** If you request a `stack_size` larger than the largest stack the game normally uses for that item, the grant still succeeds but the API adds a warning. The server may cap, split, or move the oversized stack to overflow inventory on login. Prefer granting multiple normal-sized stacks over one huge stack.
+**Oversized stacks:** If you request a `stack_size` larger than the largest stack the game normally uses for that item, the grant still succeeds but the API adds a warning. The server may cap, split, or move the oversized stack to overflow inventory on load. Prefer granting multiple normal-sized stacks over one huge stack.
 
 ## Restoring Player Data After DB Re-Init
 

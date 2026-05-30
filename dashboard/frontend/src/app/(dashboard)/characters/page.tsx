@@ -278,7 +278,7 @@ export default function CharactersPage() {
       if (result.warning) {
         setGrantResult({ tone: result.player_online ? 'error' : 'success', message: `${msg}\n⚠️ ${result.warning}` });
       } else {
-        setGrantResult({ tone: 'success', message: `${msg} Relog to pick up.` });
+        setGrantResult({ tone: 'success', message: `${msg} Appears after the next server restart.` });
       }
       if (!templateId) { setGrantTemplate(''); setGrantAmount('1'); }
     } catch (error) {
