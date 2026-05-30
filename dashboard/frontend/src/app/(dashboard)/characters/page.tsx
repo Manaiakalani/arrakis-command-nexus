@@ -971,6 +971,18 @@ export default function CharactersPage() {
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTurbineLubricant2', 500)}>
                     <Droplets className="mr-1.5 h-3.5 w-3.5" /> 500 Industrial Lubricant
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTrapFilter1', 100)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 100 Makeshift Filter
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTrapFilter2', 100)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 100 Standard Filter
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTrapFilter3', 100)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 100 Particulate Filter
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTrapFilter4', 100)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 100 Adv. Particulate Filter
+                  </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WeldingMaterial', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Welding Wire
                   </button>
