@@ -1160,7 +1160,16 @@ export default function CharactersPage() {
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Silicon
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FuelCanister', 10)}>
-                    <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Fuel Canisters
+                    <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Small Fuel Cells
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FuelCanister_Medium', 10)}>
+                    <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Medium Fuel Cells
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FuelCanister_Large', 10)}>
+                    <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Large Fuel Cells
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SpicedFuelCell', 10)}>
+                    <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Spice-infused Fuel
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTurbineLubricant1', 500)}>
                     <Droplets className="mr-1.5 h-3.5 w-3.5" /> 500 Low-grade Lubricant

@@ -727,8 +727,10 @@ class CharacterService:
         "holtzmanshieldactivedrain3": ("Tools", "Holtzman Shield Mk5"),
         "fullsuspensorbelt": ("Tools", "Suspensor Belt"),
         "decajon": ("Tools", "Decaliterjon (Canteen)"),
-        "FuelCanister": ("Tools", "Fuel Cell"),
-        "FuelCanister_Large": ("Tools", "Large Fuel Cell"),
+        "FuelCanister": ("Fuel", "Small Vehicle Fuel Cell"),
+        "FuelCanister_Medium": ("Fuel", "Medium Vehicle Fuel Cell"),
+        "FuelCanister_Large": ("Fuel", "Large Vehicle Fuel Cell"),
+        "SpicedFuelCell": ("Fuel", "Spice-infused Fuel Cell"),
         # Resources - Raw
         "ScrapMetal": ("Resources", "Salvaged Metal"),
         "Stone": ("Resources", "Stone"),
