@@ -988,11 +988,16 @@ LogIGW: Display: Refusing player by sending NMT_Failure with message: Internal e
 
 This is **not** a network or port problem: the client reaches the server (you will see its `RemoteAddr` in the game server log). The login fails at the **Completion** stage, when the game server makes a server-to-server call asking the Director to validate travel to its partition, and the Director cannot find a server for that partition.
 
-**Root cause (the farm_state coupling bug):** Both the Survival and Overmap game servers run the *same* underlying Unreal level (`Survival_1.Survival_1`); the Overmap is just a different partition/dimension ("Overland", partition 2) of that level. Because of this, **both servers report `farm_state.map = 'Survival_1'`** even though `world_partition` labels partition 2 as `Overmap`.
+**Key fact about this server:** Both game servers run the *same* underlying Unreal level (`Survival_1.Survival_1`). The Overmap is **not a different level** — it is partition 2 / dimension "Overland" of the Survival_1 world (partition 1 is "Abbir"). Even though the Overmap container is launched with the UE map argument `/Game/Dune/Systems/Overmap/Overmap.Overmap`, at runtime it loads and **reports `map=Survival_1`** in both its RMQ travel-completion message *and* the gateway "came up" event.
 
-Older versions of `scripts/survival-pre-start.sh` cleared stale registrations with `DELETE FROM dune.farm_state WHERE map = '<MAP_NAME>'`. When the **Survival** server restarted, `MAP_NAME='Survival_1'`, so that delete also removed the **live Overmap** row. The Overmap kept running and re-reported its `farm_state` row, but the Director's partition-2 association was left half-broken: the grant path still worked (travel was queued and the client was sent to port 7778), but the Completion-stage validation failed with `Failed to find server for partition for 2`. Players in the Deep Desert could not log in; Survival (partition 1) logins were unaffected.
+**Root cause (map-label mismatch in `world_partition`):** `world_partition` had partition 2 labeled `map='Overmap'`, but the running server reports `map='Survival_1'`. The two login stages then disagree:
 
-Restarting the Director or the gateway does **not** fix this, because the broken association lives with the Overmap server's own registration. Only re-registering the Overmap repairs it.
+- **Grant** stage resolves partition 2 → `map='Overmap'` (SingleServer mode), queues travel, and correctly sends the client to port 7778. This part *works*, which is why the client reaches the server.
+- **Completion** stage resolves the RMQ message's `MapName='Survival_1'` (Dimension mode) and looks for partition 2 **inside the Survival_1 dimension group** — which only contained partition 1. The Director returns `Failed to find server for partition for 2`, the Overmap refuses the player with `Internal error in authentication`, and the client shows **CF4**.
+
+So `map='Overmap'` was never valid for travel completion — any real Deep-Desert login would fail. The fix is to label partition 2 as `Survival_1` so both stages resolve consistently (partition 2 = the Overland dimension of Survival_1 → port 7778).
+
+> **Related, separately-hardened bug (farm_state coupling):** Because both servers report `farm_state.map='Survival_1'`, an older `survival-pre-start.sh` that cleared stale rows with `DELETE FROM dune.farm_state WHERE map='<MAP_NAME>'` would, on a **Survival** restart, also wipe the **live Overmap** row — producing the *same* `Failed to find server for partition for 2` symptom. That cleanup is now scoped by `game_port` (see Permanent fix). Both issues share the symptom; fix both.
 
 **Confirm the diagnosis:**
 
@@ -1003,35 +1008,52 @@ docker logs --since 15m dune-awakening-overmap-1 2>&1 | grep -E "travel validati
 # Director cannot validate the destination partition
 docker logs --since 15m dune-awakening-director-1 2>&1 | grep "Failed to find server"
 
-# Both servers report map=Survival_1; note the Overmap is game_port 7778
+# Look for the mismatch: world_partition says map=Overmap for partition 2 ...
 docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c \
-  "SELECT server_id, game_port, map, ready, alive FROM dune.farm_state ORDER BY game_port;"
+  "SELECT partition_id, server_id, map, label FROM dune.world_partition WHERE partition_id IN (1,2) ORDER BY partition_id;"
+
+# ... but the gateway came-up reports map=Survival_1 for BOTH partitions
+docker logs --since 15m dune-awakening-gateway-1 2>&1 | grep "came up"
 ```
 
-**Immediate fix:** Restart the Overmap server so it re-registers partition 2 cleanly (new `server_id` claimed into `world_partition`, fresh `farm_state` row, fresh gateway "came up"). Check for online players first; a world reload takes 2-3 minutes.
+**Immediate fix:** Relabel partition 2 as `Survival_1` and rebuild Director/gateway state. Check for online players first (all should be offline; world reloads are not required).
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml restart overmap
+# 1. Relabel partition 2 (btrim guards against stray whitespace from shell quoting)
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 \
+  -c "UPDATE dune.world_partition SET map='Survival_1' WHERE partition_id=2;" \
+  -c "UPDATE dune.world_partition SET map=btrim(map) WHERE partition_id=2;"
+
+# 2. Rebuild the Director's dimension groups, then re-emit gateway came-up events
+C="docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml"
+$C restart director; sleep 20; $C restart gateway
 ```
 
-**Verify (give the Overmap about 2-3 minutes to load):**
+**Verify (give ~75s for the gateway to warm up):**
 
 ```bash
-# world_partition partition 2 should show the NEW overmap server_id, map=Overmap
-docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c \
-  "SELECT partition_id, server_id, map FROM dune.world_partition WHERE partition_id IN (1,2) ORDER BY partition_id;"
+# Both partitions should come up under map=Survival_1 (p1=7777, p2=7778)
+docker logs --since 3m dune-awakening-gateway-1 2>&1 | grep "came up"
 
 # Should print 0
 docker logs --since 3m dune-awakening-director-1 2>&1 | grep -c "Failed to find server"
+
+# partition-repair should report both ports OK with map=Survival_1, "0 updated"
+docker logs --since 2m dune-awakening-partition-repair-1 2>&1 | grep -E "Port 777|0 updated"
 ```
 
 Then have the affected player reconnect.
 
-**Permanent fix (already applied):** `scripts/survival-pre-start.sh` now scopes the cleanup to the instance's own game port (`DELETE FROM dune.farm_state WHERE game_port = $GAME_PORT`), driven by a `GAME_PORT` env var (`7777` survival, `7778` overmap) set in `docker-compose.basic.yml`. A Survival restart can no longer wipe the live Overmap row. The change takes effect the next time the game-server containers are recreated (`docker compose up -d survival_1 overmap`).
+**Permanent fix (already applied):** Two complementary changes make this durable:
 
-**Prevention:** Never clear `farm_state` by `map` for these servers - they share the `Survival_1` map name. Always scope by `game_port` (or `server_id`). If you ever see `Failed to find server for partition for 2`, restart the **Overmap** (the partition-2 server), not the Director or gateway.
+1. **Map labeling** — `PARTITION_PORT_MAP` (partition-repair, `docker-compose.yml`) maps **both** `7777` and `7778` to `Survival_1`, and the Overmap's `PARTITION_MAP_NAME` (`docker-compose.basic.yml`) is `Survival_1`. partition-repair now keeps partition 2 labeled `Survival_1` and a fresh Overmap restart self-assigns partition 2 correctly via the `world_partition` fallback lookup.
+2. **farm_state scoping** — `scripts/survival-pre-start.sh` clears stale registrations with `DELETE FROM dune.farm_state WHERE game_port=$GAME_PORT` (driven by `GAME_PORT` env, `7777`/`7778`) instead of by the shared `map`, so a Survival restart can no longer wipe the live Overmap row.
+
+Both take effect on the next recreate (`docker compose up -d survival_1 overmap partition-repair`).
+
+**Prevention:** Treat the Overmap as **partition 2 of Survival_1**, never as a standalone `Overmap` map. Keep `world_partition.map`, `PARTITION_PORT_MAP`, and `PARTITION_MAP_NAME` all set to `Survival_1` for partition 2. Never clear `farm_state` by `map` (both servers share `Survival_1`) — always scope by `game_port` or `server_id`. If `Failed to find server for partition for 2` recurs: first check `world_partition` partition 2 is `map=Survival_1`; restart the **Overmap** only if its `server_id` is genuinely stale.
 
 ---
 
 **Last updated:** 2026-05-30  
-**Version:** 1.6
+**Version:** 1.7
