@@ -689,7 +689,12 @@ class CharacterService:
         "UniqueAr2": ("Weapons", "Unique Assault Rifle Mk2"),
         "AssaultRifle": ("Weapons", "Assault Rifle"),
         "ChoamMaulaPistol": ("Weapons", "CHOAM Maula Pistol"),
-        "Ammo": ("Weapons", "Ammunition"),
+        # Ammo - real Unreal ids verified against awakening.wiki
+        "Ammo": ("Ammo", "Light Darts"),
+        "HeavyAmmo": ("Ammo", "Heavy Darts"),
+        "InfantryRocketAmmo": ("Ammo", "Missile"),
+        "RocketAmmo": ("Ammo", "Rocket"),
+        "Napalm": ("Ammo", "Incendiary Gel"),
         "T3_Tool_SurveyProbeLauncher": ("Weapons", "Survey Probe Launcher"),
         "SurveyProbeLauncher": ("Weapons", "Survey Probe Launcher"),
         "T3_Tool_SurveyProbeAmmo": ("Weapons", "Survey Probe Ammo"),
@@ -697,14 +702,21 @@ class CharacterService:
         "MiningTool_1h_Standard": ("Tools", "Cutteray Mk1 (Mining Tool)"),
         "miningtool_2h_light": ("Tools", "Cutteray Mk5 (2-Handed)"),
         "Binoculars_1": ("Tools", "Binoculars"),
-        "T1_Tool_Binoculars": ("Tools", "Binoculars"),
         "BasicBuildingTool": ("Tools", "Building Tool"),
-        "BuildingDrone": ("Tools", "Building Drone"),
-        "BodyFluidExtractor": ("Tools", "Bodyfluid Extractor"),
-        "PowerPack": ("Tools", "Power Pack Mk1"),
-        "PowerPack5": ("Tools", "Power Pack Mk5"),
-        "powerpack4": ("Tools", "Power Pack Mk6"),
-        "T2_MiscEquipment_PowerPack": ("Tools", "Power Pack (T2)"),
+        # NOTE: T1_Tool_Binoculars was a recipe-prefix ghost id; removed so the
+        # grant_item resolver can strip the prefix and resolve to Binoculars_1.
+        "BodyFluidExtractor": ("Tools", "Improvised Blood Extractor"),
+        "BodyFluidExtractor_02": ("Tools", "Blood Extractor Mk2"),
+        "BodyFluidExtractor_03": ("Tools", "Blood Extractor Mk4"),
+        "BodyFluidExtractor_2h_tier6": ("Tools", "Blood Extractor Mk6"),
+        "PowerPack": ("Tools", "Improvised Power Pack"),
+        "PowerPack5": ("Tools", "Power Pack Mk1"),
+        "PowerPack2": ("Tools", "Power Pack Mk2"),
+        "PowerPack6": ("Tools", "Power Pack Mk3"),
+        "PowerPack3": ("Tools", "Power Pack Mk4"),
+        "PowerPack7": ("Tools", "Power Pack Mk5"),
+        "PowerPack4": ("Tools", "Power Pack Mk6"),
+        # NOTE: T2_MiscEquipment_PowerPack was a recipe-prefix ghost; removed.
         "RepairTool": ("Tools", "Welding Torch Mk1"),
         "repairtool3": ("Tools", "Welding Torch Mk3"),
         "repairtool5": ("Tools", "Welding Torch Mk5"),
@@ -731,10 +743,13 @@ class CharacterService:
         "SteelBar": ("Resources", "Steel Ingot"),
         "CobaltBar": ("Resources", "Cobalt Paste"),
         "ErythriteCrystal": ("Resources", "Erythrite Crystal"),
-        "DiamondineDust": ("Resources", "Diamondine Dust"),
+        "DiamondineDust": ("Resources", "Diamondine Dust"),  # legacy ghost; real: T4MysaTarilComponent1
+        "T4MysaTarilComponent1": ("Resources", "Diamondine Dust"),
         "JasmiumCrystal": ("Resources", "Jasmium Crystal"),
-        "CarbideScraps": ("Resources", "Carbide Scraps"),
-        "IrradiatedSlag": ("Resources", "Irradiated Slag"),
+        "CarbideScraps": ("Resources", "Carbide Scraps"),  # legacy ghost; real: T4MysaTarilComponent2
+        "T4MysaTarilComponent2": ("Resources", "Carbide Scraps"),
+        "IrradiatedSlag": ("Resources", "Irradiated Slag"),  # legacy ghost; real: T5RadiatedCoreComponent
+        "T5RadiatedCoreComponent": ("Resources", "Irradiated Slag"),
         # Resources - Components
         # Keys are the REAL Unreal item template ids verified against the
         # awakening.wiki catalog (979 items, scraped 2026-05-20). The previous
@@ -774,13 +789,21 @@ class CharacterService:
         "OldImperialComponent1": ("Components", "Advanced Servoks"),
         "OldImperialComponent2": ("Components", "Particle Capacitor"),
         "D_OldImperialComponent9": ("Components", "Optimized Servoks"),
-        # Consumables
-        "HealthPack": ("Consumables", "Health Pack"),
-        "healthpack_channeled": ("Consumables", "Standard Health Pack (Channeled)"),
-        "Bloodsack_01": ("Consumables", "Bloodsack"),
-        "BloodSack": ("Consumables", "Bloodsack"),
-        "Literjon": ("Consumables", "Literjon (Water Flask)"),
-        "Exsanguination": ("Consumables", "Exsanguination Kit"),
+        # Consumables - real Unreal ids verified against awakening.wiki
+        # Note: bare "HealthPack" is a ghost name; use HealthPack_Channeled* tiers.
+        "HealthPack_Channeled": ("Consumables", "Healkit (Mk1)"),
+        "HealthPack_Channeled_2": ("Consumables", "Healkit Mk2"),
+        "HealthPack_Channeled_3": ("Consumables", "Healkit Mk4"),
+        "HealthPack_Channeled_4": ("Consumables", "Healkit Mk6"),
+        "Bloodsack_01": ("Consumables", "Small Blood Sack"),
+        "Bloodsack_02": ("Consumables", "Medium Blood Sack"),
+        "Bloodsack_03": ("Consumables", "Large Blood Sack"),
+        "Bloodsack_T6": ("Consumables", "Massive Blood Sack"),
+        "Literjon": ("Consumables", "Literjon"),
+        "Literjon_T6": ("Consumables", "Literjon Mk6"),
+        "Decajon": ("Consumables", "Decaliterjon"),
+        "AntiRadiationPill": ("Consumables", "Iodine Pill"),
+        "SaphoJuice": ("Consumables", "Sapho Juice"),
         "SolarisCoin": ("Currency", "Solari Coins"),
         # Contracts
         "ContractItem": ("Contracts", "Contract"),
