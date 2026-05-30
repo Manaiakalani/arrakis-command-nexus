@@ -977,7 +977,7 @@ docker compose restart survival_1
 - `docker compose restart` - Quick restart, no config changes needed
 - `docker compose up -d` - After changing `.env`, compose files, or image tags
 
-## "Connection failure CF4" / "Pending Connection Failure" After a Restart
+## "Connection failure CF4" / "Pending Connection Failure" — Open Investigation
 
 **Symptoms:** Players see client error **CF4** or **"Pending Connection Failure"**, most often when their character was last in the Overmap (Deep Desert). The client reaches the game server but is dropped during login, and the game server log shows:
 
@@ -986,20 +986,31 @@ LogDuneS2sController: Error: Failing battlegroup director travel validation: Fai
 LogIGW: Display: Refusing player by sending NMT_Failure with message: Internal error in authentication.
 ```
 
-This is **not** a network or port problem: the client reaches the server (you will see its `RemoteAddr` in the game server log). The login fails at the **Completion** stage, when the game server makes a server-to-server call asking the Director to validate travel to its partition, and the Director cannot find a server for that partition.
+This is **not** a network or port problem: the client reaches the server (its `RemoteAddr` appears in the game server log). The login fails at the **Completion** stage, when the game server makes a server-to-server call asking the Director to validate travel to its partition, and the Director cannot find a server for that partition.
 
-**Key fact about this server:** Both game servers run the *same* underlying Unreal level (`Survival_1.Survival_1`). The Overmap is **not a different level** — it is partition 2 / dimension "Overland" of the Survival_1 world (partition 1 is "Abbir"). Even though the Overmap container is launched with the UE map argument `/Game/Dune/Systems/Overmap/Overmap.Overmap`, at runtime it loads and **reports `map=Survival_1`** in both its RMQ travel-completion message *and* the gateway "came up" event.
+**Status:** Multiple hypotheses have been investigated; none has been definitively validated by a live login attempt. This section documents what's known, what's been tried, and what's been ruled out so the next investigation doesn't repeat dead-ends.
 
-**Root cause (map-label mismatch in `world_partition`):** `world_partition` had partition 2 labeled `map='Overmap'`, but the running server reports `map='Survival_1'`. The two login stages then disagree:
+### What is known (verified facts)
 
-- **Grant** stage resolves partition 2 → `map='Overmap'` (SingleServer mode), queues travel, and correctly sends the client to port 7778. This part *works*, which is why the client reaches the server.
-- **Completion** stage resolves the RMQ message's `MapName='Survival_1'` (Dimension mode) and looks for partition 2 **inside the Survival_1 dimension group** — which only contained partition 1. The Director returns `Failed to find server for partition for 2`, the Overmap refuses the player with `Internal error in authentication`, and the client shows **CF4**.
+- Both game servers run the *same* underlying Unreal level (`Survival_1.Survival_1`). The Overmap is partition 2 / dimension "Overland" of the Survival_1 world; partition 1 ("Abbir") is Hagga Basin.
+- Even though the Overmap container is launched with the UE map argument `/Game/Dune/Systems/Overmap/Overmap.Overmap`, at runtime it loads and **reports `map=Survival_1`** in both its RMQ travel-completion message and the gateway "came up" event (`Server X (map=Survival_1, partition_index=2, ...) came up!`).
+- `world_partition` labels partition 2 as `map='Overmap'` and partition 1 as `map='Survival_1'`. This is the **correct** topology — see "Approaches that broke things" below.
+- Both servers register normally in `farm_state` and `world_partition`; partition-repair reports both ports OK with no required updates.
 
-So `map='Overmap'` was never valid for travel completion — any real Deep-Desert login would fail. The fix is to label partition 2 as `Survival_1` so both stages resolve consistently (partition 2 = the Overland dimension of Survival_1 → port 7778).
+### Approaches that broke things (do not retry without redesign)
 
-> **Related, separately-hardened bug (farm_state coupling):** Because both servers report `farm_state.map='Survival_1'`, an older `survival-pre-start.sh` that cleared stale rows with `DELETE FROM dune.farm_state WHERE map='<MAP_NAME>'` would, on a **Survival** restart, also wipe the **live Overmap** row — producing the *same* `Failed to find server for partition for 2` symptom. That cleanup is now scoped by `game_port` (see Permanent fix). Both issues share the symptom; fix both.
+1. **Restarting the Director alone.** Made things worse: the Director's per-instance travel-validation registry was wiped, so subsequent logins also failed. **Don't do this in isolation.**
+2. **Restarting the gateway alone.** No effect — the Director's registry isn't repopulated by gateway came-up events alone for the Completion stage.
+3. **Relabeling partition 2 to `map='Survival_1'`** (so both stages resolve to the same map): broke service in two ways:
+   - **FLS browser dedupe by map name:** with both partitions sharing `Survival_1`, the in-game server browser shows only the most-recently-registered partition (e.g. only "Sietch Tabr" appears, "Hagga Basin Taco Land" disappears).
+   - **Pre-start `SKIP LOCKED` claim ambiguity:** `scripts/survival-pre-start.sh`'s claim subquery selects `WHERE map=$PARTITION_MAP_NAME ORDER BY partition_id LIMIT 1`. With two partitions sharing a map, the claim returns 0 rows, the overmap can't link itself in `world_partition`, farm consensus fails (`Server X thinks farm size is 2 but local size is 1`), and the overmap enters a ~30s crash loop.
+   The DB change and the `PARTITION_PORT_MAP`/`PARTITION_MAP_NAME` env changes that backed it have all been reverted. Map labels MUST stay distinct (`Survival_1` for partition 1, `Overmap` for partition 2).
 
-**Confirm the diagnosis:**
+### Hardening that has been kept (real, beneficial fixes)
+
+- **`farm_state` cleanup is now `game_port`-scoped.** `scripts/survival-pre-start.sh` clears stale registrations with `DELETE FROM dune.farm_state WHERE game_port=$GAME_PORT` (driven by `GAME_PORT` env: `7777` survival / `7778` overmap, set in `docker-compose.basic.yml`) instead of by the shared `map`. This prevents a Survival restart from wiping the live Overmap row. Both servers report `farm_state.map='Survival_1'` at runtime, so a `map`-scoped delete on a Survival restart would otherwise also delete the live Overmap row — producing the same `Failed to find server for partition for 2` symptom. This is *separate* from CF4's primary cause but produces the same symptom and is worth keeping.
+
+### Confirm the symptom
 
 ```bash
 # Game server refuses login at the Completion stage
@@ -1008,52 +1019,27 @@ docker logs --since 15m dune-awakening-overmap-1 2>&1 | grep -E "travel validati
 # Director cannot validate the destination partition
 docker logs --since 15m dune-awakening-director-1 2>&1 | grep "Failed to find server"
 
-# Look for the mismatch: world_partition says map=Overmap for partition 2 ...
+# Confirm both servers are healthy and the topology is correct
 docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c \
   "SELECT partition_id, server_id, map, label FROM dune.world_partition WHERE partition_id IN (1,2) ORDER BY partition_id;"
-
-# ... but the gateway came-up reports map=Survival_1 for BOTH partitions
-docker logs --since 15m dune-awakening-gateway-1 2>&1 | grep "came up"
+docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 -c \
+  "SELECT server_id, game_port, map, ready, alive FROM dune.farm_state ORDER BY game_port, alive DESC;"
 ```
 
-**Immediate fix:** Relabel partition 2 as `Survival_1` and rebuild Director/gateway state. Check for online players first (all should be offline; world reloads are not required).
+Healthy topology should show: partition 1 → `map=Survival_1`, partition 2 → `map=Overmap`, both with valid `server_id` values; `farm_state` has one ready+alive row per port.
 
-```bash
-# 1. Relabel partition 2 (btrim guards against stray whitespace from shell quoting)
-docker exec dune-awakening-postgres-1 psql -U dune -d dune_sb_1_4_0_0 \
-  -c "UPDATE dune.world_partition SET map='Survival_1' WHERE partition_id=2;" \
-  -c "UPDATE dune.world_partition SET map=btrim(map) WHERE partition_id=2;"
+### Next-investigation hypotheses (not yet validated)
 
-# 2. Rebuild the Director's dimension groups, then re-emit gateway came-up events
-C="docker compose -f docker-compose.yml -f docker-compose.basic.yml -f docker-compose.dashboard.yml"
-$C restart director; sleep 20; $C restart gateway
-```
+These are the most likely directions to explore next, in rough priority order:
 
-**Verify (give ~75s for the gateway to warm up):**
+1. **Director's per-map dimension-group construction.** The Completion stage uses the RMQ message's `MapName` to look up partition 2 inside a dimension group. If the lookup is keyed on `MapName` and the Director only builds groups from `world_partition.map`, then partition 2 can never be found via `MapName=Survival_1` while it's labeled `map=Overmap`. Investigate the Director's grouping logic (likely in `/Tools/Battlegroups/Director/...`) and whether it can be configured to alias `Overmap` ↔ `Survival_1` for partition 2 without changing `world_partition.map`.
+2. **Custom DB function `load_world_partition()` aliasing.** The patched fallback already does `WHERE map=in_map_name OR map='Overmap'`. Investigate whether a similar bidirectional alias for the Director's group lookup is possible (a stored function or a view).
+3. **Game-server-side `MapName` override.** Investigate whether the Overmap can be configured (via UE ini or a launch arg) to report `map='Overmap'` in its RMQ travel-completion message instead of `map='Survival_1'`. If so, both Grant and Completion would resolve to `map=Overmap` consistently.
+4. **Retail-Funcom topology cross-check.** In retail Dune Awakening the same architecture works; investigate retail's `world_partition` schema (from the dune-awakening-proxmox-self-hosting reference repo) to see whether partition 2 is labeled `Overmap` or `Survival_1` and how the Director resolves it.
 
-```bash
-# Both partitions should come up under map=Survival_1 (p1=7777, p2=7778)
-docker logs --since 3m dune-awakening-gateway-1 2>&1 | grep "came up"
-
-# Should print 0
-docker logs --since 3m dune-awakening-director-1 2>&1 | grep -c "Failed to find server"
-
-# partition-repair should report both ports OK with map=Survival_1, "0 updated"
-docker logs --since 2m dune-awakening-partition-repair-1 2>&1 | grep -E "Port 777|0 updated"
-```
-
-Then have the affected player reconnect.
-
-**Permanent fix (already applied):** Two complementary changes make this durable:
-
-1. **Map labeling** — `PARTITION_PORT_MAP` (partition-repair, `docker-compose.yml`) maps **both** `7777` and `7778` to `Survival_1`, and the Overmap's `PARTITION_MAP_NAME` (`docker-compose.basic.yml`) is `Survival_1`. partition-repair now keeps partition 2 labeled `Survival_1` and a fresh Overmap restart self-assigns partition 2 correctly via the `world_partition` fallback lookup.
-2. **farm_state scoping** — `scripts/survival-pre-start.sh` clears stale registrations with `DELETE FROM dune.farm_state WHERE game_port=$GAME_PORT` (driven by `GAME_PORT` env, `7777`/`7778`) instead of by the shared `map`, so a Survival restart can no longer wipe the live Overmap row.
-
-Both take effect on the next recreate (`docker compose up -d survival_1 overmap partition-repair`).
-
-**Prevention:** Treat the Overmap as **partition 2 of Survival_1**, never as a standalone `Overmap` map. Keep `world_partition.map`, `PARTITION_PORT_MAP`, and `PARTITION_MAP_NAME` all set to `Survival_1` for partition 2. Never clear `farm_state` by `map` (both servers share `Survival_1`) — always scope by `game_port` or `server_id`. If `Failed to find server for partition for 2` recurs: first check `world_partition` partition 2 is `map=Survival_1`; restart the **Overmap** only if its `server_id` is genuinely stale.
+Each hypothesis above must be **tested with a real Deep-Desert login attempt** — server-side metric checks alone (e.g. "0 `Failed to find server` errors over 5 minutes") are NOT sufficient evidence, because the error only fires when a real client login reaches the Completion stage. Multiple "the symptom is gone" reports in this incident were false positives caused by no real login occurring during the verification window.
 
 ---
 
 **Last updated:** 2026-05-30  
-**Version:** 1.7
+**Version:** 1.8
