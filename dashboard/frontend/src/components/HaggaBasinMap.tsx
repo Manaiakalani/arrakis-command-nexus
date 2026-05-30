@@ -187,6 +187,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
   const [showManualInput, setShowManualInput] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
   const [showBases, setShowBases] = useState(true);
+  const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
   const zoom = useMapZoom();
   const { data: polledPlayers } = useApi(() => apiClient.getPlayerPositions(), {
     enabled: refreshIntervalMs > 0,
@@ -255,6 +256,26 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       const gameY = mapBounds.maxY - pctY * spanY; // Y is inverted (top=maxY)
       setTeleportTarget({ x: gameX, y: gameY, z: SAFE_DEFAULT_Z });
       setTeleportResult(null);
+    },
+    [mapBounds, zoom.scale],
+  );
+
+  /* Track cursor to show live game coordinates under the pointer */
+  const handleMapMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (zoom.scale > 1) {
+        setHoverCoord(null);
+        return;
+      }
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pctX = (e.clientX - rect.left) / rect.width;
+      const pctY = (e.clientY - rect.top) / rect.height;
+      const spanX = mapBounds.maxX - mapBounds.minX;
+      const spanY = mapBounds.maxY - mapBounds.minY;
+      setHoverCoord({
+        x: Math.round(mapBounds.minX + pctX * spanX),
+        y: Math.round(mapBounds.maxY - pctY * spanY),
+      });
     },
     [mapBounds, zoom.scale],
   );
@@ -471,7 +492,14 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             {...zoom.containerProps}
             style={{ aspectRatio: '1 / 1', ...zoom.containerProps.style, cursor: zoom.scale <= 1 ? 'crosshair' : 'grab' }}
             onClick={handleMapClick}
+            onMouseMove={handleMapMove}
+            onMouseLeave={() => setHoverCoord(null)}
           >
+            {hoverCoord && zoom.scale <= 1 ? (
+              <div className="pointer-events-none absolute right-3 top-3 z-20 rounded-lg border border-amber-500/30 bg-th-bg/90 px-2.5 py-1.5 font-mono text-xs text-amber-700 shadow-lg dark:text-amber-200">
+                X {hoverCoord.x.toLocaleString()} &bull; Y {hoverCoord.y.toLocaleString()}
+              </div>
+            ) : null}
             <div style={zoom.transformStyle} className="absolute inset-0">
               <div
                 className="absolute inset-0"
