@@ -4,6 +4,8 @@ import {
   AlertTriangle,
   Backpack,
   BookOpen,
+  Check,
+  Copy,
   Coins,
   Droplets,
   Flame,
@@ -15,6 +17,7 @@ import {
   RefreshCcw,
   Save,
   Search,
+  Server,
   Shield,
   Swords,
   UserCog,
@@ -30,6 +33,17 @@ type SaveState = {
   tone: 'success' | 'error';
   message: string;
 } | null;
+
+type GrantResult = {
+  tone: 'success' | 'error' | 'staged';
+  title: string;
+  message: string;
+  restartRequired?: boolean;
+  online?: boolean;
+};
+
+const RESTART_COMMAND =
+  'ssh dunebrah@daspicebox "cd ~/dune-server-docker && docker compose stop survival_1 && docker compose up -d survival_1"';
 
 type CategoryKey = 'stats' | 'spice' | 'economy' | 'specialization';
 
@@ -107,7 +121,8 @@ export default function CharactersPage() {
   const [grantTemplate, setGrantTemplate] = useState('');
   const [grantAmount, setGrantAmount] = useState('1');
   const [grantSearch, setGrantSearch] = useState('');
-  const [grantResult, setGrantResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [grantResult, setGrantResult] = useState<GrantResult | null>(null);
+  const [copiedCmd, setCopiedCmd] = useState(false);
   const [granting, setGranting] = useState(false);
   const [grantingLabel, setGrantingLabel] = useState<string | null>(null);
   const [templateResults, setTemplateResults] = useState<{ id: string; name?: string; count: number; source?: string; category?: string }[]>([]);
@@ -266,7 +281,7 @@ export default function CharactersPage() {
     const tid = templateId ?? grantTemplate.trim();
     const qty = amount ?? (parseInt(grantAmount, 10) || 1);
     if (!tid) {
-      setGrantResult({ tone: 'error', message: 'Enter an item template ID.' });
+      setGrantResult({ tone: 'error', title: 'Missing item', message: 'Enter an item template ID.' });
       return;
     }
     setGranting(true);
@@ -274,15 +289,16 @@ export default function CharactersPage() {
     setGrantResult(null);
     try {
       const result = await apiClient.grantItem(selectedId, tid, qty);
-      const msg = `Granted ${qty}x ${tid} (item #${result.item_id}).`;
-      if (result.warning) {
-        setGrantResult({ tone: result.player_online ? 'error' : 'success', message: `${msg}\n⚠️ ${result.warning}` });
-      } else {
-        setGrantResult({ tone: 'success', message: `${msg} Appears after the next server restart.` });
-      }
+      setGrantResult({
+        tone: 'staged',
+        title: `Staged ${qty}x ${tid}`,
+        message: `Item #${result.item_id} written to the database.${result.warning ? `\n${result.warning}` : ''}`,
+        restartRequired: true,
+        online: result.player_online,
+      });
       if (!templateId) { setGrantTemplate(''); setGrantAmount('1'); }
     } catch (error) {
-      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
+      setGrantResult({ tone: 'error', title: 'Grant failed', message: error instanceof Error ? error.message : 'Grant failed.' });
     } finally {
       setGranting(false);
       setGrantingLabel(null);
@@ -305,11 +321,11 @@ export default function CharactersPage() {
       }
     }
     if (granted === items.length) {
-      setGrantResult({ tone: 'success', message: `Granted ${granted} items. Relog to pick up.` });
+      setGrantResult({ tone: 'staged', title: `Staged ${granted} items`, message: `${granted} item rows written to the database.`, restartRequired: true });
     } else if (granted > 0) {
-      setGrantResult({ tone: 'error', message: `Granted ${granted}/${items.length}. Last error: ${lastError}` });
+      setGrantResult({ tone: 'error', title: `Partial: ${granted}/${items.length}`, message: `Last error: ${lastError}` });
     } else {
-      setGrantResult({ tone: 'error', message: lastError || 'All grants failed.' });
+      setGrantResult({ tone: 'error', title: 'All grants failed', message: lastError || 'All grants failed.' });
     }
     setGranting(false);
     setGrantingLabel(null);
@@ -322,9 +338,9 @@ export default function CharactersPage() {
     setGrantResult(null);
     try {
       const result = await apiClient.grantSolari(selectedId, amount);
-      setGrantResult({ tone: 'success', message: `Added ${result.solari_added} Solari (total: ${result.new_total}). Relog to pick up.` });
+      setGrantResult({ tone: 'staged', title: `Staged ${result.solari_added} Solari`, message: `New total: ${result.new_total}.`, restartRequired: true });
     } catch (error) {
-      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Grant failed.' });
+      setGrantResult({ tone: 'error', title: 'Grant failed', message: error instanceof Error ? error.message : 'Grant failed.' });
     } finally {
       setGranting(false);
       setGrantingLabel(null);
@@ -340,9 +356,9 @@ export default function CharactersPage() {
       const updated = await apiClient.setHealth(selectedId, hp);
       setSelectedCharacter(updated);
       setDraft(buildDraft(updated, schema.data?.stats ?? []));
-      setGrantResult({ tone: 'success', message: `Max health set to ${hp}. Relog to apply.` });
+      setGrantResult({ tone: 'success', title: 'Health updated', message: `Max health set to ${hp}. Relog to apply.` });
     } catch (error) {
-      setGrantResult({ tone: 'error', message: error instanceof Error ? error.message : 'Failed.' });
+      setGrantResult({ tone: 'error', title: 'Failed', message: error instanceof Error ? error.message : 'Failed.' });
     } finally {
       setGranting(false);
       setGrantingLabel(null);
@@ -721,14 +737,48 @@ export default function CharactersPage() {
               ) : null}
 
               {grantResult ? (
-                <div className={cn('mt-4 rounded-2xl border px-4 py-3 text-sm', grantResult.tone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200')}>
-                  {grantResult.message}
+                <div className={cn('mt-4 rounded-2xl border px-4 py-3 text-sm',
+                  grantResult.tone === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'
+                  : grantResult.tone === 'staged' ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200'
+                  : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200')}>
+                  <div className="flex items-start gap-2">
+                    {grantResult.tone === 'staged' ? <Server className="mt-0.5 h-4 w-4 shrink-0" /> : grantResult.tone === 'error' ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <Check className="mt-0.5 h-4 w-4 shrink-0" />}
+                    <div className="min-w-0">
+                      <p className="font-semibold">{grantResult.title}</p>
+                      {grantResult.message ? <p className="mt-0.5 whitespace-pre-line text-xs opacity-90">{grantResult.message}</p> : null}
+                    </div>
+                  </div>
+                  {grantResult.restartRequired ? (
+                    <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+                      <p className="text-xs font-semibold">Pending a server restart</p>
+                      <p className="mt-1 text-xs opacity-90">
+                        {grantResult.online
+                          ? 'The player is online. Have them log out, then restart the server. The running server holds inventory in memory and only loads granted items on a cold start.'
+                          : 'The running server keeps inventory in memory and only loads granted items on a cold start. A player relog is not enough.'}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <code className="flex-1 overflow-x-auto rounded-lg bg-black/30 px-2 py-1.5 font-mono text-[11px] leading-snug">{RESTART_COMMAND}</code>
+                        <button
+                          type="button"
+                          title="Copy restart command"
+                          className="dune-button-muted shrink-0 px-2 py-1.5 text-xs"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(RESTART_COMMAND);
+                            setCopiedCmd(true);
+                            setTimeout(() => setCopiedCmd(false), 2000);
+                          }}
+                        >
+                          {copiedCmd ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
               <div className="mt-5">
                 <p className="text-sm font-semibold text-th-text">Quick Grants</p>
-                <p className="mt-1 text-xs text-th-text-m">One-click common items and resources. Player must relog to receive.</p>
+                <p className="mt-1 text-xs text-th-text-m">One-click common items and resources. Granted items are staged in the database and appear after the next server restart.</p>
                 <div className="mt-3 grid gap-2 grid-cols-2 md:grid-cols-4">
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantSolari(1000)}>
                     <Coins className="mr-1.5 h-3.5 w-3.5" /> +1,000 Solari
