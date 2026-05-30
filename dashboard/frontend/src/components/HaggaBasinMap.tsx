@@ -7,7 +7,7 @@ import { CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Toolti
 import { useApi } from '@/hooks/useApi';
 import { useMapZoom } from '@/hooks/useMapZoom';
 import { apiClient } from '@/lib/api';
-import { DEFAULT_HAGGA_BASIN_BOUNDS, formatSessionDuration, getPlayerMapBounds, normalizePlayerMapData, type NormalizedPlayerMapPoint, type PlayerMapSource } from '@/lib/player-map';
+import { DEFAULT_HAGGA_BASIN_BOUNDS, formatSessionDuration, getPlayerMapBounds, normalizePlayerMapData, type PlayerMapSource } from '@/lib/player-map';
 import type { BaseRecord } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,17 @@ interface TeleportTarget {
   y: number;
   z: number;
   label?: string;
+}
+
+/* A unified candidate for the teleport panel: online players (live position
+   feed) and offline characters (DB roster). Teleport only takes effect on a
+   fresh login from a fully logged-out state, so online candidates are shown
+   for visibility but disabled with guidance to log out first. */
+interface TeleportCandidate {
+  id: string;
+  name: string;
+  fill: string;
+  isOnline: boolean;
 }
 
 interface HaggaBasinMapProps {
@@ -64,17 +75,18 @@ function PlayerPositionTooltip({ active, payload }: { active?: boolean; payload?
 /* Teleport confirmation dialog */
 function TeleportDialog({
   target,
-  players,
+  candidates,
   onTeleport,
   onClose,
   teleporting,
 }: {
   target: TeleportTarget;
-  players: NormalizedPlayerMapPoint[];
-  onTeleport: (playerId: string) => void;
+  candidates: TeleportCandidate[];
+  onTeleport: (id: string) => void;
   onClose: () => void;
   teleporting: string | null;
 }) {
+  const offlineCount = candidates.filter((c) => !c.isOnline).length;
   return (
     <div className="absolute bottom-4 left-4 z-50 w-72 rounded-2xl border border-amber-500/30 bg-th-bg/95 shadow-2xl backdrop-blur-xl">
       <div className="flex items-center justify-between border-b border-amber-500/15 px-4 py-3">
@@ -93,36 +105,56 @@ function TeleportDialog({
         <p className="mt-1 font-mono text-[10px] text-th-text-m">
           X: {Math.round(target.x).toLocaleString()} &bull; Y: {Math.round(target.y).toLocaleString()} &bull; Z: {Math.round(target.z).toLocaleString()}
         </p>
-        {players.length === 0 ? (
-          <p className="mt-3 text-xs text-th-text-m">No players online to teleport.</p>
+        {candidates.length === 0 ? (
+          <p className="mt-3 text-xs text-th-text-m">No characters available to teleport.</p>
         ) : (
           <div className="mt-3 flex flex-col gap-1.5">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">Select player to teleport</p>
-            {players.map((player) => (
-              <button
-                key={player.steamId}
-                type="button"
-                disabled={teleporting !== null}
-                onClick={() => onTeleport(player.steamId)}
-                className={cn(
-                  'flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors',
-                  teleporting === player.steamId
-                    ? 'border-cyan-500/40 bg-cyan-500/10'
-                    : 'border-th-border-m/60 bg-th-surface-s/30 hover:border-amber-500/30 hover:bg-amber-500/5',
-                )}
-              >
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: player.fill }} />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium text-th-text">{player.name}</span>
-                {teleporting === player.steamId ? (
-                  <span className="shrink-0 text-[10px] text-cyan-400">Sending...</span>
-                ) : (
-                  <Send className="h-3 w-3 shrink-0 text-th-text-m" />
-                )}
-              </button>
-            ))}
+            <p className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">
+              Select character {offlineCount === 0 ? '(all online — log out first)' : ''}
+            </p>
+            {candidates.map((candidate) => {
+              const disabled = candidate.isOnline || teleporting !== null;
+              return (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  disabled={disabled}
+                  title={candidate.isOnline ? 'Player is online — log out first; teleport only applies on a fresh login.' : ''}
+                  onClick={() => onTeleport(candidate.id)}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors',
+                    teleporting === candidate.id
+                      ? 'border-cyan-500/40 bg-cyan-500/10'
+                      : candidate.isOnline
+                        ? 'cursor-not-allowed border-th-border-m/40 bg-th-surface-s/20 opacity-60'
+                        : 'border-th-border-m/60 bg-th-surface-s/30 hover:border-amber-500/30 hover:bg-amber-500/5',
+                  )}
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: candidate.fill }} />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-th-text">{candidate.name}</span>
+                  <span
+                    className={cn(
+                      'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
+                      candidate.isOnline
+                        ? 'bg-emerald-500/15 text-emerald-400'
+                        : 'bg-th-surface-s/60 text-th-text-m',
+                    )}
+                  >
+                    {candidate.isOnline ? 'Online' : 'Offline'}
+                  </span>
+                  {teleporting === candidate.id ? (
+                    <span className="shrink-0 text-[10px] text-cyan-400">Sending...</span>
+                  ) : !candidate.isOnline ? (
+                    <Send className="h-3 w-3 shrink-0 text-th-text-m" />
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
         )}
-        <p className="mt-3 text-[10px] text-th-text-m/70">Player must relog for teleport to take effect.</p>
+        <p className="mt-3 text-[10px] text-th-text-m/70">
+          Teleport only takes effect on a fresh login from a fully logged-out state. Online characters are disabled.
+        </p>
       </div>
     </div>
   );
@@ -196,10 +228,38 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
   const { data: bases } = useApi(() => apiClient.getBases(), {
     refreshInterval: 60_000,
   });
+  /* Fetch the full character roster (online + offline) so we can teleport
+     offline characters too. The teleport API only takes effect on a fresh
+     login from a fully logged-out state, so offline players are the
+     primary intended audience for this feature. */
+  const { data: allCharacters } = useApi(() => apiClient.getCharacters(), {
+    refreshInterval: 30_000,
+  });
 
   const sourcePlayers = polledPlayers ?? players;
   const normalizedPlayers = useMemo(() => normalizePlayerMapData(sourcePlayers), [sourcePlayers]);
   const bounds = useMemo(() => getPlayerMapBounds(normalizedPlayers), [normalizedPlayers]);
+
+  /* Build the list of teleport candidates: online players keep their live
+     telemetry color; offline characters from the DB roster fill in the rest.
+     Online candidates are surfaced for visibility but disabled in the dialog
+     because the server overwrites actor transforms live — teleport only
+     applies on a fresh login from a fully logged-out state. */
+  const teleportCandidates = useMemo<TeleportCandidate[]>(() => {
+    const onlineIds = new Set<string>();
+    const onlineList: TeleportCandidate[] = normalizedPlayers.map((p) => {
+      onlineIds.add(p.steamId);
+      return { id: p.steamId, name: p.name, fill: p.fill, isOnline: true };
+    });
+    const offlineList: TeleportCandidate[] = (allCharacters ?? [])
+      .filter((c) => {
+        const status = (c.metadata as { online_status?: string } | undefined)?.online_status;
+        const isOnline = status === 'Online' || onlineIds.has(c.id);
+        return !isOnline;
+      })
+      .map((c) => ({ id: c.id, name: c.name, fill: '#94a3b8', isOnline: false }));
+    return [...onlineList, ...offlineList];
+  }, [normalizedPlayers, allCharacters]);
 
   /* Use full Hagga Basin bounds for click-to-coordinate mapping */
   const mapBounds = DEFAULT_HAGGA_BASIN_BOUNDS;
@@ -311,7 +371,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             <p className="section-title">Live map telemetry</p>
             <h2 className="mt-1 text-xl font-semibold text-th-text">Hagga Basin Tactical Overlay</h2>
             <p className="mt-2 max-w-3xl text-sm text-th-text-m">
-              Live player positions. Click on the map to place a teleport pin, then select a player to move. Use presets for common locations.
+              Live player positions. Click on the map to place a teleport pin, then select a character to move. Online players are shown for context but must log out for teleport to take effect — offline characters are the primary teleport targets. Use presets for common locations.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-th-text-m">
@@ -637,7 +697,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
             {teleportTarget ? (
               <TeleportDialog
                 target={teleportTarget}
-                players={normalizedPlayers}
+                candidates={teleportCandidates}
                 onTeleport={handleTeleport}
                 onClose={() => { setTeleportTarget(null); setTeleportResult(null); }}
                 teleporting={teleporting}
