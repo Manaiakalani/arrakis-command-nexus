@@ -709,6 +709,7 @@ Add `SURVIVAL_RESET_SEED=1` to your `.env` file. The `survival-pre-start.sh` ent
 
 1. **Pre-game enforcement** - before launching the game server, it forces `world_partition_reset_seed`, `world_map_reset_seed`, and `world_farm_reset_seed` to the configured value. This closes the race window where the game server's storm-reset check ran before the seed could be corrected (the root cause of bases being "wiped again" after a restart).
 2. **Post-start backstop** - a background loop monitors all three tables for about 10 minutes after boot and re-asserts the seed whenever the game server drifts it back to the default, so the value reliably holds through and beyond the storm-reset check.
+3. **Seed guardian sidecar** - the `seed-guardian` service (in `docker-compose.basic.yml`) keeps the seed pinned continuously (every `SEED_GUARD_INTERVAL` seconds, default 300), so the value is already correct at any moment a boot might read it, independent of boot timing or which service triggered the restart. It is a safe no-op when `SURVIVAL_RESET_SEED` is unset.
 
 ```bash
 # In .env

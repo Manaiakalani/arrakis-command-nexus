@@ -211,3 +211,30 @@ services:
       default:
         ipv4_address: 10.80.0.11
 
+  # -------------------------------------------------------------------------
+  # Seed guardian - continuously pins the world reset seed so player bases are
+  # never hidden by a "storm reset" seed mismatch. Defense-in-depth alongside
+  # the pre-game enforcement in survival-pre-start.sh. No-op when
+  # SURVIVAL_RESET_SEED is unset. Reuses the postgres image (has psql + sh).
+  # -------------------------------------------------------------------------
+  seed-guardian:
+    image: igw-postgres:17.4-alpine-fc-13
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/workspace/scripts/seed-guard.sh"]
+    environment:
+      POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      WORLD_RESET_SEED: ${SURVIVAL_RESET_SEED:-}
+      SEED_GUARD_INTERVAL: ${SEED_GUARD_INTERVAL:-300}
+    mem_limit: 128m
+    pids_limit: 32
+    cpus: 0.25
+    volumes:
+      - .:/workspace:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      default:
+        ipv4_address: 10.80.0.13
+

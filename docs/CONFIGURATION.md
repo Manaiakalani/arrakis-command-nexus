@@ -127,7 +127,8 @@ These are not part of the default `.env.example` but are supported when you need
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SURVIVAL_RESET_SEED` | blank | When set, `survival-pre-start.sh` forces the `world_partition_reset_seed`, `world_map_reset_seed`, and `world_farm_reset_seed` tables to this value both before the game server starts (closing the storm-reset race) and via a background backstop loop afterward. Required after restoring backup data to prevent "A storm has reset the map" from hiding buildings on every server restart. Typical value: `1`. See [Troubleshooting](./TROUBLESHOOTING.md#a-storm-has-reset-the-map--missing-buildings). |
+| `SURVIVAL_RESET_SEED` | blank | When set, `survival-pre-start.sh` forces the `world_partition_reset_seed`, `world_map_reset_seed`, and `world_farm_reset_seed` tables to this value both before the game server starts (closing the storm-reset race) and via a background backstop loop afterward. The `seed-guardian` sidecar also pins it continuously. Required after restoring backup data to prevent "A storm has reset the map" from hiding buildings on every server restart. Typical value: `1`. See [Troubleshooting](./TROUBLESHOOTING.md#a-storm-has-reset-the-map--missing-buildings). |
+| `SEED_GUARD_INTERVAL` | `300` | How often (seconds) the `seed-guardian` sidecar re-pins the world reset seed to `SURVIVAL_RESET_SEED`. Only has effect when `SURVIVAL_RESET_SEED` is set. |
 | `STEAM_APP_ID` | `4754530` | Steam application ID for update checks. Use `4754530` for retail (production) or `3104830` for PTC (test). **Do not mix these** or the server will be invisible to players. |
 
 ## Config Files
