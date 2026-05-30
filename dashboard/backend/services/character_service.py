@@ -378,7 +378,7 @@ class CharacterService:
 
             # Find the player's backpack inventory (type 0)
             inv = await connection.fetchrow("""
-                SELECT i.id AS inventory_id
+                SELECT i.id AS inventory_id, i.max_item_count
                 FROM dune.inventories i
                 WHERE i.actor_id IN (
                     SELECT id FROM dune.actors WHERE owner_account_id = $1
@@ -390,12 +390,29 @@ class CharacterService:
                 raise KeyError(character_id)
 
             inventory_id = inv["inventory_id"]
-
-            # Find the next open position_index in the backpack
-            max_pos = await connection.fetchval("""
-                SELECT COALESCE(MAX(position_index), -1) + 1
+            # max_item_count is the number of slots the game renders for this
+            # inventory (e.g. 35 for a default backpack). Items placed at a
+            # position_index >= max_item_count live in the database but are
+            # never shown in-game, which is why naive MAX(position_index)+1
+            # grants silently fail to appear. Find the FIRST FREE slot within
+            # the valid [0, max_item_count) range instead.
+            slot_cap = inv["max_item_count"] or 35
+            used_slots = await connection.fetch("""
+                SELECT position_index
                 FROM dune.items WHERE inventory_id = $1
             """, inventory_id)
+            occupied = {int(r["position_index"]) for r in used_slots}
+            free_slot: int | None = None
+            for candidate in range(slot_cap):
+                if candidate not in occupied:
+                    free_slot = candidate
+                    break
+            if free_slot is None:
+                raise ValueError(
+                    f"Backpack is full ({len(occupied)}/{slot_cap} slots used). "
+                    "Free up a slot in-game before granting more items."
+                )
+            max_pos = free_slot
 
             new_item_id = await connection.fetchval("""
                 INSERT INTO dune.items
