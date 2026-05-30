@@ -923,6 +923,9 @@ export default function CharactersPage() {
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('AzuriteOre', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Azurite Ore
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('BauxiteOre', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Aluminum Ore
+                  </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('ErythriteCrystal', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Erythrite Crystal
                   </button>
@@ -947,6 +950,12 @@ export default function CharactersPage() {
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('SteelBar', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Steel Ingots
                   </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('AluminiumBar', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Aluminum Ingots
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('DuraluminumRod', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Duraluminum Ingots
+                  </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('CobaltBar', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Cobalt Paste
                   </button>
@@ -955,6 +964,12 @@ export default function CharactersPage() {
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('FuelCanister', 10)}>
                     <Flame className="mr-1.5 h-3.5 w-3.5" /> 10 Fuel Canisters
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTurbineLubricant1', 500)}>
+                    <Droplets className="mr-1.5 h-3.5 w-3.5" /> 500 Low-grade Lubricant
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WindTurbineLubricant2', 500)}>
+                    <Droplets className="mr-1.5 h-3.5 w-3.5" /> 500 Industrial Lubricant
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('WeldingMaterial', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Welding Wire
@@ -1068,10 +1083,13 @@ export default function CharactersPage() {
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Fremen Parts II
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('GreatHouseComponent1', 500)}>
-                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Great House I
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Plasteel Microflora
                   </button>
                   <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('GreatHouseComponent2', 500)}>
                     <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Mechanical Parts
+                  </button>
+                  <button type="button" className="dune-button-muted text-xs" disabled={granting} onClick={() => void handleGrantItem('D_GreatHouseComponent12', 500)}>
+                    <Package className="mr-1.5 h-3.5 w-3.5" /> 500 Adv. Mechanical Parts
                   </button>
                 </div>
               </div>
