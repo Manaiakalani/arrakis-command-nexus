@@ -143,7 +143,11 @@ services:
     environment:
       POD_IP: 10.80.0.11
       NODE_NAME: dune-node
-      PARTITION_MAP_NAME: Overmap
+      # Overmap = partition 2 / dimension "Overland" of the Survival_1 level. It runs
+      # the Survival_1 world at runtime and registers under map='Survival_1', so the
+      # world_partition fallback lookup must match Survival_1 (not Overmap) or a fresh
+      # Overmap restart cannot self-assign partition 2 → CF4 on login.
+      PARTITION_MAP_NAME: Survival_1
       GAME_PORT: 7778
       PARTITION_DISPLAY_NAME: ${OVERMAP_DISPLAY_NAME:-${WORLD_NAME:-}}
       POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}

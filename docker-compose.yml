@@ -247,11 +247,14 @@ services:
       PARTITION_REPAIR_WATCH: "true"
       # Poll every 3s so new server registrations are caught within ~14s crash window
       PARTITION_REPAIR_WATCH_INTERVAL: "3"
-      # Maps game_port → exact partition_id the game binary expects.
-      # All game servers register with map='Survival_1' in farm_state, so we use
-      # game_port to identify which server slot each server_id belongs to.
+      # Maps game_port → exact world map name each server registers under.
+      # The Overmap (port 7778) is partition 2 / dimension "Overland" of the SAME
+      # Survival_1 UE level, so at runtime it reports map='Survival_1' in both its
+      # RMQ travel-completion message AND the gateway came-up event. world_partition
+      # must therefore label partition 2 as Survival_1 (not Overmap) or the login
+      # Completion stage fails "Failed to find server for partition for 2" (CF4).
       # Must match -PartitionIndex=N in each game server container command.
-      PARTITION_PORT_MAP: '{"7777":"Survival_1","7778":"Overmap"}'
+      PARTITION_PORT_MAP: '{"7777":"Survival_1","7778":"Survival_1"}'
     command:
       - /workspace/scripts/partition_repair.py
     volumes:
