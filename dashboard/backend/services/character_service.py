@@ -553,7 +553,12 @@ class CharacterService:
                 "character_id": character_id,
                 "position": {"x": x, "y": y, "z": safe_z},
                 "requested_z": z,
-                "note": "Player must log out FIRST, then teleport will apply on next login.",
+                "note": (
+                    "Log out FIRST, wait ~30s for the logout grace period to flush, "
+                    "then log back in. The server overwrites actor transforms live while "
+                    "online, so teleporting only applies on a fresh login from a fully "
+                    "logged-out state."
+                ),
             }
 
     @staticmethod

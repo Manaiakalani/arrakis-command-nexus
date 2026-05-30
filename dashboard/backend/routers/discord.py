@@ -33,21 +33,22 @@ def _mask_url(url: str) -> str:
     return f"...{url[-6:]}"
 
 
-def _webhook_to_frontend(entry) -> dict:
+def _webhook_to_frontend(entry, stats: dict | None = None) -> dict:
     """Convert backend DiscordWebhookEntry to frontend expected shape."""
     events = []
     for event_name, field_name in _EVENT_FIELDS.items():
         if getattr(entry, field_name, False):
             events.append(event_name)
+    stats = stats or {}
     return {
         "id": str(getattr(entry, "id", "")),
         "name": f"Webhook #{getattr(entry, 'id', '')}",
         "url": _mask_url(str(getattr(entry, "url", ""))),
         "enabled": True,
         "events": events,
-        "isHealthy": True,
-        "lastTriggeredAt": None,
-        "recentEvents": [],
+        "isHealthy": stats.get("isHealthy", True),
+        "lastTriggeredAt": stats.get("lastTriggeredAt"),
+        "recentEvents": stats.get("recentEvents", []),
     }
 
 
@@ -86,7 +87,8 @@ def _events_to_flags(events: list[str] | None) -> dict:
 @router.get("/discord/webhooks")
 async def list_webhooks(request: Request, session: AsyncSession = Depends(get_session)) -> list[dict]:
     entries = await request.app.state.discord_service.list_webhooks(session)
-    return [_webhook_to_frontend(entry) for entry in entries]
+    service = request.app.state.discord_service
+    return [_webhook_to_frontend(entry, service.get_stats(entry.id)) for entry in entries]
 
 
 @router.post("/discord/webhooks")

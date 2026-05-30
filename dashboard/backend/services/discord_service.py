@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from db.database import SessionLocal
@@ -22,6 +24,10 @@ class DiscordService:
         self.queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         self.client = httpx.AsyncClient(timeout=10.0)
         self._worker: asyncio.Task[None] | None = None
+        # In-memory delivery stats keyed by webhook id. Survives until the
+        # container restarts; surfaces real send activity in the dashboard
+        # without requiring a DB schema migration.
+        self._stats: dict[int, dict[str, Any]] = {}
         self._colors = {
             "start": 0x2ECC71,
             "stop": 0xE74C3C,
@@ -82,6 +88,9 @@ class DiscordService:
         for webhook in webhooks:
             await self.queue.put(
                 {
+                    "webhook_id": webhook.id,
+                    "event": "test",
+                    "message": message,
                     "url": webhook.url,
                     "payload": self._build_payload("test", "Dune Dashboard Test", message),
                 }
@@ -93,6 +102,9 @@ class DiscordService:
         for webhook in webhooks:
             await self.queue.put(
                 {
+                    "webhook_id": webhook.id,
+                    "event": event_type,
+                    "message": message,
                     "url": webhook.url,
                     "payload": self._build_payload(event_type, title, message),
                 }
@@ -109,6 +121,9 @@ class DiscordService:
             for webhook in webhooks:
                 await self.queue.put(
                     {
+                        "webhook_id": webhook.id,
+                        "event": event_type,
+                        "message": message,
                         "url": webhook.url,
                         "payload": self._build_payload(event_type, rendered_title, message),
                     }
@@ -152,7 +167,51 @@ class DiscordService:
             try:
                 response = await self.client.post(job["url"], json=job["payload"])
                 response.raise_for_status()
+                self._record(job, "sent", healthy=True)
             except httpx.HTTPError as exc:
                 logger.warning("Discord webhook delivery failed: %s", exc)
+                self._record(job, "failed", healthy=False, detail=str(exc))
             finally:
                 self.queue.task_done()
+
+    def _record(
+        self,
+        job: dict[str, Any],
+        status: str,
+        *,
+        healthy: bool,
+        detail: str | None = None,
+    ) -> None:
+        """Record a delivery attempt in the in-memory stats store."""
+        webhook_id = job.get("webhook_id")
+        if webhook_id is None:
+            return
+        now = datetime.now(timezone.utc)
+        stats = self._stats.setdefault(
+            webhook_id, {"last_triggered_at": None, "healthy": True, "recent": []}
+        )
+        stats["healthy"] = healthy
+        if status == "sent":
+            stats["last_triggered_at"] = now.isoformat()
+        event = job.get("event", "event")
+        message = detail or job.get("message", "")
+        record = {
+            "id": str(uuid.uuid4()),
+            "event": event,
+            "status": status,
+            "createdAt": now.isoformat(),
+            "message": message,
+        }
+        stats["recent"].insert(0, record)
+        del stats["recent"][10:]
+
+    def get_stats(self, webhook_id: int) -> dict[str, Any]:
+        """Return delivery stats for a webhook in frontend-ready shape."""
+        stats = self._stats.get(webhook_id)
+        if not stats:
+            return {"lastTriggeredAt": None, "isHealthy": True, "recentEvents": []}
+        return {
+            "lastTriggeredAt": stats["last_triggered_at"],
+            "isHealthy": stats["healthy"],
+            "recentEvents": list(stats["recent"]),
+        }
