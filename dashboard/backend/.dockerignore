@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.db
+.venv/
+.pytest_cache/
+.mypy_cache/
+.git/
+.gitignore
+Dockerfile
+README.md

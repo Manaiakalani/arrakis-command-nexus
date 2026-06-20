@@ -1,0 +1,126 @@
+# All Game Servers Host Networking Overlay
+#
+# Moves ALL 9 game servers to network_mode: host, completely bypassing
+# the Docker bridge/iptables/veth stack. Game UDP packets go directly
+# from the NIC to each server process socket with zero Docker networking overhead.
+#
+# Includes: survival_1, overmap, deep_desert_1, arrakeen, harko_village,
+#           testing_carthag, testing_hephaestus, testing_waterfat, proces_verbal
+#
+# WHY: When only survival_1 was on host networking while other servers remained
+# on bridge networking, the asymmetric configuration caused S2S mesh latency
+# issues that manifested as rubberbanding for all players. This overlay puts
+# all game servers on the same networking plane for consistent low-latency
+# communication.
+#
+# USAGE: Set DUNE_HOSTNET_OVERLAY=docker-compose.hostnet-all.yml in .env
+#
+# REQUIREMENTS:
+#   - HOST_LAN_IP in .env must be set to your server's LAN IP
+#   - EXTERNAL_ADDRESS in .env must be set (public IP for external players)
+#   - Router must forward UDP 7777 and 7888 to the host LAN IP (player entry)
+#   - Ports 7777-7781 and 7888-7892 must be available on the host
+#
+# NOTE: All servers resolve postgres/game-rmq/admin-rmq via extra_hosts
+# pointing to their static bridge IPs (defined in docker-compose.yml IPAM).
+
+services:
+  survival_1:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  overmap:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  deep_desert_1:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  arrakeen:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  harko_village:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  # Story shards - also need host networking for consistent S2S mesh
+  testing_carthag:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  testing_hephaestus:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  testing_waterfat:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"
+
+  proces_verbal:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"

@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Light mode tokens ── */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+
+  /* Semantic color tokens (RGB channels for Tailwind alpha) */
+  --th-bg:        253 251 247;   /* warm off-white, like parchment */
+  --th-bg-s:      247 243 235;   /* warm sand-tinted bg */
+  --th-surface:   255 253 250;   /* slightly warm white */
+  --th-surface-s: 247 243 235;   /* warm sand surface */
+  --th-border:    214 204 186;   /* warm sand border */
+  --th-border-m:  232 224 210;   /* lighter warm border */
+  --th-text:      41 32 18;      /* deep warm brown-black */
+  --th-text-s:    92 76 52;      /* warm brown secondary */
+  --th-text-m:    133 117 90;    /* warm muted text */
+
+  /* Background gradient */
+  --dune-radial: radial-gradient(circle at top, rgba(245,158,11,0.10), transparent 40%),
+                 radial-gradient(circle at bottom right, rgba(194,120,3,0.06), transparent 32%);
+  --grid-line: rgba(133, 117, 90, 0.06);
+  --glass-shadow: 0 20px 60px -24px rgba(133, 117, 90, 0.18);
+
+  /* Tooltip/chart styles */
+  --tooltip-bg: rgba(255, 253, 250, 0.97);
+  --tooltip-border: rgba(214, 204, 186, 0.6);
+  --tooltip-text: #292012;
+  --tooltip-label: #5c4c34;
+  --chart-grid: rgba(133,117,90,0.15);
+  --chart-axis: #85755a;
+  --gauge-track: rgba(133,117,90,0.15);
+  --scrollbar-thumb: rgba(194, 120, 3, 0.5);
+  --scrollbar-track: rgba(247, 243, 235, 0.6);
+
+  color-scheme: light;
+}
+
+/* ── Dark mode tokens ── */
+.dark {
+  --th-bg:        2 6 23;        /* slate-950 */
+  --th-bg-s:      15 23 42;      /* slate-900 */
+  --th-surface:   30 41 59;      /* slate-800 */
+  --th-surface-s: 15 23 42;      /* slate-900 */
+  --th-border:    51 65 85;      /* slate-700 */
+  --th-border-m:  30 41 59;      /* slate-800 */
+  --th-text:      248 250 252;   /* slate-50 */
+  --th-text-s:    203 213 225;   /* slate-300 */
+  --th-text-m:    148 163 184;   /* slate-400 */
+
+  --dune-radial: radial-gradient(circle at top, rgba(245,158,11,0.18), transparent 40%),
+                 radial-gradient(circle at bottom right, rgba(251,146,60,0.12), transparent 32%);
+
+  --tooltip-bg: rgba(15, 23, 42, 0.96);
+  --tooltip-border: rgba(245, 158, 11, 0.25);
+  --tooltip-text: #f8fafc;
+  --tooltip-label: #cbd5e1;
+  --chart-grid: rgba(148,163,184,0.12);
+  --chart-axis: #64748b;
+  --gauge-track: rgba(148,163,184,0.14);
+  --scrollbar-thumb: rgba(245, 158, 11, 0.65);
+  --scrollbar-track: rgba(15, 23, 42, 0.4);
+  --grid-line: rgba(148, 163, 184, 0.06);
+  --glass-shadow: 0 20px 60px -24px rgba(15, 23, 42, 0.75);
+
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  @apply min-h-screen antialiased;
+  color: rgb(var(--th-text));
+  background-color: rgb(var(--th-bg));
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  background-image: var(--dune-radial);
+  /* iOS notch / home-bar safe areas (viewport-fit=cover required in viewport meta) */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-2xl border border-th-border/70 bg-th-surface/[0.78] backdrop-blur-xl;
+    box-shadow: var(--glass-shadow);
+  }
+
+  .metric-card {
+    @apply glass-panel p-5;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-300/80;
+  }
+
+  .dune-button {
+    @apply inline-flex min-h-[44px] items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-700 dark:text-amber-200
+      transition-[color,background-color,border-color,box-shadow,transform]
+      duration-[var(--duration-fast)]
+      ease-[var(--ease-out-expo)]
+      hover:border-amber-400/50 hover:bg-amber-500/25
+      active:scale-[0.97]
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+
+  .dune-button-secondary {
+    @apply inline-flex min-h-[44px] items-center justify-center rounded-xl border border-th-border bg-th-surface/70 px-4 py-2 text-sm font-semibold text-th-text
+      transition-[color,background-color,border-color,box-shadow,transform]
+      duration-[var(--duration-fast)]
+      ease-[var(--ease-out-expo)]
+      hover:border-th-border hover:bg-th-surface
+      active:scale-[0.97]
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+
+  .dune-button-muted {
+    @apply inline-flex min-h-[44px] items-center justify-center rounded-xl border border-th-border bg-th-surface-s/70 px-4 py-2 text-sm font-medium text-th-text
+      transition-[color,background-color,border-color,box-shadow,transform]
+      duration-[var(--duration-fast)]
+      ease-[var(--ease-out-expo)]
+      hover:border-th-border hover:bg-th-surface
+      active:scale-[0.97]
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+
+  .dune-input {
+    @apply w-full min-h-[44px] rounded-xl border border-th-border bg-th-surface-s/70 px-4 py-2.5 text-sm text-th-text
+      outline-none ring-0
+      transition-[color,background-color,border-color,box-shadow]
+      duration-[var(--duration-normal)]
+      placeholder:text-th-text-m
+      focus:border-amber-400/60 focus:bg-th-surface
+      focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+
+  .dune-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, #fde68a 0%, #f59e0b 40%, #fb923c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sand-glow {
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1), 0 0 30px rgba(245, 158, 11, 0.15);
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}

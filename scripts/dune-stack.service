@@ -1,0 +1,32 @@
+# dune-stack.service - start the Dune Awakening stack on boot
+#
+# This is a TEMPLATE. Edit User= and the two paths to match your install, then:
+#
+#   sudo cp scripts/dune-stack.service /etc/systemd/system/dune-stack.service
+#   sudoedit /etc/systemd/system/dune-stack.service   # set User= and paths
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now dune-stack.service
+#
+# `dune start`/`dune stop` already wrap docker compose with the right profile
+# and overlays (DEPLOYMENT_PROFILE, DUNE_HOSTNET_OVERLAY), so this unit just
+# invokes the CLI. Pair it with `sudo ./scripts/cpu-pin.sh --install` to also
+# restore CPU pinning on boot.
+
+[Unit]
+Description=Dune Awakening dedicated server stack (docker compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=youruser
+WorkingDirectory=/home/youruser/dune-server-docker
+ExecStart=/home/youruser/dune-server-docker/dune start
+ExecStop=/home/youruser/dune-server-docker/dune stop
+# Container bring-up can take a while on first boot (image loads, DB init).
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
