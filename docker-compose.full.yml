@@ -1,0 +1,1688 @@
+x-game-server-common: &game-server-common
+  image: funcom/self-hosting/seabass-server:${DUNE_IMAGE_TAG}
+  dns: [1.1.1.1, 8.8.8.8]
+  restart: unless-stopped
+  stop_grace_period: 90s
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  entrypoint: ["/bin/bash", "/workspace/scripts/survival-pre-start.sh"]
+  depends_on:
+    postgres: { condition: service_healthy }
+    admin-rmq: { condition: service_healthy }
+    game-rmq: { condition: service_healthy }
+    db-init: { condition: service_completed_successfully }
+  healthcheck:
+    test: ["CMD-SHELL", "kill -0 1"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 120s
+
+x-game-env-common: &game-env-common
+  POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+  DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD:-}
+  DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
+  BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
+  WORLD_NAME: ${WORLD_NAME}
+  DUNE_SERVER_LOGIN_PASSWORD_SECRET: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+  DUNE_USERNAME_SERVER_LOGIN_SECRET: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+  DUNE_LOGIN_PASSWORD_SKEW_SECONDS: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+  ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+  UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+  LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+  BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+  BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+
+services:
+  overmap:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_OVERMAP}
+    memswap_limit: ${MEM_LIMIT_OVERMAP}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_OVERMAP:-2}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Systems/Overmap/Overmap.Overmap
+      - -Port=7777
+      - -IGWPort=7888
+      - -PartitionIndex=2
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.11
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Overmap
+    ports:
+      - "7777:7777/udp"
+      - "7888:7888/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/overmap:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.11
+
+  survival_1:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7778
+      - -IGWPort=7889
+      - -PartitionIndex=1
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.10
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7778:7778/udp"
+      - "7889:7889/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_1:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.10
+
+  deep_desert_1:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
+      - -Port=7779
+      - -IGWPort=7890
+      - -PartitionIndex=3
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.12
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: DeepDesert_1
+    ports:
+      - "7779:7779/udp"
+      - "7890:7890/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/deep_desert_1:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.12
+
+  arrakeen:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/Arrakeen/SH_Arrakeen.SH_Arrakeen
+      - -Port=7780
+      - -IGWPort=7891
+      - -PartitionIndex=4
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.13
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: SH_Arrakeen
+    ports:
+      - "7780:7780/udp"
+      - "7891:7891/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/arrakeen:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.13
+
+  harko_village:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/HarkoVillage/SH_HarkoVillage.SH_HarkoVillage
+      - -Port=7781
+      - -IGWPort=7892
+      - -PartitionIndex=5
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.14
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: SH_HarkoVillage
+    ports:
+      - "7781:7781/udp"
+      - "7892:7892/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/harko_village:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.14
+
+  testing_hephaestus:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/OverlandMaps_Story/WreckOfTheHephaestus/CB_Story_Hephaestus/CB_Story_Hephaestus.CB_Story_Hephaestus
+      - -Port=7782
+      - -IGWPort=7893
+      - -PartitionIndex=6
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.15
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: CB_Story_Hephaestus
+    ports:
+      - "7782:7782/udp"
+      - "7893:7893/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/testing_hephaestus:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.15
+
+  testing_carthag:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/OverlandMaps_Story/BeneathOldCarthag/CB_Story_Ecolab_Carthag/CB_Story_Ecolab_Carthag.CB_Story_Ecolab_Carthag
+      - -Port=7783
+      - -IGWPort=7894
+      - -PartitionIndex=7
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.16
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: CB_Story_Ecolab_Carthag
+    ports:
+      - "7783:7783/udp"
+      - "7894:7894/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/testing_carthag:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.16
+
+  testing_waterfat:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/OverlandMaps_Story/WaterFatManor/CB_Story_WaterFatManor.CB_Story_WaterFatManor
+      - -Port=7784
+      - -IGWPort=7895
+      - -PartitionIndex=8
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.17
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: CB_Story_WaterFatManor
+    ports:
+      - "7784:7784/udp"
+      - "7895:7895/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/testing_waterfat:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.17
+
+  proces_verbal:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/MainStory_Chapter2/ProcesVerbal/ProcesVerbalMap/Story_ProcesVerbal.Story_ProcesVerbal
+      - -Port=7785
+      - -IGWPort=7896
+      - -PartitionIndex=9
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.18
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Story_ProcesVerbal
+    ports:
+      - "7785:7785/udp"
+      - "7896:7896/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/proces_verbal:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.18
+
+  survival_2:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7786
+      - -IGWPort=7897
+      - -PartitionIndex=10
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.20
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7786:7786/udp"
+      - "7897:7897/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_2:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.20
+
+  survival_3:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7787
+      - -IGWPort=7898
+      - -PartitionIndex=11
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.21
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7787:7787/udp"
+      - "7898:7898/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_3:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.21
+
+  survival_4:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7788
+      - -IGWPort=7899
+      - -PartitionIndex=12
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.22
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7788:7788/udp"
+      - "7899:7899/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_4:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.22
+
+  survival_5:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7789
+      - -IGWPort=7900
+      - -PartitionIndex=13
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.23
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7789:7789/udp"
+      - "7900:7900/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_5:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.23
+
+  survival_6:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7790
+      - -IGWPort=7901
+      - -PartitionIndex=14
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.24
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7790:7790/udp"
+      - "7901:7901/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_6:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.24
+
+  survival_7:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7791
+      - -IGWPort=7902
+      - -PartitionIndex=15
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.25
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7791:7791/udp"
+      - "7902:7902/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_7:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.25
+
+  survival_8:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7792
+      - -IGWPort=7903
+      - -PartitionIndex=16
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.26
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7792:7792/udp"
+      - "7903:7903/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_8:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.26
+
+  survival_9:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7793
+      - -IGWPort=7904
+      - -PartitionIndex=17
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.27
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7793:7793/udp"
+      - "7904:7904/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_9:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.27
+
+  survival_10:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7794
+      - -IGWPort=7905
+      - -PartitionIndex=18
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.28
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7794:7794/udp"
+      - "7905:7905/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_10:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.28
+
+  survival_11:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7795
+      - -IGWPort=7906
+      - -PartitionIndex=19
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.29
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7795:7795/udp"
+      - "7906:7906/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_11:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.29
+
+  survival_12:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7796
+      - -IGWPort=7907
+      - -PartitionIndex=20
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.30
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7796:7796/udp"
+      - "7907:7907/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_12:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.30
+
+  survival_13:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7797
+      - -IGWPort=7908
+      - -PartitionIndex=21
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.31
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7797:7797/udp"
+      - "7908:7908/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_13:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.31
+
+  survival_14:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7798
+      - -IGWPort=7909
+      - -PartitionIndex=22
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.32
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7798:7798/udp"
+      - "7909:7909/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_14:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.32
+
+  survival_15:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7799
+      - -IGWPort=7910
+      - -PartitionIndex=23
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.33
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7799:7799/udp"
+      - "7910:7910/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_15:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.33
+
+  survival_16:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7800
+      - -IGWPort=7911
+      - -PartitionIndex=24
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.34
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7800:7800/udp"
+      - "7911:7911/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_16:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.34
+
+  survival_17:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_SURVIVAL}
+    memswap_limit: ${MEM_LIMIT_SURVIVAL}
+    pids_limit: 512
+    cpus: ${CPU_LIMIT_SURVIVAL:-4}
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -Port=7801
+      - -IGWPort=7912
+      - -PartitionIndex=25
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.35
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: Survival_1
+    ports:
+      - "7801:7801/udp"
+      - "7912:7912/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/survival_17:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.35
+
+  deep_desert_2:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
+      - -Port=7802
+      - -IGWPort=7913
+      - -PartitionIndex=26
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.36
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: DeepDesert_1
+    ports:
+      - "7802:7802/udp"
+      - "7913:7913/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/deep_desert_2:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.36
+
+  deep_desert_3:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
+      - -Port=7803
+      - -IGWPort=7914
+      - -PartitionIndex=27
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.37
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: DeepDesert_1
+    ports:
+      - "7803:7803/udp"
+      - "7914:7914/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/deep_desert_3:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.37
+
+  deep_desert_4:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
+      - -Port=7804
+      - -IGWPort=7915
+      - -PartitionIndex=28
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.38
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: DeepDesert_1
+    ports:
+      - "7804:7804/udp"
+      - "7915:7915/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/deep_desert_4:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.38
+
+  deep_desert_5:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEEP_DESERT}
+    memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
+      - -Port=7805
+      - -IGWPort=7916
+      - -PartitionIndex=29
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.39
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: DeepDesert_1
+    ports:
+      - "7805:7805/udp"
+      - "7916:7916/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/deep_desert_5:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.39
+
+  arrakeen_2:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/Arrakeen/SH_Arrakeen.SH_Arrakeen
+      - -Port=7806
+      - -IGWPort=7917
+      - -PartitionIndex=30
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.41
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: SH_Arrakeen
+    ports:
+      - "7806:7806/udp"
+      - "7917:7917/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/arrakeen_2:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.41
+
+  harko_village_2:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/HarkoVillage/SH_HarkoVillage.SH_HarkoVillage
+      - -Port=7807
+      - -IGWPort=7918
+      - -PartitionIndex=31
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.44
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: SH_HarkoVillage
+    ports:
+      - "7807:7807/udp"
+      - "7918:7918/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/harko_village_2:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.44
+
+  testing_hephaestus_2:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/OverlandMaps_Story/WreckOfTheHephaestus/CB_Story_Hephaestus/CB_Story_Hephaestus.CB_Story_Hephaestus
+      - -Port=7808
+      - -IGWPort=7919
+      - -PartitionIndex=32
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.45
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: CB_Story_Hephaestus
+    ports:
+      - "7808:7808/udp"
+      - "7919:7919/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/testing_hephaestus_2:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.45
+
+  testing_carthag_2:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/OverlandMaps_Story/BeneathOldCarthag/CB_Story_Ecolab_Carthag/CB_Story_Ecolab_Carthag.CB_Story_Ecolab_Carthag
+      - -Port=7809
+      - -IGWPort=7920
+      - -PartitionIndex=33
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.46
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: CB_Story_Ecolab_Carthag
+    ports:
+      - "7809:7809/udp"
+      - "7920:7920/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/testing_carthag_2:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.46
+
+  testing_waterfat_2:
+    <<: *game-server-common
+    mem_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    memswap_limit: ${MEM_LIMIT_DEFAULT_MAP}
+    pids_limit: 512
+    command:
+      - -FarmRegion=${WORLD_REGION:-North America}
+      - -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+      - -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+      - -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+      - -ini:engine:[OnlineSubsystem]:DisplayName=${WORLD_NAME}
+      - -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+      - -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+      - -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseName=${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      - -RMQGameTlsEnabled=true
+      - -ExternalAddress=${EXTERNAL_ADDRESS}
+      - --RMQGameHostname=game-rmq
+      - --RMQGamePort=5672
+      - --RMQAdminHostname=admin-rmq
+      - --RMQAdminPort=5672
+      - -MultiHome=$$POD_IP
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
+      - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/OverlandMaps_Story/WaterFatManor/CB_Story_WaterFatManor.CB_Story_WaterFatManor
+      - -Port=7810
+      - -IGWPort=7921
+      - -PartitionIndex=34
+    environment:
+      <<: *game-env-common
+      POD_IP: 10.80.0.47
+      NODE_NAME: dune-node
+      PARTITION_MAP_NAME: CB_Story_WaterFatManor
+    ports:
+      - "7810:7810/udp"
+      - "7921:7921/udp"
+    volumes:
+      - .:/workspace:ro
+      - ./data/server-saved/testing_waterfat_2:/home/dune/server/DuneSandbox/Saved
+    networks:
+      default:
+        ipv4_address: 10.80.0.47

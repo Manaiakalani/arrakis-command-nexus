@@ -1,0 +1,154 @@
+'use client';
+
+import { Activity, Clock3, Server, Shield, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+interface PublicStatus {
+  serverName: string;
+  status: 'online' | 'degraded' | 'offline' | 'unknown';
+  playersOnline: number;
+  maxPlayers: number;
+  mapsActive: number;
+  uptimeSeconds: number;
+  version: string;
+  region: string;
+  lastUpdated: string;
+}
+
+function formatUptime(seconds: number) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+const statusStyles = {
+  online: { bg: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-300', label: 'Online' },
+  degraded: { bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-300', label: 'Degraded' },
+  offline: { bg: 'bg-red-500', text: 'text-red-700 dark:text-red-300', label: 'Offline' },
+  unknown: { bg: 'bg-slate-500', text: 'text-th-text-s', label: 'Unknown' },
+};
+
+export default function PublicStatusPage() {
+  const [data, setData] = useState<PublicStatus | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch('/api/public/status', { cache: 'no-store' });
+        if (!response.ok) {
+          setError(true);
+          return;
+        }
+
+        setData(await response.json());
+        setError(false);
+      } catch {
+        setError(true);
+      }
+    };
+
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const status = data?.status ?? 'unknown';
+  const styles = statusStyles[status];
+
+  if (!data && !error) {
+    return (
+      <div className="min-h-screen bg-dune-radial">
+        <div className="absolute inset-0 bg-dune-grid bg-[size:42px_42px] opacity-[0.08]" />
+        <div className="relative mx-auto max-w-2xl px-4 py-16">
+          <div className="flex flex-col items-center gap-4 animate-pulse">
+            <div className="h-4 w-32 rounded bg-th-surface" />
+            <div className="h-9 w-64 rounded-lg bg-th-surface" />
+            <div className="h-8 w-28 rounded-full bg-th-surface" />
+            <div className="mt-6 grid w-full gap-5 sm:grid-cols-2">
+              {[1,2,3,4].map(i => <div key={i} className="h-36 rounded-xl bg-th-surface" />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-dune-radial">
+      <div className="absolute inset-0 bg-dune-grid bg-[size:42px_42px] opacity-[0.08]" />
+      <div className="relative mx-auto max-w-2xl px-4 py-16">
+        <div className="text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-amber-600/70 dark:text-amber-200/70">Dune Awakening</p>
+          <h1 className="mt-2 text-3xl font-bold text-th-text">{data?.serverName ?? 'Server Status'}</h1>
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-th-border/80 px-4 py-2">
+            <span className={`h-3 w-3 rounded-full ${styles.bg} shadow-[0_0_12px_currentColor]`} />
+            <span className={`font-semibold ${styles.text}`}>{styles.label}</span>
+          </div>
+          {error && <p className="mt-3 text-sm text-red-700 dark:text-red-300">Unable to reach the public status endpoint.</p>}
+        </div>
+
+        <div className="mt-10 grid gap-5 sm:grid-cols-2">
+          <div className="glass-panel px-6 py-7 text-center">
+            <Users className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data?.playersOnline ?? 0}</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Players Online</p>
+            {data?.maxPlayers != null && (
+              <p className="mt-1 text-xs tabular-nums text-th-text-m">of {data.maxPlayers} max</p>
+            )}
+          </div>
+          <div className="glass-panel px-6 py-7 text-center">
+            <Activity className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data?.mapsActive ?? 0}</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Active Maps</p>
+          </div>
+          <div className="glass-panel px-6 py-7 text-center">
+            <Clock3 className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">{data ? formatUptime(data.uptimeSeconds) : '--'}</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Uptime</p>
+          </div>
+          <div className="glass-panel px-6 py-7 text-center">
+            <Shield className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
+            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">
+              {status === 'online' ? '100%' : status === 'degraded' ? 'Partial' : '--'}
+            </p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Availability</p>
+          </div>
+        </div>
+
+        <div className="mt-10 glass-panel p-6">
+          <div className="flex items-center gap-3">
+            <Server className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-th-text-m">Server Details</h2>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text-m">Server Name</p>
+              <p className="mt-1 text-sm font-medium text-th-text">{data?.serverName ?? '--'}</p>
+            </div>
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text-m">Max Players</p>
+              <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{data?.maxPlayers ?? '--'}</p>
+            </div>
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text-m">Active Maps</p>
+              <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{data?.mapsActive ?? '--'}</p>
+            </div>
+            <div className="rounded-xl border border-th-border-m/60 bg-th-bg-s/40 px-4 py-3">
+              <p className="text-xs text-th-text-m">Region</p>
+              <p className="mt-1 text-sm font-medium text-th-text">{data?.region ?? '--'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-10 text-center text-xs text-th-text-m">
+          {data?.lastUpdated ? `Last updated: ${new Date(data.lastUpdated).toLocaleString()}` : ''}
+          <p className="mt-2">Powered by Arrakis Command Nexus</p>
+        </div>
+      </div>
+    </div>
+  );
+}
