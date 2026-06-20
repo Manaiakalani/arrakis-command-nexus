@@ -1,0 +1,721 @@
+name: dune-awakening
+
+# ---------------------------------------------------------------------------
+# YAML anchors for game server command fragments
+# ---------------------------------------------------------------------------
+x-game-server-command:
+  run: &cmd-run /workspace/scripts/run_server_safe.sh
+  farm-region: &cmd-farm-region -FarmRegion=${WORLD_REGION:-North America}
+  fls-token: &cmd-fls-token -ini:engine:[FuncomLiveServices]:ServiceAuthToken=${FLS_SECRET}
+  fls-env: &cmd-fls-env -ini:engine:[FuncomLiveServices]:DefaultFlsEnvironment=${DUNE_FLS_ENV:-retail}
+  server-name: &cmd-server-name -ini:engine:[OnlineSubsystem]:ServerName=${WORLD_UNIQUE_NAME}
+  server-login-password: &cmd-server-login-password -ini:engine:[ConsoleVariables]:Bgd.ServerLoginPassword=${DUNE_SERVER_LOGIN_PASSWORD:-}
+  datacenter: &cmd-datacenter -ini:engine:[OnlineSubsystem]:DatacenterId=${WORLD_DATACENTER_ID:-North America}
+  db-host: &cmd-db-host -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseHost=postgres:5432
+  db-user: &cmd-db-user -ini:game:[DuneDatabaseInterfacePSQL]:DatabaseUser=dune
+  db-password: &cmd-db-password -ini:game:[DuneDatabaseInterfacePSQL]:DatabasePassword=${POSTGRES_DUNE_PASSWORD}
+  rmq-tls: &cmd-rmq-tls -RMQGameTlsEnabled=true
+  external-address: &cmd-external-address -ExternalAddress=${EXTERNAL_ADDRESS}
+  rmq-game-host: &cmd-rmq-game-host --RMQGameHostname=game-rmq
+  rmq-game-port: &cmd-rmq-game-port --RMQGamePort=5672
+  rmq-admin-host: &cmd-rmq-admin-host --RMQAdminHostname=admin-rmq
+  rmq-admin-port: &cmd-rmq-admin-port --RMQAdminPort=5672
+  # POD_IP binds each game server to its container NIC and is required by the
+  # entrypoint (run.sh) to resolve cross map travel. Every game service sets
+  # POD_IP in its own environment block. The doubled "$$" escapes Compose
+  # interpolation so the literal token "$POD_IP" reaches the container for
+  # run.sh to substitute at runtime. A single "$" makes Compose expand it to an
+  # empty string before startup, which silently swallows the following map
+  # argument and forces the server to load the default Survival_1 map.
+  multihome: &cmd-multihome -MultiHome=$$POD_IP
+
+x-container-security: &container-security
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# ---------------------------------------------------------------------------
+# Base template for game server containers
+# ---------------------------------------------------------------------------
+x-game-server-base: &game-server-base
+  <<: *container-security
+  image: funcom/self-hosting/seabass-server:${DUNE_IMAGE_TAG}
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
+  restart: unless-stopped
+  stop_grace_period: 90s
+  environment:
+    DUNE_SERVER_LOGIN_PASSWORD: ${DUNE_SERVER_LOGIN_PASSWORD:-}
+    DUNE_SERVER_DISPLAY_NAME: ${DUNE_SERVER_DISPLAY_NAME:-}
+    WORLD_NAME: ${WORLD_NAME}
+    # Cool-off between rapid crash-restart cycles. Lower = faster recovery
+    # for upstream Funcom segfaults (e.g. the build-1979201 LogTravelEvent
+    # crash on overmap). Default 15s (was 60s before).
+    RESTART_COOLDOWN_SECONDS: ${RESTART_COOLDOWN_SECONDS:-15}
+  depends_on:
+    postgres:
+      condition: service_healthy
+    admin-rmq:
+      condition: service_healthy
+    game-rmq:
+      condition: service_healthy
+    db-init:
+      condition: service_completed_successfully
+
+# ===========================================================================
+# Services
+# ===========================================================================
+services:
+
+  # -------------------------------------------------------------------------
+  # Postgres - world state persistence
+  # -------------------------------------------------------------------------
+  postgres:
+    <<: *container-security
+    image: igw-postgres:17.4-alpine-fc-13
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dune
+      POSTGRES_USER: dune
+      POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+      POSTGRES_SUPER_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-15432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dune -d dune || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: ${MEM_LIMIT_POSTGRES}
+    memswap_limit: ${MEM_LIMIT_POSTGRES}
+    pids_limit: 256
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      default:
+        ipv4_address: 10.80.0.2
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Admin RabbitMQ - internal coordination
+  # -------------------------------------------------------------------------
+  admin-rmq:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-rabbitmq:${DUNE_IMAGE_TAG}
+    hostname: admin-rmq
+    restart: unless-stopped
+    environment:
+      RMQ_AUTH_BACKEND_1: cache
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      FuncomLiveServices__RmqTlsEnabled: "false"
+    ports:
+      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5673:5672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: ${MEM_LIMIT_RMQ}
+    memswap_limit: ${MEM_LIMIT_RMQ}
+    pids_limit: 512
+    cpus: 2
+    volumes:
+      - ./config/rabbitmq-admin.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
+      - ./config/rabbitmq-enabled-plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./data/rabbitmq/admin:/var/lib/rabbitmq
+    networks:
+      default:
+        ipv4_address: 10.80.0.3
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Game RabbitMQ - client login and game traffic
+  # -------------------------------------------------------------------------
+  game-rmq:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-rabbitmq:${DUNE_IMAGE_TAG}
+    hostname: game-rmq
+    restart: unless-stopped
+    environment:
+      RMQ_AUTH_BACKEND_1: cache
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      FuncomLiveServices__RmqTlsEnabled: "true"
+    ports:
+      - "127.0.0.1:15673:15672"
+      - "${GAME_RMQ_BIND_ADDRESS:-0.0.0.0}:${GAME_RMQ_PUBLIC_PORT:-31982}:5672"
+      - "${GAME_RMQ_BIND_ADDRESS:-0.0.0.0}:${GAME_RMQ_PUBLIC_HTTP_PORT:-31983}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: ${MEM_LIMIT_RMQ}
+    memswap_limit: ${MEM_LIMIT_RMQ}
+    pids_limit: 512
+    volumes:
+      - ./config/rabbitmq-game.conf:/etc/rabbitmq/conf.d/99-dune.conf:ro
+      - ./config/rabbitmq-enabled-plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./config/tls/rabbitmq/ca.crt:/etc/rabbitmq/cacert.pem:ro
+      - ./config/tls/rabbitmq/server.crt:/etc/rabbitmq/cert.pem:ro
+      - ./config/tls/rabbitmq/server.key:/etc/rabbitmq/key.pem:ro
+      - ./data/rabbitmq/game:/var/lib/rabbitmq
+    networks:
+      default:
+        ipv4_address: 10.80.0.4
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # RMQ Auth Shim - HTTP auth backend for RabbitMQ
+  # -------------------------------------------------------------------------
+  rmq-auth-shim:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    working_dir: /workspace
+    environment:
+      WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
+      TEXT_ROUTER_AUTH_BASE: http://text-router:8080
+      DUNE_RMQ_MANAGEMENT_USER: ${DUNE_RMQ_MANAGEMENT_USER:-}
+      DUNE_RMQ_MANAGEMENT_PASSWORD: ${DUNE_RMQ_MANAGEMENT_PASSWORD:-}
+    command:
+      - /workspace/scripts/rmq_auth_shim.py
+    volumes:
+      - .:/workspace:ro
+    depends_on:
+      text-router:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 128
+    cpus: 0.5
+    networks:
+      default:
+        ipv4_address: 10.80.0.7
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Database Init - one-shot schema bootstrap
+  # -------------------------------------------------------------------------
+  db-init:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
+    restart: "no"
+    working_dir: /root/PSQL
+    environment:
+      PYTHONPATH: /root/PSQL
+      POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+    command:
+      - /workspace/scripts/bootstrap_db.py
+    volumes:
+      - .:/workspace:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 128
+    cpus: 1
+    networks:
+      default:
+        ipv4_address: 10.80.0.42
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Partition Repair - fixes world_partition after server restarts
+  # -------------------------------------------------------------------------
+  partition-repair:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-db-utils:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    working_dir: /root/PSQL
+    environment:
+      PYTHONPATH: /root/PSQL
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: dune_sb_1_4_0_0
+      DB_USER: dune
+      DB_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+      PARTITION_REPAIR_MAX_WAIT: "120"
+      PARTITION_REPAIR_WATCH: "true"
+      # Poll every 3s so new server registrations are caught within ~14s crash window
+      PARTITION_REPAIR_WATCH_INTERVAL: "3"
+      # Maps game_port -> exact world map name labeling each server's partition
+      # row in world_partition. Each game server claims the world_partition row
+      # whose `map` matches its PARTITION_MAP_NAME, so this mapping must agree
+      # with the -PartitionIndex / PARTITION_MAP_NAME wiring in the active
+      # profile overlay (see docker-compose.standard.yml).
+      #
+      # Leave PARTITION_PORT_MAP unset for the basic profile: partition_repair.py
+      # falls back to its built-in default {"7777":"Survival_1","7778":"Overmap"}.
+      # The standard and full profiles set PARTITION_PORT_MAP in .env to cover
+      # every mapped game port (see .env.example).
+      #
+      # The Overmap server runs the Overland level yet labels partition 2 as
+      # 'Overmap' (not 'Survival_1') so the FLS browser lists both partitions as
+      # separate entries and the pre-start SKIP-LOCKED claim stays unambiguous
+      # (one partition per map name).
+      PARTITION_PORT_MAP: "${PARTITION_PORT_MAP:-}"
+    command:
+      - /workspace/scripts/partition_repair.py
+    volumes:
+      - .:/workspace:ro
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 128
+    cpus: 0.5
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import os; os.kill(1, 0)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      default:
+        ipv4_address: 10.80.0.43
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Director - battlegroup state and travel management
+  # -------------------------------------------------------------------------
+  director:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-bg-director:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    command:
+      - --RMQGameHostname
+      - game-rmq
+      - --RMQGamePort
+      - "5672"
+      - --RMQAdminHostname
+      - admin-rmq
+      - --RMQAdminPort
+      - "5672"
+    environment:
+      Database__address: postgres
+      Database__port: "5432"
+      Database__user: dune
+      Database__password: ${POSTGRES_DUNE_PASSWORD}
+      Database__name: dune_sb_1_4_0_0
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      BATTLEGROUP: ${WORLD_UNIQUE_NAME}
+      BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
+      BATTLEGROUP_TITLE: ${WORLD_NAME}
+      WORLD_NAME: ${WORLD_NAME}
+      OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
+      OPT_DISPLAY_NAME: ${WORLD_NAME}
+      FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
+      FuncomLiveServices__RmqTlsEnabled: "true"
+      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-North America}
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
+      HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
+      FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
+      # BackendLogin authentication secrets (must match game servers)
+      DUNE_SERVER_LOGIN_PASSWORD_SECRET: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      DUNE_USERNAME_SERVER_LOGIN_SECRET: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      DUNE_LOGIN_PASSWORD_SKEW_SECONDS: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__DefaultScheme: BackendLogin
+      AuthenticationConfiguration__DefaultAuthenticateScheme: BackendLogin
+      AuthenticationConfiguration__DefaultChallengeScheme: BackendLogin
+      AuthenticationConfiguration__AuthenticationScheme: BackendLogin
+      AuthenticationConfiguration__RequireAuthenticatedSignIn: "false"
+      BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      # Nested auth configuration variants (.NET config binding)
+      AuthenticationConfiguration__BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      # SchemeMap variants
+      AuthenticationConfiguration__SchemeMap__BackendLogin__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__Secret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__ServerLoginPasswordSecretEnvironmentVariable: DUNE_SERVER_LOGIN_PASSWORD_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__UsernameServerLoginSecretEnvironmentVariable: DUNE_USERNAME_SERVER_LOGIN_SECRET
+      AuthenticationConfiguration__SchemeMap__BackendLogin__BackendLoginConfiguration__LoginPasswordSkewEnvironmentVariable: DUNE_LOGIN_PASSWORD_SKEW_SECONDS
+      fls-apikey: ${FLS_APIKEY:-}
+      DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE: "false"
+    mem_limit: ${MEM_LIMIT_DIRECTOR}
+    memswap_limit: ${MEM_LIMIT_DIRECTOR}
+    pids_limit: 128
+    volumes:
+      - ./config/director.ini:/etc/app/conf.d/director.ini:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      admin-rmq:
+        condition: service_healthy
+      game-rmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      default:
+        ipv4_address: 10.80.0.5
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Text Router - chat routing
+  # -------------------------------------------------------------------------
+  text-router:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-text-router:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    command:
+      - --RMQGameHostname
+      - game-rmq
+      - --RMQGamePort
+      - "5672"
+      - --RMQAdminHostname
+      - admin-rmq
+      - --RMQAdminPort
+      - "5672"
+    environment:
+      DuneDatabaseInterfacePSQL_DatabaseHost: postgres
+      DuneDatabaseInterfacePSQL_DatabasePort: "5432"
+      DuneDatabaseInterfacePSQL_DatabaseUser: dune
+      DuneDatabaseInterfacePSQL_DatabasePassword: ${POSTGRES_DUNE_PASSWORD}
+      DuneDatabaseInterfacePSQL_DatabaseName: dune_sb_1_4_0_0
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      Database__address: postgres
+      Database__port: "5432"
+      Database__user: dune
+      Database__password: ${POSTGRES_DUNE_PASSWORD}
+      # Pin the DB name explicitly. Without this the text-router derives the name
+      # from the binary's database branch (e.g. dune_sb_1_4_5_0 on build 1988751),
+      # which does not exist -- the game data lives in dune_sb_1_4_0_0. See director.
+      Database__name: ${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      BATTLEGROUP_DISPLAY_NAME: ${WORLD_UNIQUE_NAME}
+      WORLD_NAME: ${WORLD_NAME}
+      OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
+      OPT_DISPLAY_NAME: ${WORLD_NAME}
+      BATTLEGROUP_REGION_NAME: ${WORLD_REGION:-North America}
+      FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
+      FuncomLiveServices__RmqTlsEnabled: "true"
+      BATTLEGROUP_LANGUAGE: en-US
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
+      HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
+      FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
+    mem_limit: ${MEM_LIMIT_TEXT_ROUTER}
+    memswap_limit: ${MEM_LIMIT_TEXT_ROUTER}
+    pids_limit: 128
+    cpus: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      admin-rmq:
+        condition: service_healthy
+      game-rmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      default:
+        ipv4_address: 10.80.0.6
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Gateway - FLS farm registration
+  # -------------------------------------------------------------------------
+  gateway:
+    <<: *container-security
+    image: funcom/self-hosting/seabass-server-gateway:${DUNE_IMAGE_TAG}
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    command:
+      - sh
+      - -lc
+      - >-
+        mkdir -p /etc/app/conf.d;
+        printf '[OnlineSubsystem]\nServerName=%s\nDatacenterId=%s\n\n[Gateway]\ndisplay_name=%s\nProvider=self-hosted\n'
+        "$$OPT_SERVERNAME" "$$HOST_DATACENTER_ID" "$$OPT_DISPLAY_NAME"
+        > /etc/app/conf.d/gateway.ini;
+        cat /etc/app/conf.d/gateway.ini;
+        sleep 30;
+        exec python -m service
+        -c /Tools/Battlegroups/GatewayService/service/configs/service.conf
+        --RMQGameHostname $$GAME_RMQ_PUBLIC_HOST
+        --RMQGamePort $$GAME_RMQ_PUBLIC_PORT
+        --RMQGameHttpPort $$GAME_RMQ_PUBLIC_HTTP_PORT
+    environment:
+      DuneDatabaseInterfacePSQL_DatabaseHost: postgres
+      DuneDatabaseInterfacePSQL_DatabasePort: "5432"
+      DuneDatabaseInterfacePSQL_DatabaseUser: dune
+      DuneDatabaseInterfacePSQL_DatabasePassword: ${POSTGRES_DUNE_PASSWORD}
+      DuneDatabaseInterfacePSQL_DatabaseName: dune_sb_1_4_0_0
+      FuncomLiveServices__ServiceAuthToken: ${FLS_SECRET}
+      FuncomLiveServices__RmqTlsEnabled: "true"
+      FuncomLiveServices__BattlegroupAuthorizationPreset: BattlegroupInternal
+      FuncomLiveServices__DefaultFlsEnvironment: ${DUNE_FLS_ENV:-retail}
+      BATTLEGROUP_DISPLAY_NAME: ${WORLD_NAME}
+      BATTLEGROUP_TITLE: ${WORLD_NAME}
+      OPT_SERVERNAME: ${WORLD_UNIQUE_NAME}
+      OPT_DISPLAY_NAME: ${WORLD_NAME}
+      gateway_farm_api_key: ${FLS_SECRET}
+      gateway_display_name: ${WORLD_NAME}
+      OnlineSubsystem_ServerName: ${WORLD_UNIQUE_NAME}
+      OnlineSubsystem_DatacenterId: ${WORLD_DATACENTER_ID:-North America}
+      RMQ_HTTP_TOKEN_AUTH_SECRET: ${RMQ_HTTP_TOKEN_AUTH_SECRET:-}
+      HOST_DATACENTER_ID: ${WORLD_DATACENTER_ID:-North America}
+      HOST_DATACENTER_IP_ADDRESS: ${EXTERNAL_ADDRESS}
+      GAME_RMQ_PUBLIC_HOST: ${GAME_RMQ_PUBLIC_HOST:-${EXTERNAL_ADDRESS}}
+      GAME_RMQ_PUBLIC_PORT: "${GAME_RMQ_PUBLIC_PORT:-31982}"
+      GAME_RMQ_PUBLIC_HTTP_PORT: "${GAME_RMQ_PUBLIC_HTTP_PORT:-31983}"
+    mem_limit: ${MEM_LIMIT_GATEWAY}
+    memswap_limit: ${MEM_LIMIT_GATEWAY}
+    pids_limit: 128
+    depends_on:
+      postgres:
+        condition: service_healthy
+      game-rmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import os, signal; os.kill(1, 0)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    networks:
+      default:
+        ipv4_address: 10.80.0.40
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Docker socket proxy - narrows dashboard access to the Docker API
+  # -------------------------------------------------------------------------
+  docker-socket-proxy:
+    <<: *container-security
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      INFO: 1
+      PING: 1
+      POST: 1
+      VERSION: 1
+      EXEC: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    tmpfs:
+      - /run
+      - /tmp
+    cpus: 0.5
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 128
+    networks:
+      backend: {}
+
+  # -------------------------------------------------------------------------
+  # Dashboard API
+  # -------------------------------------------------------------------------
+  dashboard-api:
+    <<: *container-security
+    build:
+      context: ./dashboard/backend
+    restart: unless-stopped
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    environment:
+      DUNE_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
+      DUNE_ADMIN_MUTATIONS_ENABLED: ${DUNE_ADMIN_MUTATIONS_ENABLED}
+      DUNE_ADMIN_ALLOWED_HOSTS: ${DUNE_ADMIN_ALLOWED_HOSTS}
+      DUNE_CONFIG_DIR: /workspace/config
+      DUNE_METRICS_INTERVAL: "15"
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      DISCORD_NOTIFY_START: ${DISCORD_NOTIFY_START}
+      DISCORD_NOTIFY_STOP: ${DISCORD_NOTIFY_STOP}
+      DISCORD_NOTIFY_CRASH: ${DISCORD_NOTIFY_CRASH}
+      DISCORD_NOTIFY_PLAYER_JOIN: ${DISCORD_NOTIFY_PLAYER_JOIN}
+      DISCORD_NOTIFY_PLAYER_LEAVE: ${DISCORD_NOTIFY_PLAYER_LEAVE}
+      BACKUP_DIR: /workspace/backups
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: dune_sb_1_4_0_0
+      POSTGRES_USER: dune
+      POSTGRES_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+      DATABASE_URL: postgres://dune:${POSTGRES_DUNE_PASSWORD}@postgres:5432/dune_sb_1_4_0_0
+      WORLD_NAME: ${WORLD_NAME}
+      WORLD_UNIQUE_NAME: ${WORLD_UNIQUE_NAME}
+      DUNE_RMQ_HOST: game-rmq
+      DUNE_RMQ_PORT: "5672"
+      DUNE_RMQ_TLS_ENABLED: "true"
+      DUNE_RMQ_CA_CERT: /workspace/config/tls/rabbitmq/ca.crt
+      DUNE_RMQ_MANAGEMENT_USER: ${DUNE_RMQ_MANAGEMENT_USER:-}
+      DUNE_RMQ_MANAGEMENT_PASSWORD: ${DUNE_RMQ_MANAGEMENT_PASSWORD:-}
+      DUNE_ANNOUNCE_ENABLED: ${DUNE_ANNOUNCE_ENABLED:-true}
+      DUNE_ANNOUNCE_NAME: ${DUNE_ANNOUNCE_NAME:-Server}
+      DUNE_ANNOUNCE_CHAT_USER: ${DUNE_ANNOUNCE_CHAT_USER:-A000000000000001}
+      DUNE_ANNOUNCE_CHAT_PASSWORD: ${DUNE_ANNOUNCE_CHAT_PASSWORD:-announce}
+      DUNE_ANNOUNCE_ROUTING_KEYS: ${DUNE_ANNOUNCE_ROUTING_KEYS:-}
+      DUNE_IMAGE_TAG: ${DUNE_IMAGE_TAG}
+      DUNE_STEAM_SERVER_DIR: /workspace/steam
+      DUNE_FLS_ENV: ${DUNE_FLS_ENV:-retail}
+      DUNE_DOCKER_BASE_URL: tcp://docker-socket-proxy:2375
+      DUNE_DASHBOARD_DB_URL: sqlite+aiosqlite:////workspace/data/dashboard.db
+      STEAM_APP_ID: ${STEAM_APP_ID:-4754530}
+      UPDATE_CHECK_INTERVAL_HOURS: ${UPDATE_CHECK_INTERVAL_HOURS:-6}
+      UPDATE_AUTO_UPDATE: ${UPDATE_AUTO_UPDATE:-false}
+      DUNE_COMPOSE_OVERLAY: ${DUNE_COMPOSE_OVERLAY:-basic}
+      DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-basic}
+      DUNE_HOSTNET_OVERLAY: ${DUNE_HOSTNET_OVERLAY:-}
+      DUNE_SSH_USER: ${DUNE_SSH_USER:-}
+      DUNE_SSH_HOST: ${DUNE_SSH_HOST:-}
+      DUNE_SERVER_DIR: ${DUNE_SERVER_DIR:-~/dune-server-docker}
+      # Watchdog RMQ ghost-cleanup disabled by default: even with the 60s
+      # newer-vs-older debounce, killing AMQP connections during player
+      # travel was preventing the S2sController peer index from converging
+      # (Overmap reported `ES2SServerState::S2S_WaitingForIndex` and
+      # `GetBestServerForLocation: no server found`). Operators can still
+      # opt in by setting WATCHDOG_RMQ_GHOST_CLEANUP=true, or run
+      # `./dune fix-p83 --apply` manually when needed.
+      WATCHDOG_RMQ_GHOST_CLEANUP: ${WATCHDOG_RMQ_GHOST_CLEANUP:-false}
+    volumes:
+      - ./.env:/workspace/.env
+      - ./config:/workspace/config
+      - ./backups:/workspace/backups
+      - ./secrets:/workspace/secrets:ro
+      - ./dashboard-data:/workspace/data
+      - ./scripts:/workspace/scripts:ro
+      - ${DUNE_STEAM_SERVER_DIR:-./steam}:/workspace/steam
+      - ./docker-compose.yml:/workspace/compose/docker-compose.yml:ro
+      - ./docker-compose.basic.yml:/workspace/compose/docker-compose.basic.yml:ro
+      - ./docker-compose.standard.yml:/workspace/compose/docker-compose.standard.yml:ro
+      - ./docker-compose.full.yml:/workspace/compose/docker-compose.full.yml:ro
+      - ./docker-compose.dashboard.yml:/workspace/compose/docker-compose.dashboard.yml:ro
+      - ./docker-compose.hostnet.yml:/workspace/compose/docker-compose.hostnet.yml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      docker-socket-proxy:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      default:
+        ipv4_address: 10.80.0.50
+      backend: {}
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    cpus: 2
+
+  # -------------------------------------------------------------------------
+  # Dashboard Frontend (Next.js with API proxy)
+  # -------------------------------------------------------------------------
+  dashboard-frontend:
+    <<: *container-security
+    build:
+      context: ./dashboard/frontend
+    image: dune-awakening-dashboard-frontend
+    restart: unless-stopped
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    ports:
+      - "${DUNE_ADMIN_BIND_ADDRESS}:${DUNE_ADMIN_HOST_PORT}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      DUNE_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
+    depends_on:
+      dashboard-api:
+        condition: service_healthy
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    cpus: 1
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      default:
+        ipv4_address: 10.80.0.51
+      backend: {}
+
+# ===========================================================================
+# Internal Docker bridge network (not exposed to your LAN)
+# These IPs are only used for container-to-container communication.
+# Change the subnet if it conflicts with your host network.
+# ===========================================================================
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${DUNE_DOCKER_SUBNET:-10.80.0.0/20}
+  backend:
+    internal: true

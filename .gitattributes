@@ -1,0 +1,27 @@
+# Force LF line endings for shell scripts (critical for bash execution)
+*.sh text eol=lf
+dune text eol=lf
+
+# Force LF for systemd unit files (Linux-only artifacts)
+*.service text eol=lf
+*.timer text eol=lf
+
+# Keep Windows line endings for batch files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Common binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.tgz binary
+*.7z binary
+
+# Auto-detect for everything else
+* text=auto

@@ -1,0 +1,14 @@
+services:
+  dashboard-api:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  dashboard-frontend:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,164 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+
+import { useApi } from '@/hooks/useApi';
+import { apiClient } from '@/lib/api';
+import { getTooltipStyles, CHART_GRID_STROKE, CHART_AXIS_STROKE } from '@/lib/utils';
+
+const ranges = ['1h', '6h', '24h', '7d', '30d'];
+const statusMeta = {
+  up: { color: '#fb923c', label: 'Up', value: 100 },
+  degraded: { color: '#f59e0b', label: 'Degraded', value: 65 },
+  down: { color: '#ef4444', label: 'Down', value: 10 },
+};
+
+function formatDuration(totalSeconds: number) {
+  const seconds = Math.max(Math.floor(totalSeconds), 0);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+  return `${seconds}s`;
+}
+
+function formatTick(timestamp: string, range: string) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+
+  if (range === '7d' || range === '30d') {
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+export function UptimeChart() {
+  const [range, setRange] = useState('24h');
+  const tooltipStyles = getTooltipStyles();
+  const uptime = useApi(() => apiClient.getUptimeData(range), {
+    refreshInterval: 30000,
+    initialData: { range, availabilityPercent: 0, totalUpSeconds: 0, totalDownSeconds: 0, events: [] },
+    deps: [range],
+  });
+
+  const chartData = useMemo(
+    () =>
+      (uptime.data?.events ?? []).map((event) => ({
+        ...event,
+        label: formatTick(event.timestamp, range),
+        value: statusMeta[event.status].value,
+        statusLabel: statusMeta[event.status].label,
+        fill: statusMeta[event.status].color,
+      })),
+    [range, uptime.data?.events],
+  );
+
+  const incidents = useMemo(
+    () => [...(uptime.data?.events ?? [])].filter((event) => event.status !== 'up').reverse(),
+    [uptime.data?.events],
+  );
+
+  return (
+    <div className="glass-panel p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="section-title">Availability</p>
+          <div className="mt-2 flex flex-wrap items-end gap-3">
+            <h3 className="text-3xl font-semibold text-th-text tabular-nums">{(uptime.data?.availabilityPercent ?? 0).toFixed(1)}% available</h3>
+            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-amber-700 dark:text-amber-200">{range}</span>
+          </div>
+          <p className="mt-1 text-xs text-th-text-m">% of the selected window the stack was healthy. Different from the Overview &ldquo;Stack uptime&rdquo; card, which shows wall-clock time since the earliest game-server container started.</p>
+          <p className="mt-2 text-sm">
+            <span className="text-emerald-700 dark:text-emerald-300">{formatDuration(uptime.data?.totalUpSeconds ?? 0)} available</span>
+            <span className="text-th-text-m"> • </span>
+            <span className="text-red-700 dark:text-red-300">{formatDuration(uptime.data?.totalDownSeconds ?? 0)} impacted</span>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {ranges.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setRange(option)}
+              className={range === option ? 'dune-button px-3 py-2 text-xs' : 'dune-button-muted px-3 py-2 text-xs'}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 h-56 w-full">
+        <ResponsiveContainer>
+          <BarChart data={chartData}>
+            <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="4 4" vertical={false} />
+            <XAxis dataKey="label" stroke={CHART_AXIS_STROKE} tickLine={false} axisLine={false} minTickGap={20} />
+            <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tickFormatter={(value: number) => `${value}%`} stroke={CHART_AXIS_STROKE} tickLine={false} axisLine={false} width={54} />
+            <Tooltip
+              labelFormatter={(label, payload) => String(payload?.[0]?.payload?.timestamp ?? label)}
+              formatter={(value, _name, item) => [`${item.payload.statusLabel} • ${formatDuration(item.payload.durationSeconds)}`, 'Status']}
+              {...tooltipStyles}
+            />
+            <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+              {chartData.map((entry) => (
+                <Cell key={`${entry.timestamp}-${entry.status}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        {[
+          { label: 'Available', value: formatDuration(uptime.data?.totalUpSeconds ?? 0), tone: 'text-amber-700 dark:text-amber-200' },
+          { label: 'Impacted', value: formatDuration(uptime.data?.totalDownSeconds ?? 0), tone: 'text-red-700 dark:text-red-300' },
+          { label: 'Incidents', value: incidents.length, tone: 'text-th-text' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">{item.label}</p>
+            <p className={`mt-2 text-lg font-semibold tabular-nums ${item.tone}`}>{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold uppercase tracking-[0.22em] text-th-text-m">Recent incidents</h4>
+          <div className="flex items-center gap-3 text-xs text-th-text-m">
+            <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#fb923c]" />Up</span>
+            <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]" />Degraded</span>
+            <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" />Down</span>
+          </div>
+        </div>
+        <div className="mt-4 space-y-3">
+          {incidents.length > 0 ? (
+            incidents.slice(0, 6).map((event) => (
+              <div key={`${event.timestamp}-${event.status}`} className="flex items-center justify-between rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3 text-sm">
+                <div>
+                  <p className="font-medium text-th-text">{statusMeta[event.status].label} event</p>
+                  <p className="mt-1 text-th-text-m">{new Date(event.timestamp).toLocaleString()}</p>
+                </div>
+                <span className="rounded-full border border-th-border/40 dark:border-white/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-th-text-s">{formatDuration(event.durationSeconds)}</span>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-6 text-sm text-th-text-m">No downtime or degraded events recorded in this window.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
