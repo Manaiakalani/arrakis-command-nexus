@@ -1,0 +1,43 @@
+# Host Networking Overlay for Player-Facing Game Servers
+#
+# Moves survival_1 to network_mode: host, bypassing the Docker bridge/iptables/
+# veth stack entirely. Game UDP packets go directly from the NIC to the server
+# process socket with zero Docker networking overhead.
+#
+# WHY: Docker bridge networking adds measurable packet processing jitter that
+# manifests as in-game rubberbanding (player teleporting/snapping back), even
+# though all server-side diagnostics (tick warnings, movement corrections, UDP
+# drops, NIC errors, CPU pressure) appear clean. This was confirmed by A/B
+# testing: bridge mode = rubberband, host mode = smooth.
+#
+# USAGE: Set DUNE_HOSTNET_OVERLAY=docker-compose.hostnet.yml in .env and the
+# ./dune script will include it automatically. Or include manually:
+#   docker compose -f docker-compose.yml -f docker-compose.standard.yml \
+#     -f docker-compose.hostnet.yml -f docker-compose.dashboard.yml up -d
+#
+# REQUIREMENTS:
+#   - HOST_LAN_IP in .env must be set to your server's LAN IP
+#   - EXTERNAL_ADDRESS in .env must be set (public IP or LAN IP)
+#   - Router must forward UDP 7777 and 7888 to the host LAN IP
+#   - The host's port 7777 and 7888 must not conflict with other services
+#   - Other game servers remain on bridge networking (their S2S traffic to
+#     survival_1 goes via the host IP, not Docker DNS)
+#
+# NOTE: survival_1 resolves postgres/game-rmq/admin-rmq via extra_hosts
+# pointing to their static bridge IPs (defined in docker-compose.yml IPAM).
+# If you change the IPAM config, update the IPs here too.
+
+services:
+  survival_1:
+    network_mode: host
+    # In host mode, ports: is a no-op (process binds directly on host)
+    ports: !reset []
+    # Cannot attach to Docker networks in host mode
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      # In host mode, POD_IP = the host's LAN IP (used by -MultiHome)
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env when using host networking}"

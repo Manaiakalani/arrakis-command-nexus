@@ -1,0 +1,11 @@
+services:
+  survival_1:
+    cpuset: "1-4"
+  deep_desert_1:
+    cpuset: "6-9"
+  overmap:
+    cpuset: "12-15"
+  arrakeen:
+    cpuset: "16-17"
+  harko_village:
+    cpuset: "18-19"
