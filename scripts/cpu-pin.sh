@@ -14,9 +14,15 @@
 # thread always has a free core. This does NOT change any game/travel/IGW
 # config and is fully reversible (`docker update --cpuset-cpus "" <container>`).
 #
-# The defaults below target a 6 physical core / 12 thread host (Intel HT sibling
-# pairs 0-5 / 6-11). Override the three CPUSET_* variables for other topologies;
-# inspect your layout with `lscpu -e=CPU,CORE` first.
+# CPU sets are auto-detected from Linux CPU topology. Hybrid hosts prefer
+# higher-frequency P-cores for player-facing maps; non-hybrid hosts reserve the
+# first physical cores and put the rest in the background pool.
+#
+# FALLBACK ONLY: if detection fails, the legacy 6C/12T layout is used:
+#   CPUSET_SURVIVAL=0,1,6,7
+#   CPUSET_DEEP_DESERT=2,8
+#   CPUSET_BACKGROUND=3,4,5,9,10,11
+# Override CPUSET_* for unusual hardware or hand-tuned layouts.
 #
 # Usage:
 #   ./scripts/cpu-pin.sh                 # apply pinning to running containers
@@ -27,27 +33,150 @@
 #
 set -euo pipefail
 
-# --- core assignment (override via environment for other hardware) -----------
-CPUSET_SURVIVAL="${CPUSET_SURVIVAL:-0,1,6,7}"      # main world: 2 dedicated cores
-CPUSET_DEEP_DESERT="${CPUSET_DEEP_DESERT:-2,8}"     # heavy destination: 1 core (expand if players join)
-CPUSET_BACKGROUND="${CPUSET_BACKGROUND:-3,4,5,9,10,11}" # hubs + infra: 3 physical cores
-
 PROJECT="${COMPOSE_PROJECT_NAME:-dune-awakening}"
 DRY_RUN=false
 INSTALL=false
 MEASURE=false
+LIBRARY_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift ;;
     --install) INSTALL=true; shift ;;
     --measure) MEASURE=true; shift ;;
+    --library-only) LIBRARY_ONLY=true; shift ;;
     --help|-h)
       sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
       exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+join_csv() {
+  local out='' item
+  for item in "$@"; do
+    [[ -n "$item" ]] || continue
+    if [[ -n "$out" ]]; then
+      out="${out},${item}"
+    else
+      out="$item"
+    fi
+  done
+  printf '%s\n' "$out"
+}
+
+append_csv() {
+  local base="$1" add="$2"
+  if [[ -n "$base" && -n "$add" ]]; then
+    printf '%s,%s\n' "$base" "$add"
+  else
+    printf '%s%s\n' "$base" "$add"
+  fi
+}
+
+all_online_cpus() {
+  local cpu_dir cpu online cpus=()
+  for cpu_dir in /sys/devices/system/cpu/cpu[0-9]*; do
+    [[ -d "$cpu_dir" ]] || continue
+    cpu="${cpu_dir##*cpu}"
+    online="$(cat "$cpu_dir/online" 2>/dev/null || printf '1')"
+    [[ "$online" == '1' ]] && cpus+=("$cpu")
+  done
+  ((${#cpus[@]} > 0)) || return 1
+  join_csv "${cpus[@]}"
+}
+
+detect_cpuset_defaults() {
+  local fallback_survival='0,1,6,7'
+  local fallback_deep_desert='2,8'
+  local fallback_background='3,4,5,9,10,11'
+  local cpu_dir cpu online pkg core key freq
+  local -A core_cpus=()
+  local -A core_freq=()
+  local -a records=()
+  local record cpus
+
+  for cpu_dir in /sys/devices/system/cpu/cpu[0-9]*; do
+    [[ -d "$cpu_dir" ]] || continue
+    cpu="${cpu_dir##*cpu}"
+    online="$(cat "$cpu_dir/online" 2>/dev/null || printf '1')"
+    [[ "$online" == '1' ]] || continue
+    pkg="$(cat "$cpu_dir/topology/physical_package_id" 2>/dev/null || printf '0')"
+    core="$(cat "$cpu_dir/topology/core_id" 2>/dev/null || printf '%s' "$cpu")"
+    key="${pkg}:${core}"
+    freq="$(cat "$cpu_dir/cpufreq/cpuinfo_max_freq" 2>/dev/null || printf '0')"
+    core_cpus[$key]="$(append_csv "${core_cpus[$key]:-}" "$cpu")"
+    if [[ -z "${core_freq[$key]:-}" || "$freq" -gt "${core_freq[$key]}" ]]; then
+      core_freq[$key]="$freq"
+    fi
+  done
+
+  if ((${#core_cpus[@]} == 0)); then
+    DETECTED_CPUSET_SURVIVAL="$fallback_survival"
+    DETECTED_CPUSET_DEEP_DESERT="$fallback_deep_desert"
+    DETECTED_CPUSET_BACKGROUND="$fallback_background"
+    return 0
+  fi
+
+  mapfile -t records < <(
+    for key in "${!core_cpus[@]}"; do
+      printf '%012d %s %s\n' "${core_freq[$key]:-0}" "$key" "${core_cpus[$key]}"
+    done | sort -k1,1nr -k2,2V
+  )
+
+  DETECTED_CPUSET_SURVIVAL=''
+  DETECTED_CPUSET_DEEP_DESERT=''
+  DETECTED_CPUSET_BACKGROUND=''
+
+  local survival_cores=2
+  local deep_desert_cores=1
+  if ((${#records[@]} <= 2)); then
+    survival_cores=1
+  fi
+
+  local idx=0
+  for record in "${records[@]}"; do
+    cpus="${record#* * }"
+    if ((idx < survival_cores)); then
+      DETECTED_CPUSET_SURVIVAL="$(append_csv "$DETECTED_CPUSET_SURVIVAL" "$cpus")"
+    elif ((idx < survival_cores + deep_desert_cores)); then
+      DETECTED_CPUSET_DEEP_DESERT="$(append_csv "$DETECTED_CPUSET_DEEP_DESERT" "$cpus")"
+    else
+      DETECTED_CPUSET_BACKGROUND="$(append_csv "$DETECTED_CPUSET_BACKGROUND" "$cpus")"
+    fi
+    idx=$((idx + 1))
+  done
+
+  DETECTED_CPUSET_SURVIVAL="${DETECTED_CPUSET_SURVIVAL:-$(all_online_cpus || printf '%s' "$fallback_survival")}"
+  DETECTED_CPUSET_DEEP_DESERT="${DETECTED_CPUSET_DEEP_DESERT:-$DETECTED_CPUSET_SURVIVAL}"
+  DETECTED_CPUSET_BACKGROUND="${DETECTED_CPUSET_BACKGROUND:-$DETECTED_CPUSET_DEEP_DESERT}"
+}
+
+detect_primary_nic() {
+  local iface carrier
+  if [[ -n "${NIC_DEVICE:-}" ]]; then
+    printf '%s\n' "$NIC_DEVICE"
+    return 0
+  fi
+  for iface in /sys/class/net/*; do
+    [[ -d "$iface" ]] || continue
+    iface="${iface##*/}"
+    [[ "$iface" == 'lo' ]] && continue
+    carrier="$(cat "/sys/class/net/${iface}/carrier" 2>/dev/null || printf '0')"
+    if [[ "$carrier" == '1' ]]; then
+      printf '%s\n' "$iface"
+      return 0
+    fi
+  done
+  if command -v ip >/dev/null 2>&1; then
+    ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") {print $(i+1); exit}}' || true
+  fi
+}
+
+detect_cpuset_defaults
+CPUSET_SURVIVAL="${CPUSET_SURVIVAL:-$DETECTED_CPUSET_SURVIVAL}"           # main world: 2 physical cores where possible
+CPUSET_DEEP_DESERT="${CPUSET_DEEP_DESERT:-$DETECTED_CPUSET_DEEP_DESERT}" # heavy destination: 1 physical core where possible
+CPUSET_BACKGROUND="${CPUSET_BACKGROUND:-$DETECTED_CPUSET_BACKGROUND}"     # hubs + infra + NIC IRQs
 
 cpuset_for() {
   case "$1" in
@@ -138,33 +267,31 @@ UNIT
 # interrupts can land on survival_1/deep_desert_1 cores and inject scheduling
 # jitter invisible to UE5 logs.
 pin_nic_irqs() {
-  # Auto-detect the default route NIC if not specified
-  local nic="${NIC_DEVICE:-$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | head -1)}"
+  # Auto-detect the first non-loopback interface with carrier; fall back to the
+  # default-route NIC, then legacy eno2 only if Linux exposes neither signal.
+  local nic
+  nic="$(detect_primary_nic)"
   nic="${nic:-eno2}"
 
-  # Compute hex affinity mask from CPUSET_BACKGROUND
-  local mask=0
-  local cpu
-  for cpu in $(echo "$CPUSET_BACKGROUND" | tr ',' ' '); do
-    mask=$((mask | (1 << cpu)))
-  done
-  local want_hex
-  want_hex=$(printf '%08x' "$mask")
-
-  local irq cur
-  for irq in $(grep "$nic" /proc/interrupts 2>/dev/null | awk -F: '{print $1}' | tr -d ' '); do
-    cur="$(cat "/proc/irq/${irq}/smp_affinity" 2>/dev/null || echo '')"
-    if [[ "$cur" != "$want_hex" ]]; then
+  local irq cur irqs
+  irqs="$(grep "$nic" /proc/interrupts 2>/dev/null | awk -F: '{print $1}' | tr -d ' ' || true)"
+  for irq in $irqs; do
+    cur="$(cat "/proc/irq/${irq}/smp_affinity_list" 2>/dev/null || echo '')"
+    if [[ "$cur" != "$CPUSET_BACKGROUND" ]]; then
       if $DRY_RUN; then
-        echo "would pin IRQ ${irq} ($nic) -> background pool 0x${want_hex} (currently ${cur})"
+        echo "would pin IRQ ${irq} ($nic) -> background pool ${CPUSET_BACKGROUND} (currently ${cur})"
       else
-        echo "$want_hex" > "/proc/irq/${irq}/smp_affinity" 2>/dev/null \
+        echo "$CPUSET_BACKGROUND" > "/proc/irq/${irq}/smp_affinity_list" 2>/dev/null \
           && echo "pinned IRQ ${irq} ($nic) -> background pool" \
           || echo "FAILED to pin IRQ ${irq} (need root?)" >&2
       fi
     fi
   done
 }
+
+if $LIBRARY_ONLY || [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+  return 0 2>/dev/null || exit 0
+fi
 
 if $MEASURE; then
   measure_sched_delay
