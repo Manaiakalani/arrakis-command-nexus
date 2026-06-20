@@ -10,7 +10,14 @@ source "$SCRIPT_DIR/lib/common.sh"
 init_dune_env "$0"
 
 VERSION_FILE="$PROJECT_ROOT/VERSION"
-REPO_URL="${DUNE_REPO_URL:-https://github.com/user/dune-server-docker}"
+
+repo_url() {
+  if [[ -n "${DUNE_REPO_URL:-}" ]]; then
+    printf '%s\n' "$DUNE_REPO_URL"
+  elif have_git_checkout; then
+    git -C "$PROJECT_ROOT" remote get-url origin 2>/dev/null || true
+  fi
+}
 
 current_version() {
   if [[ -f "$VERSION_FILE" ]]; then
@@ -75,12 +82,25 @@ check_update() {
   fi
 
   printf 'Not a git repository. Manual update required.\n'
-  printf 'Download the latest release from: %s/releases\n' "$REPO_URL"
+  local url
+  url="$(repo_url)"
+  if [[ -n "$url" ]]; then
+    printf 'Download the latest release from: %s/releases\n' "$url"
+  else
+    printf 'Set DUNE_REPO_URL or reinstall from the original Git remote.\n'
+  fi
   return 1
 }
 
 do_update() {
-  have_git_checkout || die "Not a git checkout. Download the latest release from: $REPO_URL/releases"
+  if ! have_git_checkout; then
+    local url
+    url="$(repo_url)"
+    if [[ -n "$url" ]]; then
+      die "Not a git checkout. Download the latest release from: $url/releases"
+    fi
+    die 'Not a git checkout. Set DUNE_REPO_URL or reinstall from the original Git remote.'
+  fi
 
   log_step 'Updating Dune Awakening Docker Server...'
   cd "$PROJECT_ROOT"
