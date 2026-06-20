@@ -181,6 +181,7 @@ flowchart TB
 | [Troubleshooting](./docs/TROUBLESHOOTING.md) | Common startup, networking, dashboard, and WSL2 issues |
 | [Operations](./docs/OPERATIONS.md) | Day-to-day dashboard operations, announcements, backups, and restores |
 | [Monitoring](./docs/MONITORING.md) | Watchdog alerts, resource thresholds, and crash forensics |
+| [Deployment Notes](./docs/DEPLOYMENT_NOTES.md) | Intel hybrid CPUs, host networking caveats, RAM pressure, and systemd |
 | [VM Deployment](./vm/README.md) | Run as a standalone VM (Hyper-V, VirtualBox, Proxmox) |
 | [Deep Desert Knobs](./docs/DEEP_DESERT_KNOBS.md) | Focused Deep Desert tuning reference |
 | [Resource Respawn Knobs](./docs/RESOURCE_RESPAWN_KNOBS.md) | Resource pacing and respawn-related settings |
@@ -206,6 +207,8 @@ flowchart TB
 
 ### Host Optimization
 
+On a multi-map host, in-game rubberbanding is almost always a host-networking or scheduling problem rather than a game bug.
+
 ```bash
 # Apply Linux kernel tuning (sysctl, THP, Docker daemon)
 sudo ./scripts/host-tuning.sh
@@ -216,20 +219,23 @@ sudo ./scripts/host-tuning.sh --swap 8
 # Pin player-facing map servers to dedicated CPU cores (anti-rubberband)
 sudo ./scripts/cpu-pin.sh --install
 
+# Optional: generate a host-specific compose overlay (do not commit it)
+./scripts/generate-cpupin.sh
+
 # Collect diagnostic snapshot for support
 ./scripts/collect-snapshot.sh
 ```
 
-On a multi-map host, in-game rubberbanding is almost always a host-networking or
-scheduling problem rather than a game bug. **The recommended fix is to put all
-game servers on host networking** via `docker-compose.hostnet-all.yml` - set
-`COMPOSE_FILE=docker-compose.yml:docker-compose.standard.yml:docker-compose.hostnet-all.yml`
-in `.env`. See [Troubleshooting -> Performance Tuning](./docs/TROUBLESHOOTING.md#performance-tuning)
-for details on CPU pinning, host-networking overlays, UDP socket-buffer sizing,
-NIC tuning, and disabling Docker's userland proxy.
+**Key Optimizations for Server Admins:**
 
-To start the stack automatically on boot, install the
-[`scripts/dune-stack.service`](./scripts/dune-stack.service) systemd template.
+- **CPU Performance Mode**: For consistent tick rates, set your CPU frequency governor to `performance`. You can also limit C-states (e.g., `intel_idle.max_cstate=1` in GRUB) to prevent the kernel from parking cores during brief idle periods, which causes micro-stutters when waking up.
+- **Intel Hybrid CPU (P-core/E-core)**: If you use a 12th-16th gen Intel or Ultra series CPU, game threads might be scheduled onto E-cores, cratering performance. `./scripts/cpu-pin.sh` auto-detects topology and prefers P-cores; `./scripts/generate-cpupin.sh` can write a machine-local `docker-compose.cpupin.yml`.
+- **NIC Tuning**: For high player counts, increase your Network Interface Card ring buffers (`ethtool -G eth0 rx 4096 tx 4096`). Enabling busy polling (`sysctl net.core.busy_poll=50`) and checking GRO/GSO settings can also reduce UDP packet drop.
+- **Scheduled Restart Port Wait**: If you use `docker-compose.hostnet-all.yml`, set `PORT_AVAILABILITY_WAIT_SECONDS=30` in your `.env`. Host networking can suffer from port binding races on restart; this delay ensures the old process fully releases the UDP port before the new one binds.
+
+To start the stack automatically on boot, run `sudo ./dune install-service`.
+[`scripts/dune-stack.service`](./scripts/dune-stack.service) remains a manual
+template for packagers.
 
 ## Who Is This For?
 

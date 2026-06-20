@@ -38,6 +38,36 @@ INIEOF
   write_usersettings_ini "$SAVED_ROOT/$MAP_NAME/UserSettings"
 fi
 
+# Wait for the target game port to be released by the previous container instance
+# before launching. This avoids the container-recreation bind race we hit with
+# host networking / UDP when the old server socket is still closing.
+PORT_AVAILABILITY_WAIT_SECONDS="${PORT_AVAILABILITY_WAIT_SECONDS:-30}"
+wait_for_game_port() {
+  local port="${1:-}"
+  local timeout_seconds="${2:-30}"
+  if [[ -z "$port" || ! "$port" =~ ^[0-9]+$ ]]; then
+    echo "[pre-start] WARNING: GAME_PORT unset/invalid ('$port'); skipping port-availability wait."
+    return 0
+  fi
+
+  local deadline=$(( $(date +%s) + timeout_seconds ))
+  echo "[pre-start] Waiting up to ${timeout_seconds}s for UDP port ${port} to be released before launching..."
+  while true; do
+    if ! ss -H -lun 2>/dev/null | awk -v port=":${port}" '$4 ~ port { found=1 } END { exit found ? 0 : 1 }'; then
+      echo "[pre-start] Port ${port} is available; launching game server."
+      return 0
+    fi
+
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      echo "[pre-start] ERROR: UDP port ${port} was not released within ${timeout_seconds}s."
+      exit 1
+    fi
+
+    sleep 1
+  done
+}
+wait_for_game_port "${GAME_PORT:-}" "$PORT_AVAILABILITY_WAIT_SECONDS"
+
 # Crash-cooldown: if the server crashed recently, wait before restarting
 # to avoid CPU/memory thrashing from rapid restart loops.
 CRASH_MARKER="/tmp/.dune_server_crash_marker"

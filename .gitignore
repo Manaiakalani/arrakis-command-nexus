@@ -14,6 +14,7 @@ secrets/
 data/
 volumes/
 steam/
+docker-compose.cpupin.yml
 
 # Node / Next.js
 dashboard/frontend/node_modules/
