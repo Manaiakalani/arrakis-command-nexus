@@ -1,11 +1,15 @@
 # dune-stack.service - start the Dune Awakening stack on boot
 #
-# This is a TEMPLATE. Edit User= and the two paths to match your install, then:
+# This is a TEMPLATE for packagers and manual installs.
+# Prefer the portable generator, which detects your current user and checkout:
 #
-#   sudo cp scripts/dune-stack.service /etc/systemd/system/dune-stack.service
-#   sudoedit /etc/systemd/system/dune-stack.service   # set User= and paths
-#   sudo systemctl daemon-reload
-#   sudo systemctl enable --now dune-stack.service
+#   sudo ./dune install-service
+#
+# Manual install:
+#   1. Replace @DUNE_USER@, @DUNE_GROUP@, and @PROJECT_ROOT@ below.
+#   2. sudo cp scripts/dune-stack.service /etc/systemd/system/dune-stack.service
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable --now dune-stack.service
 #
 # `dune start`/`dune stop` already wrap docker compose with the right profile
 # and overlays (DEPLOYMENT_PROFILE, DUNE_HOSTNET_OVERLAY), so this unit just
@@ -21,10 +25,11 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-User=youruser
-WorkingDirectory=/home/youruser/dune-server-docker
-ExecStart=/home/youruser/dune-server-docker/dune start
-ExecStop=/home/youruser/dune-server-docker/dune stop
+User=@DUNE_USER@
+Group=@DUNE_GROUP@
+WorkingDirectory=@PROJECT_ROOT@
+ExecStart=@PROJECT_ROOT@/dune start
+ExecStop=@PROJECT_ROOT@/dune stop
 # Container bring-up can take a while on first boot (image loads, DB init).
 TimeoutStartSec=0
 

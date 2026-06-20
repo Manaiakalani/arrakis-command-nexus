@@ -48,6 +48,7 @@ Commands:
   restore <file>          Restore a backup file
   update                  Download and load new Funcom images
   self-update             Update the Dune management tooling
+  install-service         Install/update the systemd boot service
   profile                 Show or switch deployment profiles
   doctor                  Run detailed health diagnostics
   dashboard               Open the dashboard in a browser
@@ -238,6 +239,42 @@ cmd_version() {
   printf '%s\n' "$(version_string)"
 }
 
+cmd_install_service() {
+  [[ "$(id -u)" -eq 0 ]] || die 'install-service must be run as root (sudo ./dune install-service).'
+
+  local service_user service_group unit_path
+  service_user="${DUNE_SERVICE_USER:-${SUDO_USER:-$(id -un)}}"
+  service_group="${DUNE_SERVICE_GROUP:-$(id -gn "$service_user" 2>/dev/null || printf '%s' "$service_user")}"
+  unit_path='/etc/systemd/system/dune-stack.service'
+
+  [[ -x "$PROJECT_ROOT/dune" ]] || die "dune CLI not found or not executable at $PROJECT_ROOT/dune"
+
+  cat > "$unit_path" <<UNIT
+[Unit]
+Description=Dune Awakening dedicated server stack (docker compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=${service_user}
+Group=${service_group}
+WorkingDirectory=${PROJECT_ROOT}
+ExecStart=${PROJECT_ROOT}/dune start
+ExecStop=${PROJECT_ROOT}/dune stop
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+  systemctl daemon-reload
+  systemctl enable --now dune-stack.service
+  log_success "Installed dune-stack.service for ${service_user}:${service_group} at ${PROJECT_ROOT}."
+}
+
 main() {
   local command="${1:-help}"
   shift || true
@@ -287,6 +324,9 @@ main() {
       ;;
     self-update)
       exec "$PROJECT_ROOT/scripts/self-update.sh" "$@"
+      ;;
+    install-service)
+      cmd_install_service "$@"
       ;;
     profile)
       exec "$PROJECT_ROOT/scripts/profile.sh" "$@"

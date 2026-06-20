@@ -4,7 +4,7 @@ This guide gets a fresh host from zero to a running Dune Awakening self-hosted s
 
 ## 1. Prerequisites
 
-- **Linux host** or **Windows 10/11 with WSL2** (see below)
+- **Linux host (Bare Metal or VM)** or **Windows 10/11 with WSL2** (see below)
 - Docker Engine and Docker Compose v2 (`docker compose`)
 - AVX2-capable CPU
 - SteamCMD or another way to run Steam's dedicated server download command
@@ -12,6 +12,45 @@ This guide gets a fresh host from zero to a running Dune Awakening self-hosted s
   - basic: ~20 GB
   - standard: ~30-40 GB
   - full: ~40 GB+
+
+### Bare Metal Linux Setup (Ubuntu 22.04/24.04/26.04)
+
+If you are running a dedicated Linux machine:
+
+1. **Install Docker Engine** using the official `apt` repository:
+   ```bash
+   # Add Docker's official GPG key:
+   sudo apt-get update
+   sudo apt-get install ca-certificates curl
+   sudo install -m 0755 -d /etc/apt/keyrings
+   sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+   sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+   # Add the repository to Apt sources:
+   echo \
+     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+     $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   sudo apt-get update
+
+   # Install Docker Engine and Compose
+   sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   ```
+
+2. **Add your user to the `docker` group** so you don't need `sudo` to run containers:
+   ```bash
+   sudo usermod -aG docker $USER
+   newgrp docker
+   ```
+
+3. **Create swap (Recommended for systems with <40GB RAM)**:
+   ```bash
+   sudo fallocate -l 8G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
 
 ### WSL2 Setup (Windows)
 
@@ -60,15 +99,15 @@ cd dune-server-docker
 ./dune init
 ```
 
-The wizard walks through:
+The `./dune init` script bootstraps your environment. The wizard walks through:
 
-- world/server naming
-- deployment profile selection
-- external IP / host settings
-- admin credentials and tokens
-- Steam download path
-- writing `.env`
-- storing your Funcom token in `secrets/funcom-token.txt`
+- **World/Server Naming**: Setting the server name displayed in the browser
+- **Deployment Profile Selection**: Choosing `basic` (~20GB RAM), `standard` (~30-40GB RAM), or `full` (~40GB+ RAM)
+- **External IP / Host Settings**: Configuring how players connect to your server
+- **Admin Credentials and Tokens**: Securing your setup
+- **Steam Download Path**: Pointing to the files downloaded via SteamCMD
+- **Writing `.env`**: Generating the environment variables file for Docker Compose
+- **Storing your Funcom token**: Saving it securely in `secrets/funcom-token.txt`
 
 ## 5. Apply host tuning
 

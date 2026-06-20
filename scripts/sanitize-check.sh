@@ -17,21 +17,26 @@ mode="${1:-tree}"
 # Pattern allowlist intentionally avoids false-positives like "Manaiakalani"
 # (the public GitHub username) and EXTERNAL_ADDRESS=auto (the placeholder).
 patterns=(
-  # Internal hostname/SSH user pairs
-  'REDACTED_SSH_TARGET'
-  '@REDACTED_HOSTNAME\b'
-  '\bREDACTED_HOSTNAME\b'
-  '\bREDACTED_USER\b'
-  # IPv4 of the production host (anchored to avoid false positives with other IPs)
-  'REDACTED_PUBLIC_IP'
-  # Battlegroup ID (Funcom-issued, MUST stay private)
-  'REDACTED_BATTLEGROUP_ID'
-  # JWT-prefix wildcard for any token that begins HS256
-  'eyJhbGciOiJIUzI1NiIs'
-  # Discord webhook real URLs (placeholder uses an ellipsis character)
+  # ─── CUSTOMIZE THESE FOR YOUR DEPLOYMENT ───────────────────────────────────
+  # Add your own SSH user/hostname, public IP, and secret prefixes below.
+  # These patterns prevent accidental commits of sensitive values.
+
+  # Internal hostname/SSH user pairs (CUSTOMIZE: replace with your values)
+  # 'your-user@your-host'
+  # '@your-host\b'
+  # '\byour-host\b'
+  # '\byour-user\b'
+
+  # Public IP of the production host (CUSTOMIZE: replace with your IP)
+  # '203\.0\.113\.1'
+
+  # ─── GENERIC PATTERNS (safe defaults, catch common secrets) ────────────────
+  # Battlegroup server unique name pattern
+  'sh-[0-9a-f]{16}-[a-z]{6}'
+  # JWT token prefix (catches any HS256/RS256 token)
+  'eyJhbGciOiJ'
+  # Discord webhook real URLs
   'discord\.com/api/webhooks/[0-9]+/[A-Za-z0-9_\-]{20,}'
-  # RMQ secret prefix from past incidents
-  'REDACTED_RMQ_SECRET'
 )
 
 scan() {
