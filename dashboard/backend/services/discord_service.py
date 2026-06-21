@@ -149,12 +149,14 @@ class DiscordService:
             return [webhook]
 
         webhooks = await self.list_webhooks(session)
+        # Filter out disabled webhooks
+        webhooks = [w for w in webhooks if getattr(w, "enabled", True)]
         if event_type is None:
             return webhooks
         flag = self._event_flags.get(event_type)
         if not flag:
             return webhooks
-        return [webhook for webhook in webhooks if getattr(webhook, flag, False)]
+        return [webhook for webhook in webhooks if getattr(webhook, "enabled", True) and getattr(webhook, flag, False)]
 
     def _build_payload(self, event_type: str, title: str, message: str) -> dict[str, Any]:
         return {

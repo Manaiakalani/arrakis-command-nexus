@@ -1,0 +1,52 @@
+# Host Networking Overlay (standard-lean profile: 5 game servers)
+services:
+  survival_1:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env}"
+  overmap:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env}"
+  deep_desert_1:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env}"
+  arrakeen:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env}"
+  harko_village:
+    network_mode: host
+    ports: !reset []
+    networks: !reset {}
+    extra_hosts:
+      - "postgres:10.80.0.2"
+      - "game-rmq:10.80.0.4"
+      - "admin-rmq:10.80.0.3"
+    environment:
+      POD_IP: "${HOST_LAN_IP:?Set HOST_LAN_IP in .env}"

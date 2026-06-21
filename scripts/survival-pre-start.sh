@@ -144,10 +144,24 @@ fi
 # --- Port availability wait (prevents bind failure after container recreate) ---
 # With network_mode:host, the old game process may still hold the UDP port
 # for a few seconds after container stop. Wait for it to clear.
+# Uses /proc/net/udp as fallback when ss is not available in the container.
+port_is_in_use() {
+  local port="$1" port_hex
+  if command -v ss >/dev/null 2>&1; then
+    ss -H -lun "sport = :$port" 2>/dev/null | grep -q . && return 0
+    return 1
+  fi
+  port_hex="$(printf "%04X" "$port")"
+  for procfile in /proc/net/udp /proc/net/udp6; do
+    [ -r "$procfile" ] || continue
+    grep -qi ":${port_hex} " "$procfile" 2>/dev/null && return 0
+  done
+  return 1
+}
 if [[ "${GAME_PORT:-}" =~ ^[0-9]+$ ]]; then
   PORT_WAIT_MAX="${PORT_AVAILABILITY_WAIT_SECONDS:-30}"
   PORT_WAITED=0
-  while ss -Huan "sport = :$GAME_PORT" | grep -q . ; do
+  while port_is_in_use "$GAME_PORT"; do
     if [ $PORT_WAITED -ge $PORT_WAIT_MAX ]; then
       echo "[pre-start] WARNING: port $GAME_PORT still in use after ${PORT_WAIT_MAX}s, proceeding anyway"
       break
