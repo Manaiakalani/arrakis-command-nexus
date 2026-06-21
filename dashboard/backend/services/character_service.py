@@ -990,6 +990,11 @@ class CharacterService:
 
         # Resources newly observed in live items
         "WormTooth":     ("Resources", "Worm Tooth"),
+        "MelangeSpice": ("Resources", "Spice Melange"),
+        "T6RefinedResourceA": ("Resources", "Plastanium Ingot"),
+        "T6GunPart": ("Components", "Plasteel Composite Gun Parts"),
+        "T6BladePart": ("Components", "Plasteel Composite Blade Parts"),
+        "T5DeepDesertShieldWallComponent": ("Components", "Thermoelectric Cooler"),
         "Basalt":        ("Resources", "Basalt Stone"),
         "DolomiteRock":  ("Resources", "Carbon Ore (Dolomite)"),
         "MagnetiteOre":  ("Resources", "Iron Ore (Magnetite)"),
