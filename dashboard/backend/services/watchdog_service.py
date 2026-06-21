@@ -574,7 +574,15 @@ class WatchdogService:
         elif kind == "restart":
             event_type = "start"
             title = f"🔄 Server Restarted: {snapshot.service}"
-            message = f"**{snapshot.service}** was restarted and is back online."
+            # Include crash signature if one can be found in recent logs
+            signature = await self._capture_crash_signature(snapshot.service)
+            if signature:
+                message = (
+                    f"**{snapshot.service}** crashed and was auto-restarted.\n"
+                    f"**Reason:** {signature}"
+                )
+            else:
+                message = f"**{snapshot.service}** was restarted and is back online."
         else:  # start
             event_type = "start"
             title = f"🟢 Server Online: {snapshot.service}"
