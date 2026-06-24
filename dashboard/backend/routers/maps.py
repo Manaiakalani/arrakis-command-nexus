@@ -16,6 +16,8 @@ from db.models import AuditLog
 router = APIRouter(tags=["maps"])
 logger = logging.getLogger(__name__)
 
+from services import cache
+
 VEHICLE_CLASS_PATTERNS = [
     "%ornithopter%",
     "%sandbike%",
@@ -268,8 +270,12 @@ def _serialize_value(value: Any) -> Any:
 
 @router.get("/maps")
 async def list_maps(request: Request) -> list[dict]:
+    cached = cache.get("maps")
+    if cached is not None:
+        return cached
+
     raw_maps = await request.app.state.docker_service.list_map_statuses()
-    return [
+    result = [
         {
             "name": m.name,
             "status": m.status,
@@ -282,12 +288,16 @@ async def list_maps(request: Request) -> list[dict]:
         }
         for m in raw_maps
     ]
+    cache.set("maps", result, ttl=15)
+    return result
 
 
 @router.post("/maps/{name}/start")
 async def start_map(name: str, request: Request) -> dict[str, str]:
     try:
-        return await request.app.state.docker_service.start_container(name)
+        result = await request.app.state.docker_service.start_container(name)
+        cache.invalidate("maps", "status")
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid container name.") from exc
 
@@ -295,7 +305,9 @@ async def start_map(name: str, request: Request) -> dict[str, str]:
 @router.post("/maps/{name}/stop")
 async def stop_map(name: str, request: Request) -> dict[str, str]:
     try:
-        return await request.app.state.docker_service.stop_container(name)
+        result = await request.app.state.docker_service.stop_container(name)
+        cache.invalidate("maps", "status")
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid container name.") from exc
 
@@ -303,7 +315,9 @@ async def stop_map(name: str, request: Request) -> dict[str, str]:
 @router.post("/maps/{name}/restart")
 async def restart_map(name: str, request: Request) -> dict[str, str]:
     try:
-        return await request.app.state.docker_service.restart_container(name)
+        result = await request.app.state.docker_service.restart_container(name)
+        cache.invalidate("maps", "status")
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid container name.") from exc
 
