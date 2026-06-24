@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 router = APIRouter(tags=["backups"])
 logger = logging.getLogger(__name__)
 
+from services import cache
+
 _SCOPE_TO_FRONTEND = {
     "full": "full",
     "config": "configs",
@@ -45,8 +47,14 @@ def _backup_to_frontend(entry) -> dict:
 
 @router.get("/backups")
 async def list_backups(request: Request) -> list[dict]:
+    cached = cache.get("backups")
+    if cached is not None:
+        return cached
+
     entries = await request.app.state.backup_service.list_backups()
-    return [_backup_to_frontend(e) for e in entries]
+    result = [_backup_to_frontend(e) for e in entries]
+    cache.set("backups", result, ttl=30)
+    return result
 
 
 @router.post("/backups")
@@ -54,6 +62,7 @@ async def create_backup(payload: BackupCreateRequest, request: Request) -> dict:
     discord_service = getattr(request.app.state, "discord_service", None)
     try:
         entry = await request.app.state.backup_service.create_backup(payload.scope)
+        cache.invalidate("backups")
         if discord_service is not None:
             try:
                 size_kb = int(getattr(entry, "size_bytes", 0) or 0) // 1024
@@ -112,6 +121,7 @@ async def update_backup_schedule(payload: BackupScheduleUpdateRequest, request: 
 async def restore_backup(backup_id: str, request: Request) -> dict:
     try:
         result = await request.app.state.backup_service.trigger_restore(backup_id)
+        cache.invalidate("backups")
         return {"status": "ok", "backup_id": backup_id, "result": result}
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -123,4 +133,5 @@ async def delete_backup(backup_id: str, request: Request) -> dict[str, str]:
         await request.app.state.backup_service.delete_backup(backup_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    cache.invalidate("backups")
     return {"status": "ok", "backup_id": backup_id}
