@@ -11,6 +11,8 @@ from db.models import AuditLog
 
 router = APIRouter(tags=["characters"])
 
+from services import cache
+
 
 async def _write_audit(session: AsyncSession, action: str, details: dict, request: Request) -> None:
     session.add(AuditLog(
@@ -41,7 +43,13 @@ async def _notify_admin_action(request: Request, action: str, summary: str) -> N
 
 @router.get("/characters")
 async def list_characters(request: Request) -> list[dict]:
-    return await request.app.state.character_service.list_characters()
+    cached = cache.get("characters")
+    if cached is not None:
+        return cached
+
+    result = await request.app.state.character_service.list_characters()
+    cache.set("characters", result, ttl=30)
+    return result
 
 
 @router.get("/characters/stats-schema")
@@ -77,7 +85,9 @@ class CharacterUpdateRequest(BaseModel):
 @router.put("/characters/{character_id}")
 async def update_character(character_id: str, payload: CharacterUpdateRequest, request: Request) -> dict:
     try:
-        return await request.app.state.character_service.update_character(character_id, payload.updates)
+        result = await request.app.state.character_service.update_character(character_id, payload.updates)
+        cache.invalidate("characters")
+        return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
     except PermissionError as exc:
@@ -118,6 +128,7 @@ async def grant_item(
             "item_grant",
             f"Character `{character_id}` granted `{payload.template_id}` ×{payload.stack_size}",
         )
+        cache.invalidate("characters")
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -152,6 +163,7 @@ async def grant_solari(
             request, "solari_grant",
             f"Character `{character_id}` received {payload.amount} solari",
         )
+        cache.invalidate("characters")
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -205,6 +217,7 @@ async def teleport_character(
             request, "teleport",
             f"Character `{character_id}` → ({int(payload.x)}, {int(payload.y)}, {int(payload.z)})",
         )
+        cache.invalidate("characters")
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")

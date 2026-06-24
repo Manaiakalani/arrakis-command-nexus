@@ -13,6 +13,7 @@ from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel
 
 from middleware.auth import verify_admin_token
+from services import cache
 
 router = APIRouter(tags=["system"])
 logger = logging.getLogger(__name__)
@@ -203,8 +204,14 @@ def _format_prometheus_payload(raw: dict[str, Any]) -> str:
 @router.get("/system")
 @router.get("/system/metrics")
 async def get_system_metrics(request: Request) -> dict[str, object]:
+    cached = cache.get("system_metrics")
+    if cached is not None:
+        return cached
+
     raw = await request.app.state.metrics_service.get_current_metrics()
-    return _format_snapshot(raw)
+    result = _format_snapshot(raw)
+    cache.set("system_metrics", result, ttl=10)
+    return result
 
 
 # Widget -> field mapping for selective export
