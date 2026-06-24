@@ -1,33 +1,54 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type ConnectionStatus = 'connecting' | 'open' | 'closed' | 'error';
 
-interface UseSSEOptions<T> {
+interface SSEEvent<T = unknown> {
+  type: string;
+  data: T;
+}
+
+interface UseSSEOptions {
   enabled?: boolean;
-  maxMessages?: number;
-  parse?: (raw: string) => T;
+  /** Auth token appended as ?token= query param */
+  token?: string;
+  /** Event types to listen for (in addition to generic 'message') */
+  eventTypes?: string[];
+  /** Called for every incoming typed event */
+  onEvent?: (event: SSEEvent) => void;
+  /** Max reconnect attempts before falling back (0 = unlimited) */
+  maxRetries?: number;
 }
 
-function defaultParser<T>(raw: string): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return raw as T;
-  }
+const BASE_RETRY_MS = 1000;
+const MAX_RETRY_MS = 30000;
+const JITTER_FACTOR = 0.3;
+
+function backoffMs(attempt: number): number {
+  const base = Math.min(BASE_RETRY_MS * 2 ** attempt, MAX_RETRY_MS);
+  const jitter = base * JITTER_FACTOR * (Math.random() * 2 - 1);
+  return Math.max(500, base + jitter);
 }
 
-export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> = {}) {
-  const { enabled = true, maxMessages = 250, parse } = options;
-  const [messages, setMessages] = useState<T[]>([]);
-  const [status, setStatus] = useState<ConnectionStatus>('connecting');
-  const reconnectRef = useRef<number>(undefined);
-  const parseRef = useRef(parse ?? defaultParser<T>);
+export function useSSE(endpoint: string, options: UseSSEOptions = {}) {
+  const {
+    enabled = true,
+    token,
+    eventTypes = [],
+    onEvent,
+    maxRetries = 0,
+  } = options;
+
+  const [status, setStatus] = useState<ConnectionStatus>('closed');
+  const [retryCount, setRetryCount] = useState(0);
+  const reconnectRef = useRef<number | undefined>(undefined);
+  const onEventRef = useRef(onEvent);
+  const attemptRef = useRef(0);
 
   useEffect(() => {
-    parseRef.current = parse ?? defaultParser<T>;
-  }, [parse]);
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     if (!enabled) {
@@ -39,39 +60,54 @@ export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> =
     let mounted = true;
 
     const connect = () => {
+      if (!mounted) return;
+
       setStatus('connecting');
-      source = new EventSource(endpoint);
+
+      const url = token ? `${endpoint}${endpoint.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : endpoint;
+      source = new EventSource(url);
 
       source.onopen = () => {
-        if (mounted) {
-          setStatus('open');
-        }
+        if (!mounted) return;
+        setStatus('open');
+        attemptRef.current = 0;
+        setRetryCount(0);
       };
 
       const handleEvent = (event: MessageEvent) => {
-        if (!mounted) {
-          return;
+        if (!mounted || !onEventRef.current) return;
+        try {
+          const data = JSON.parse(event.data);
+          onEventRef.current({ type: event.type, data });
+        } catch {
+          onEventRef.current({ type: event.type, data: event.data });
         }
-
-        const parsed = parseRef.current(event.data);
-        setMessages((current) => {
-          const next = [...current, parsed];
-          return next.slice(-maxMessages);
-        });
       };
 
-      // Listen for both unnamed ("message") and named events ("log")
+      // Listen for generic messages
       source.onmessage = handleEvent;
-      source.addEventListener('log', handleEvent);
+
+      // Listen for each typed event
+      for (const eventType of eventTypes) {
+        source.addEventListener(eventType, handleEvent as EventListener);
+      }
 
       source.onerror = () => {
-        if (!mounted) {
+        if (!mounted) return;
+
+        source?.close();
+        setStatus('error');
+
+        if (maxRetries > 0 && attemptRef.current >= maxRetries) {
+          setStatus('closed');
           return;
         }
 
-        setStatus('error');
-        source?.close();
-        reconnectRef.current = window.setTimeout(connect, 2500);
+        const delay = backoffMs(attemptRef.current);
+        attemptRef.current += 1;
+        setRetryCount(attemptRef.current);
+
+        reconnectRef.current = window.setTimeout(connect, delay);
       };
     };
 
@@ -79,13 +115,19 @@ export function useSSE<T = string>(endpoint: string, options: UseSSEOptions<T> =
 
     return () => {
       mounted = false;
-      if (reconnectRef.current) {
+      if (reconnectRef.current !== undefined) {
         window.clearTimeout(reconnectRef.current);
       }
       source?.close();
       setStatus('closed');
     };
-  }, [enabled, endpoint, maxMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, endpoint, token, maxRetries, JSON.stringify(eventTypes)]);
 
-  return { messages, status, setMessages };
+  const reconnect = useCallback(() => {
+    attemptRef.current = 0;
+    setRetryCount(0);
+  }, []);
+
+  return { status, retryCount, reconnect };
 }
