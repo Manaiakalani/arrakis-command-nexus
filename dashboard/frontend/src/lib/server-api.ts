@@ -8,7 +8,7 @@ export async function serverFetch<T>(path: string): Promise<T> {
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
+      ...(TOKEN ? { "X-Admin-Token": TOKEN } : {}),
     },
     cache: 'no-store',
   });
