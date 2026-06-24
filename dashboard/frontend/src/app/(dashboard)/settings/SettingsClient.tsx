@@ -19,6 +19,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
@@ -33,6 +34,7 @@ interface SettingsClientProps {
 
 export default function SettingsClient({ initialSettings, initialAdmins }: SettingsClientProps) {
   const { toast } = useToast();
+  const [pendingRemoveAdminId, setPendingRemoveAdminId] = useState<number | null>(null);
   const settings = useApi(() => apiClient.getSettings(), { initialData: initialSettings });
   const admins = useApi(() => apiClient.getAdmins(), { initialData: initialAdmins });
   const [saving, setSaving] = useState<string | null>(null);
@@ -121,8 +123,12 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
     }
   }, [newAdmin, newAdminRole, admins, toast]);
 
+  const confirmRemoveAdmin = useCallback((id: number) => {
+    setPendingRemoveAdminId(id);
+  }, []);
+
   const handleRemoveAdmin = useCallback(async (id: number) => {
-    if (!window.confirm('Remove this administrator?')) return;
+    setPendingRemoveAdminId(null);
     try {
       await apiClient.removeAdmin(id);
       await admins.refetch();
@@ -202,7 +208,7 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
       {/* Header */}
       <div className="glass-panel border-amber-500/20 bg-amber-500/10 p-5 text-amber-800 dark:text-amber-100">
         <p className="section-title text-amber-600/80 dark:text-amber-200/80">Command Nexus</p>
-        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold"><Settings aria-hidden="true" className="h-5 w-5" /> Dashboard Settings</h2>
+        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold"><Settings aria-hidden="true" className="h-5 w-5" /> Dashboard settings</h2>
         <p className="mt-2 max-w-3xl text-sm text-amber-800/80 dark:text-amber-100/80">
           Configure the Command Nexus dashboard itself. Server-specific game settings live under Configuration.
         </p>
@@ -211,7 +217,7 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
       {/* Import / Export */}
       <div className="glass-panel p-5">
         <p className="section-title">Data portability</p>
-        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Download aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Import &amp; Export</h2>
+        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Download aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Import and export</h2>
         <p className="mt-2 text-sm text-th-text-m">
           Transfer your dashboard settings between instances or create a backup of all Nexus preferences.
         </p>
@@ -228,13 +234,13 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
         </div>
       </div>
 
-      {/* Server Access — password toggle */}
+      {/* Server access — password toggle */}
       <div className="glass-panel p-5">
         <div className="mb-4 flex items-center gap-2">
           {effectivePasswordEnabled
             ? <Lock className="h-5 w-5 text-amber-400" aria-hidden="true" />
             : <LockOpen className="h-5 w-5 text-emerald-400" aria-hidden="true" />}
-          <h2 className="text-xl font-semibold text-th-text">Server Access</h2>
+          <h2 className="text-xl font-semibold text-th-text">Server access</h2>
           <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold ${
             effectivePasswordEnabled
               ? 'bg-amber-500/20 text-amber-300'
@@ -293,11 +299,11 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
         )}
       </div>
 
-      {/* Server Identity — in-game name + broadcast address */}
+      {/* Server identity — in-game name + broadcast address */}
       <div className="glass-panel p-5">
         <div className="mb-4 flex items-center gap-2">
           <Globe className="h-5 w-5 text-amber-400" aria-hidden="true" />
-          <h2 className="text-xl font-semibold text-th-text">Server Identity</h2>
+          <h2 className="text-xl font-semibold text-th-text">Server identity</h2>
         </div>
         <p className="mb-4 text-sm text-th-text-m">
           The name players see in the in-game server browser and the address they use to connect.
@@ -360,7 +366,7 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
             <h3 className="text-lg font-semibold text-th-text">General</h3>
           </div>
           <p className="mb-4 text-xs text-th-text-m">
-            The in-game server name is managed under Server Identity above. These fields are dashboard-only labels.
+            The in-game server name is managed under Server identity above. These fields are dashboard-only labels.
           </p>
           <form
             className="space-y-4"
@@ -581,7 +587,7 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
                   <button
                     type="button"
                     className="dune-button-muted text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                    onClick={() => handleRemoveAdmin(admin.id)}
+                    onClick={() => confirmRemoveAdmin(admin.id)}
                     aria-label={`Remove ${admin.username}`}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -635,6 +641,15 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
           </form>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingRemoveAdminId !== null}
+        title="Remove Administrator"
+        message="Remove this administrator? They will lose access to the dashboard."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => { if (pendingRemoveAdminId !== null) void handleRemoveAdmin(pendingRemoveAdminId); }}
+        onCancel={() => setPendingRemoveAdminId(null)}
+      />
     </div>
   );
 }
@@ -706,6 +721,9 @@ function SettingsPageSkeleton() {
           </div>
         </div>
       </div>
+
+
+
     </div>
   );
 }

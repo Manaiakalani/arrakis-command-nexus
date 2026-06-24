@@ -79,7 +79,7 @@ export default function MapsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="section-title">Map orchestration</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Shard Fleet</h2>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Map fleet</h2>
           </div>
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => void handleBulk('restart')} className="dune-button">
@@ -123,7 +123,7 @@ export default function MapsPage() {
       {/* Map Intelligence */}
       <section className="glass-panel p-5">
         <p className="section-title">Map intelligence</p>
-        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><MapPin aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Per-Map Analytics</h2>
+        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><MapPin aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Per-map analytics</h2>
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {maps.map((map) => {
             const mapPlayers = players.filter((p) => p.map === map.name);
@@ -193,10 +193,10 @@ export default function MapsPage() {
           <div>
             <h3 className="text-base font-semibold text-th-text">Adding maps</h3>
             <p className="mt-1 text-sm leading-relaxed text-th-text-m">
-              To add a new map shard, define a new service in <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-300">docker-compose.basic.yml</code> using
+              To add a new map server, define a new service in <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-300">docker-compose.basic.yml</code> using
               the game server image and set the <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-300">PARTITION_MAP_NAME</code> environment variable
               to the desired map name. Restart the stack with <code className="rounded bg-th-surface px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-300">docker compose up -d</code> and
-              the new shard will appear here automatically. Use the Backups page to create a snapshot before making changes.
+              the new map server will appear here automatically. Use the Backups page to create a snapshot before making changes.
             </p>
           </div>
         </div>

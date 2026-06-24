@@ -128,7 +128,7 @@ function TeleportDialog({
           <MapPin className="h-4 w-4 text-cyan-400" />
           <span className="text-xs font-semibold uppercase tracking-[0.15em] text-amber-200">Teleport</span>
         </div>
-        <button type="button" onClick={onClose} className="rounded-full p-1 text-th-text-m hover:bg-th-surface-s/50 hover:text-th-text">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1 text-th-text-m hover:bg-th-surface-s/50 hover:text-th-text">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -237,7 +237,7 @@ function ManualTeleportInput({
         className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-500/20 disabled:opacity-40">
         Set Pin
       </button>
-      <button type="button" onClick={onClose}
+      <button type="button" onClick={onClose} aria-label="Close"
         className="rounded-lg border border-th-border-m/60 px-2 py-1.5 text-xs text-th-text-m hover:bg-th-surface-s/50">
         <X className="h-3.5 w-3.5" />
       </button>
@@ -456,7 +456,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="section-title">Live map telemetry</p>
-            <h2 className="mt-1 text-xl font-semibold text-th-text">Hagga Basin Tactical Overlay</h2>
+            <h2 className="mt-1 text-xl font-semibold text-th-text">Hagga Basin tactical overlay</h2>
             <p className="mt-2 max-w-3xl text-sm text-th-text-m">
               Live player positions. Click on the map to place a teleport pin, then select a character to move. Online players are shown for context but must log out for teleport to take effect — offline characters are the primary teleport targets. Use presets for common locations.
             </p>
@@ -489,7 +489,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       <div className="border-b border-th-border-m/60 px-5 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <Navigation className="h-4 w-4 text-cyan-400" />
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-th-text-m">Teleport Controls</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-th-text-m">Teleport controls</span>
           <div className="mx-2 h-4 w-px bg-th-border-m/60" />
 
           {/* Preset locations dropdown */}

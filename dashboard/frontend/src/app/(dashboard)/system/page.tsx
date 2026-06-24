@@ -2,8 +2,9 @@
 
 import { AlarmClock, Cpu, Download, HardDrive, Network, Pause, Play, Power, Server, ShieldOff, Waves, Wrench } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton } from '@/components/Skeleton';
 import { ShutdownPanel } from '@/components/ShutdownPanel';
 import { useToast } from '@/components/ToastProvider';
@@ -118,6 +119,7 @@ export default function SystemPage() {
   const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
   const [manualWarningMinutes, setManualWarningMinutes] = useState(0);
   const [restartingNow, setRestartingNow] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{ action: () => void; title: string; message: string; variant?: 'danger' | 'default' } | null>(null);
   const [stoppingServer, setStoppingServer] = useState(false);
   const [startingServer, setStartingServer] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -327,7 +329,7 @@ export default function SystemPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="section-title">Server control</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Power aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Power Management</h2>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Power aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Power management</h2>
             <p className="mt-2 text-sm text-th-text-m">Stop or start all game server containers (maps and infrastructure). The dashboard remains accessible.</p>
           </div>
         </div>
@@ -337,7 +339,11 @@ export default function SystemPage() {
             disabled={stoppingServer || startingServer || restartingNow}
             className="flex items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-700 transition-colors hover:bg-red-500/20 dark:text-red-300 disabled:cursor-not-allowed disabled:opacity-60 dune-focus"
             onClick={async () => {
-              if (!window.confirm('Stop ALL game server containers? Players will be disconnected.')) return;
+              setPendingConfirm({
+                title: 'Stop Server',
+                message: 'Stop ALL game server containers? Players will be disconnected.',
+                variant: 'danger',
+                action: async () => {
               setStoppingServer(true);
               try {
                 const result = await apiClient.stopServer();
@@ -350,6 +356,8 @@ export default function SystemPage() {
               } finally {
                 setStoppingServer(false);
               }
+                },
+              });
             }}
           >
             <Pause aria-hidden="true" className="h-4 w-4" />
@@ -360,7 +368,10 @@ export default function SystemPage() {
             disabled={stoppingServer || startingServer || restartingNow}
             className="flex items-center justify-center gap-2 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-semibold text-green-700 transition-colors hover:bg-green-500/20 dark:text-green-300 disabled:cursor-not-allowed disabled:opacity-60 dune-focus"
             onClick={async () => {
-              if (!window.confirm('Start ALL game server containers?')) return;
+              setPendingConfirm({
+                title: 'Start Server',
+                message: 'Start ALL game server containers?',
+                action: async () => {
               setStartingServer(true);
               try {
                 const result = await apiClient.startServer();
@@ -373,6 +384,8 @@ export default function SystemPage() {
               } finally {
                 setStartingServer(false);
               }
+                },
+              });
             }}
           >
             <Play aria-hidden="true" className="h-4 w-4" />
@@ -383,7 +396,10 @@ export default function SystemPage() {
             disabled={stoppingServer || startingServer || restartingNow}
             className="dune-button flex items-center justify-center gap-2"
             onClick={async () => {
-              if (!window.confirm('Restart ALL game server containers? Players will be briefly disconnected.')) return;
+              setPendingConfirm({
+                title: 'Restart Server',
+                message: 'Restart ALL game server containers? Players will be briefly disconnected.',
+                action: async () => {
               setRestartingNow(true);
               try {
                 const result = await apiClient.restartNow(0);
@@ -394,6 +410,8 @@ export default function SystemPage() {
               } finally {
                 setRestartingNow(false);
               }
+                },
+              });
             }}
           >
             <Power aria-hidden="true" className="h-4 w-4" />
@@ -402,12 +420,12 @@ export default function SystemPage() {
         </div>
       </section>
 
-      {/* Maintenance Mode */}
+      {/* Maintenance mode */}
       <section className="glass-panel p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="section-title">Access control</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Wrench aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Maintenance Mode</h2>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Wrench aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Maintenance mode</h2>
             <p className="mt-2 text-sm text-th-text-m">
               Send a warning announcement to all players, then gracefully prepare the server for maintenance.
               Uses the shutdown preparation pipeline with configurable warning time.
@@ -460,7 +478,11 @@ export default function SystemPage() {
                   const msg = maintenanceWarning > 0
                     ? `Enter maintenance mode with ${maintenanceWarning}-minute warning? Players will be notified and disconnected.`
                     : 'Enter maintenance mode immediately? Players will be disconnected.';
-                  if (!window.confirm(msg)) return;
+                  setPendingConfirm({
+                    title: 'Maintenance Mode',
+                    message: msg,
+                    variant: 'danger',
+                    action: async () => {
                   setActivatingMaintenance(true);
                   try {
                     await apiClient.prepareShutdown({
@@ -475,10 +497,12 @@ export default function SystemPage() {
                   } finally {
                     setActivatingMaintenance(false);
                   }
+                    },
+                  });
                 }}
               >
                 <ShieldOff aria-hidden="true" className="h-4 w-4" />
-                {activatingMaintenance ? 'Activating…' : 'Enter Maintenance Mode'}
+                {activatingMaintenance ? 'Activating…' : 'Enter maintenance mode'}
               </button>
             )}
           </div>
@@ -489,7 +513,7 @@ export default function SystemPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="section-title">Restart orchestration</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><AlarmClock aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Server Restart Schedule</h2>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><AlarmClock aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Server restart schedule</h2>
             <p className="mt-2 text-sm text-th-text-m">Schedule automatic shard restarts, send player warnings, and capture a backup before services recycle.</p>
           </div>
           <label className="flex items-center gap-3 rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
@@ -593,15 +617,12 @@ export default function SystemPage() {
               disabled={restartingNow}
               className="dune-button mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
               onClick={async () => {
-                const confirmed = window.confirm(
-                  manualWarningMinutes > 0
+                setPendingConfirm({
+                  title: 'Restart Map Services',
+                  message: manualWarningMinutes > 0
                     ? `Send a ${manualWarningMinutes}-minute warning, create a backup, and restart all map services?`
                     : 'Create a backup and restart all map services now?',
-                );
-                if (!confirmed) {
-                  return;
-                }
-
+                  action: async () => {
                 setRestartingNow(true);
                 try {
                   const result = await apiClient.restartNow(manualWarningMinutes);
@@ -619,6 +640,8 @@ export default function SystemPage() {
                 } finally {
                   setRestartingNow(false);
                 }
+                  },
+                });
               }}
             >
               <Power aria-hidden="true" className="mr-2 h-4 w-4" />
@@ -662,6 +685,15 @@ export default function SystemPage() {
       </section>
 
       <ShutdownPanel />
+      <ConfirmDialog
+        open={pendingConfirm !== null}
+        title={pendingConfirm?.title ?? ''}
+        message={pendingConfirm?.message ?? ''}
+        confirmLabel="Confirm"
+        variant={pendingConfirm?.variant}
+        onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }
@@ -727,6 +759,9 @@ function SystemPageSkeleton() {
           </div>
         ))}
       </section>
+
+
+
     </div>
   );
 }
