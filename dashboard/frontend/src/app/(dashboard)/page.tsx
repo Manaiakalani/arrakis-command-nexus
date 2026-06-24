@@ -7,7 +7,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { ResourceGauge } from '@/components/ResourceGauge';
 import { StatusCard } from '@/components/StatusCard';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import useSWR from 'swr';
+import { useDashboardSSE } from '@/hooks/useDashboardSSE';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -36,15 +37,46 @@ function formatUptime(seconds = 0) {
 
 export default function OverviewPage() {
   const { toast } = useToast();
-  const overview = useApi(() => apiClient.getOverview(), { refreshInterval: 10000 });
+  const { data: overviewData, error: overviewError, isLoading: overviewLoading, mutate: overviewMutate } = useSWR('api/overview', () => apiClient.getOverview(), { refreshInterval: 30_000 });
+  // SSE real-time updates — merges into overview state, polling is fallback
+  const handleSSEUpdate = useCallback(
+    (patch: Partial<NonNullable<typeof overviewData>>) => {
+      void overviewMutate((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        if (patch.status) {
+          next.status = { ...prev.status, ...patch.status };
+        }
+        if (patch.maps) next.maps = patch.maps;
+        if (patch.metrics) next.metrics = patch.metrics;
+        if (patch.readiness) next.readiness = patch.readiness;
+        return next;
+      }, { revalidate: false });
+    },
+    [overviewMutate],
+  );
 
-  const status = useMemo(() => ({ data: overview.data?.status, loading: overview.loading, error: overview.error, refetch: overview.refetch }), [overview]);
-  const readiness = useMemo(() => ({ data: overview.data?.readiness }), [overview.data?.readiness]);
-  const maps = useMemo(() => ({ data: overview.data?.maps, refetch: overview.refetch }), [overview]);
-  const metrics = useMemo(() => ({ data: overview.data?.metrics }), [overview.data?.metrics]);
-  const resourceHistory = useMemo(() => ({ data: overview.data?.systemHistory ?? emptySystemHistory }), [overview.data?.systemHistory]);
-  const uptime = useMemo(() => ({ data: overview.data?.uptime ?? emptyUptimeData }), [overview.data?.uptime]);
-  const backups = useMemo(() => ({ data: overview.data?.backups ?? [] }), [overview.data?.backups]);
+  const sseToken = typeof window !== 'undefined'
+    ? document.cookie.match(/admin[_-]?token=([^;]+)/)?.[1]
+      ?? (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_ADMIN_TOKEN : undefined)
+      ?? ''
+    : '';
+
+  const { sseStatus } = useDashboardSSE({
+    enabled: !!overviewData,
+    token: sseToken,
+    onUpdate: handleSSEUpdate,
+  });
+
+
+  const refetchOverview = async () => { await overviewMutate(); };
+  const status = useMemo(() => ({ data: overviewData?.status, loading: overviewLoading, error: overviewError, refetch: refetchOverview }), [overviewData, overviewLoading, overviewError, overviewMutate]);
+  const readiness = useMemo(() => ({ data: overviewData?.readiness }), [overviewData?.readiness]);
+  const maps = useMemo(() => ({ data: overviewData?.maps, refetch: refetchOverview }), [overviewData, overviewMutate]);
+  const metrics = useMemo(() => ({ data: overviewData?.metrics }), [overviewData?.metrics]);
+  const resourceHistory = useMemo(() => ({ data: overviewData?.systemHistory ?? emptySystemHistory }), [overviewData?.systemHistory]);
+  const uptime = useMemo(() => ({ data: overviewData?.uptime ?? emptyUptimeData }), [overviewData?.uptime]);
+  const backups = useMemo(() => ({ data: overviewData?.backups ?? [] }), [overviewData?.backups]);
 
   const serviceSummary = useMemo(() => status.data?.services ?? [], [status.data?.services]);
 
@@ -97,13 +129,13 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      {overview.error && (
+      {overviewError && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-700 dark:text-red-300">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5" />
             <div>
               <h3 className="font-semibold">Failed to load overview data</h3>
-              <p className="text-sm opacity-90">{overview.error.message}</p>
+              <p className="text-sm opacity-90">{overviewError.message}</p>
             </div>
           </div>
         </div>

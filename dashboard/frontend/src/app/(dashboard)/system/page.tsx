@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Skeleton } from '@/components/Skeleton';
 import { ShutdownPanel } from '@/components/ShutdownPanel';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 import type { RestartSchedule } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -124,12 +124,9 @@ export default function SystemPage() {
   const [maintenanceWarning, setMaintenanceWarning] = useState(5);
   const [activatingMaintenance, setActivatingMaintenance] = useState(false);
   const [countdownNow, setCountdownNow] = useState(Date.now());
-  const metrics = useApi(() => apiClient.getSystemMetrics(), { refreshInterval: 10000 });
-  const history = useApi(() => apiClient.getSystemHistory(range), { refreshInterval: 15000, initialData: { range, points: [] }, deps: [range] });
-  const restartScheduleApi = useApi(() => apiClient.getRestartSchedule(), {
-    refreshInterval: 15000,
-    initialData: DEFAULT_RESTART_SCHEDULE,
-  });
+  const metrics = useApiSWR('api/system/metrics', () => apiClient.getSystemMetrics(), { refreshInterval: 10_000 });
+  const history = useApiSWR(`api/system/history/${range}`, () => apiClient.getSystemHistory(range), { refreshInterval: 15_000, initialData: { range, points: [] } });
+  const restartScheduleApi = useApiSWR('api/system/restart-schedule', () => apiClient.getRestartSchedule(), { refreshInterval: 15_000, initialData: DEFAULT_RESTART_SCHEDULE });
 
   useEffect(() => {
     if (!restartScheduleApi.data) {

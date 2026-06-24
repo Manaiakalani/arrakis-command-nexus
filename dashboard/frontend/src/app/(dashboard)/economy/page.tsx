@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { StatusCard } from '@/components/StatusCard';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 import type { EconomyAlert } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -19,8 +19,8 @@ const severityClasses: Record<EconomyAlert['severity'], string> = {
 
 export default function EconomyPage() {
   const { toast } = useToast();
-  const summary = useApi(() => apiClient.getEconomySummary(), { refreshInterval: 15000 });
-  const alerts = useApi(() => apiClient.getEconomyAlerts(), { refreshInterval: 15000, initialData: [] });
+  const summary = useApiSWR('api/economy/summary', () => apiClient.getEconomySummary(), { refreshInterval: 15_000 });
+  const alerts = useApiSWR('api/economy/alerts', () => apiClient.getEconomyAlerts(), { refreshInterval: 15_000, initialData: [] });
   const [type, setType] = useState('manual');
   const [severity, setSeverity] = useState<EconomyAlert['severity']>('info');
   const [message, setMessage] = useState('');

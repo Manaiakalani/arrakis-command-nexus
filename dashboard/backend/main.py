@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
@@ -20,7 +20,7 @@ from middleware.rate_limit import RateLimitMiddleware
 from middleware.redaction import redact
 from middleware.request_logging import RequestLoggingMiddleware
 from middleware.security_headers import SecurityHeadersMiddleware
-from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog
+from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, events, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog
 from services.announce_scheduler import AnnounceScheduler
 from services.announce_service import AnnounceService
 from services.backup_scheduler import BackupScheduler
@@ -37,6 +37,7 @@ from services.postgres_service import PostgresService
 from services.restart_scheduler import RestartScheduler
 from services.update_scheduler import get_update_scheduler
 from services.watchdog_service import WatchdogService
+from services.event_bus import ChangeDetector, EventBus
 
 load_dotenv()
 
@@ -238,6 +239,11 @@ async def lifespan(app: FastAPI):
     app.state.watchdog_service = watchdog_service
     app.state.update_scheduler = update_scheduler
 
+    event_bus = EventBus()
+    change_detector = ChangeDetector(event_bus, app.state, interval=10.0)
+    app.state.event_bus = event_bus
+    app.state.change_detector = change_detector
+
     # Start independent services in parallel for faster boot
     await asyncio.gather(
         docker_service.start(),
@@ -255,6 +261,7 @@ async def lifespan(app: FastAPI):
         chat_guard_service.start(),
         update_scheduler.start(),
     )
+    await change_detector.start()
     logger.info("Dune dashboard backend started")
 
     # Background task: track player connections
@@ -284,6 +291,7 @@ async def lifespan(app: FastAPI):
         connection_tracker_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await connection_tracker_task
+        await change_detector.stop()
         await chat_guard_service.stop()
         await economy_service.stop()
         await watchdog_service.stop()
@@ -314,25 +322,58 @@ app.add_middleware(RequestLoggingMiddleware)
 
 _SECURE_API_DEPENDENCIES = [Depends(verify_admin_token)]
 
-app.include_router(status.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(dashboard.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(announce.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(scheduled_announce.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(maps.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(config.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(players.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(logs.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(system.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(backups.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(restart_schedule.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(discord.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(watchdog.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(economy.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(characters.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(chat_guard.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(settings.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(audit.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
-app.include_router(updates.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+# --- API v1 routes (canonical) ---
+_v1_router = APIRouter(prefix="/api/v1", dependencies=_SECURE_API_DEPENDENCIES)
+_v1_router.include_router(status.router)
+_v1_router.include_router(dashboard.router)
+_v1_router.include_router(announce.router)
+_v1_router.include_router(scheduled_announce.router)
+_v1_router.include_router(maps.router)
+_v1_router.include_router(config.router)
+_v1_router.include_router(players.router)
+_v1_router.include_router(logs.router)
+_v1_router.include_router(system.router)
+_v1_router.include_router(backups.router)
+_v1_router.include_router(restart_schedule.router)
+_v1_router.include_router(discord.router)
+_v1_router.include_router(watchdog.router)
+_v1_router.include_router(economy.router)
+_v1_router.include_router(characters.router)
+_v1_router.include_router(chat_guard.router)
+_v1_router.include_router(settings.router)
+_v1_router.include_router(audit.router)
+_v1_router.include_router(updates.router)
+app.include_router(_v1_router)
+
+# SSE events router — handles its own auth via query param
+app.include_router(events.router, prefix="/api")
+app.include_router(events.router, prefix="/api/v1")
+
+# --- Backward-compatible /api alias (mirrors v1) ---
+_legacy_router = APIRouter(prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+for r in [
+    status.router,
+    dashboard.router,
+    announce.router,
+    scheduled_announce.router,
+    maps.router,
+    config.router,
+    players.router,
+    logs.router,
+    system.router,
+    backups.router,
+    restart_schedule.router,
+    discord.router,
+    watchdog.router,
+    economy.router,
+    characters.router,
+    chat_guard.router,
+    settings.router,
+    audit.router,
+    updates.router,
+]:
+    _legacy_router.include_router(r)
+app.include_router(_legacy_router)
 
 
 
