@@ -23,6 +23,8 @@ ROLE_HIERARCHY = {"viewer": 0, "editor": 1, "operator": 2, "admin": 2}
 # Paths that require at least editor role for mutations
 EDITOR_PATHS = {"/api/settings", "/api/config", "/api/game-settings", "/api/announce"}
 
+_HTTP_CODE_MAP = {401: "AUTH_ERROR", 403: "FORBIDDEN", 503: "SERVICE_UNAVAILABLE"}
+
 logger = logging.getLogger(__name__)
 
 
@@ -114,5 +116,8 @@ class AdminTokenMiddleware(BaseHTTPMiddleware):
         error = _auth_error(request)
         if error is not None:
             status_code, detail = error
-            return JSONResponse(status_code=status_code, content={"detail": detail})
+            return JSONResponse(
+                status_code=status_code,
+                content={"error": {"code": _HTTP_CODE_MAP.get(status_code, "HTTP_ERROR"), "message": detail}},
+            )
         return await call_next(request)
