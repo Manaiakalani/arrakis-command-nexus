@@ -9,8 +9,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.requests import Request
+from fastapi.responses import FileResponse, JSONResponse
 
 from db.database import dispose_db, init_db
 from middleware.auth import AdminTokenMiddleware, verify_admin_token
@@ -18,7 +20,7 @@ from middleware.rate_limit import RateLimitMiddleware
 from middleware.redaction import redact
 from middleware.request_logging import RequestLoggingMiddleware
 from middleware.security_headers import SecurityHeadersMiddleware
-from routers import announce, audit, backups, characters, chat_guard, config, discord, economy, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog
+from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog
 from services.announce_scheduler import AnnounceScheduler
 from services.announce_service import AnnounceService
 from services.backup_scheduler import BackupScheduler
@@ -313,6 +315,7 @@ app.add_middleware(RequestLoggingMiddleware)
 _SECURE_API_DEPENDENCIES = [Depends(verify_admin_token)]
 
 app.include_router(status.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
+app.include_router(dashboard.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(announce.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(scheduled_announce.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(maps.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
@@ -331,6 +334,48 @@ app.include_router(settings.router, prefix="/api", dependencies=_SECURE_API_DEPE
 app.include_router(audit.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 app.include_router(updates.router, prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": "VALIDATION_ERROR", "message": str(exc)}},
+    )
+
+
+@app.exception_handler(LookupError)
+async def lookup_error_handler(request: Request, exc: LookupError) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content={"error": {"code": "NOT_FOUND", "message": str(exc)}},
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": {"code": "HTTP_ERROR", "message": exc.detail}},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    logger.warning("Validation error on %s %s: %s", request.method, request.url.path, exc.errors())
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": "VALIDATION_ERROR", "message": "Request validation failed", "details": exc.errors()}},
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
+    )
 
 @app.get("/api/ping")
 async def ping() -> dict[str, str]:

@@ -72,7 +72,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if not self._buckets[client_ip].allow(now):
             return JSONResponse(
-                {"detail": "Rate limit exceeded. Please slow down."},
+                {"error": {"code": "RATE_LIMITED", "message": "Rate limit exceeded. Please slow down."}},
                 status_code=429,
                 headers={"Retry-After": "5"},
             )

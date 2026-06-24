@@ -13,7 +13,6 @@ from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel
 
 from middleware.auth import verify_admin_token
-from services import cache
 
 router = APIRouter(tags=["system"])
 logger = logging.getLogger(__name__)
@@ -204,14 +203,8 @@ def _format_prometheus_payload(raw: dict[str, Any]) -> str:
 @router.get("/system")
 @router.get("/system/metrics")
 async def get_system_metrics(request: Request) -> dict[str, object]:
-    cached = cache.get("system_metrics")
-    if cached is not None:
-        return cached
-
     raw = await request.app.state.metrics_service.get_current_metrics()
-    result = _format_snapshot(raw)
-    cache.set("system_metrics", result, ttl=10)
-    return result
+    return _format_snapshot(raw)
 
 
 # Widget -> field mapping for selective export
@@ -510,7 +503,7 @@ async def get_resource_limits() -> dict[str, Any]:
             "default": meta["default"],
             "options": _CPU_OPTIONS if is_cpu else _MEM_OPTIONS,
         })
-    return {"resources": resources, "envFile": str(_ENV_FILE), "requiresRestart": True}
+    return {"resources": resources, "requiresRestart": True}
 
 
 @router.put("/system/resources")
@@ -655,7 +648,8 @@ async def prepare_shutdown(payload: PrepareShutdownRequest, request: Request) ->
                     entry = await backup_service.create_backup(scope="full")
                     await step(f"Backup ok: {getattr(entry, 'filename', 'unknown')}")
                 except Exception as exc:  # noqa: BLE001
-                    await step(f"Backup FAILED: {exc} (continuing)")
+                    logger.error("Pre-shutdown backup failed: %s", exc, exc_info=True)
+                    await step("Backup FAILED (continuing). Check server logs for details.")
 
             if payload.stop_game_servers:
                 _SHUTDOWN_STATE["phase"] = "stopping_game"
@@ -670,7 +664,8 @@ async def prepare_shutdown(payload: PrepareShutdownRequest, request: Request) ->
                         if "404" in msg or "No such container" in msg:
                             await step(f"Skipped {name} (not deployed on this profile)")
                         else:
-                            await step(f"Stop {name} failed: {exc}")
+                            logger.error("Stop %s failed: %s", name, exc, exc_info=True)
+                            await step(f"Stop {name} failed. Check server logs.")
                 _SHUTDOWN_STATE["phase"] = "stopping_infra"
                 for name in _INFRA_CONTAINER_NAMES:
                     try:
@@ -683,7 +678,8 @@ async def prepare_shutdown(payload: PrepareShutdownRequest, request: Request) ->
                         if "404" in msg or "No such container" in msg:
                             await step(f"Skipped {name} (not deployed on this profile)")
                         else:
-                            await step(f"Stop {name} failed: {exc}")
+                            logger.error("Stop %s failed: %s", name, exc, exc_info=True)
+                            await step(f"Stop {name} failed. Check server logs.")
 
             _SHUTDOWN_STATE["phase"] = "ready_for_host_shutdown"
             await step("Phase 1 complete. Run `dune shutdown-host --confirm` to power off.")
@@ -699,7 +695,7 @@ async def prepare_shutdown(payload: PrepareShutdownRequest, request: Request) ->
         except Exception as exc:  # noqa: BLE001
             logger.exception("Shutdown phase 1 failed")
             _SHUTDOWN_STATE["phase"] = "error"
-            _SHUTDOWN_STATE["error"] = str(exc)
+            _SHUTDOWN_STATE["error"] = "Shutdown failed. Check server logs for details."
 
     # Start the background task; the API returns immediately so the operator
     # can navigate away or watch progress via /system/shutdown-status.

@@ -111,16 +111,19 @@ class DockerService:
     async def restart_container(self, name: str) -> dict[str, str]:
         container = await self._get_container(name)
         await asyncio.to_thread(container.restart)
+        self._invalidate_container_caches(name)
         return {"status": "ok", "action": "restart", "container": container.name}
 
     async def stop_container(self, name: str) -> dict[str, str]:
         container = await self._get_container(name)
         await asyncio.to_thread(container.stop)
+        self._invalidate_container_caches(name)
         return {"status": "ok", "action": "stop", "container": container.name}
 
     async def start_container(self, name: str) -> dict[str, str]:
         container = await self._get_container(name)
         await asyncio.to_thread(container.start)
+        self._invalidate_container_caches(name)
         return {"status": "ok", "action": "start", "container": container.name}
 
     async def get_container_logs(self, name: str, tail: int = 100, follow: bool = False) -> list[str]:
@@ -259,6 +262,11 @@ class DockerService:
         if not starts:
             return None
         return max((datetime.now(timezone.utc) - min(starts)).total_seconds(), 0.0)
+
+    def _invalidate_container_caches(self, name: str) -> None:
+        """Clear cached container/stats data after a mutation."""
+        self._containers_cache = None
+        self._stats_cache.pop(name, None)
 
     def _validate_container_name(self, name: str) -> None:
         """Ensure the requested container belongs to this compose project."""

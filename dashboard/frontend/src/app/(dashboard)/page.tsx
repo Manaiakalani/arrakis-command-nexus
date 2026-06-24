@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Check, Clock3, Cpu, Database, HardDrive, LayoutDashboard, Map, Play, RefreshCcw, Server, ShieldCheck, Square, Users, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, Check, Clock3, Cpu, Database, HardDrive, LayoutDashboard, Map, Play, RefreshCcw, Server, ShieldCheck, Square, Users, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -36,16 +36,15 @@ function formatUptime(seconds = 0) {
 
 export default function OverviewPage() {
   const { toast } = useToast();
-  const status = useApi(() => apiClient.getStatus(), { refreshInterval: 15000 });
-  const readiness = useApi(() => apiClient.getReady(), { refreshInterval: 20000 });
-  const maps = useApi(() => apiClient.getMaps(), { refreshInterval: 20000 });
-  const metrics = useApi(() => apiClient.getSystemMetrics(), { refreshInterval: 10000 });
-  const resourceHistory = useApi(() => apiClient.getSystemHistory('1h'), { refreshInterval: 15000, initialData: emptySystemHistory });
-  const uptime = useApi(() => apiClient.getUptimeData('24h'), {
-    refreshInterval: 30000,
-    initialData: emptyUptimeData,
-  });
-  const backups = useApi(() => apiClient.getBackups(), { refreshInterval: 30000, initialData: [] });
+  const overview = useApi(() => apiClient.getOverview(), { refreshInterval: 10000 });
+
+  const status = useMemo(() => ({ data: overview.data?.status, loading: overview.loading, error: overview.error, refetch: overview.refetch }), [overview]);
+  const readiness = useMemo(() => ({ data: overview.data?.readiness }), [overview.data?.readiness]);
+  const maps = useMemo(() => ({ data: overview.data?.maps, refetch: overview.refetch }), [overview]);
+  const metrics = useMemo(() => ({ data: overview.data?.metrics }), [overview.data?.metrics]);
+  const resourceHistory = useMemo(() => ({ data: overview.data?.systemHistory ?? emptySystemHistory }), [overview.data?.systemHistory]);
+  const uptime = useMemo(() => ({ data: overview.data?.uptime ?? emptyUptimeData }), [overview.data?.uptime]);
+  const backups = useMemo(() => ({ data: overview.data?.backups ?? [] }), [overview.data?.backups]);
 
   const serviceSummary = useMemo(() => status.data?.services ?? [], [status.data?.services]);
 
@@ -98,6 +97,17 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
+      {overview.error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-700 dark:text-red-300">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5" />
+            <div>
+              <h3 className="font-semibold">Failed to load overview data</h3>
+              <p className="text-sm opacity-90">{overview.error.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
           <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
