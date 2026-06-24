@@ -1,8 +1,9 @@
 'use client';
 
 import { AlertTriangle, FileText, Info, RotateCcw, Save } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { ConfigFile, ConfigField } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -87,6 +88,16 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
     const draft = drafts[activeFile.filename] ?? {};
     return Object.keys(draft).filter((k) => String(draft[k]) !== String(original[k])).length;
   }, [activeFile, drafts]);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (dirtyCount > 0) {
+      const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+      window.addEventListener('beforeunload', handler);
+      return () => window.removeEventListener('beforeunload', handler);
+    }
+  }, [dirtyCount]);
 
   const updateField = (field: ConfigField, value: string | number | boolean) => {
     if (!activeFile) {
@@ -205,17 +216,19 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
       return;
     }
 
-    if (!window.confirm(`Save changes to ${activeFile.filename}? A service restart is needed for changes to take effect.`)) {
-      return;
-    }
+    setConfirmOpen(true);
+  };
 
+  const handleConfirmedSave = useCallback(async () => {
+    if (!activeFile) return;
+    setConfirmOpen(false);
     setSaving(true);
     try {
       await onSave(activeFile.filename, drafts[activeFile.filename] ?? {});
     } finally {
       setSaving(false);
     }
-  };
+  }, [activeFile, drafts, onSave]);
 
   const handleAcceptDrift = async () => {
     if (!activeFile || !onAcceptDrift) {
@@ -318,7 +331,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
       {/* Save bar */}
       <div className="border-t border-th-border-m/80 p-4 sm:p-5 flex items-center gap-4">
         <button type="button" onClick={() => void handleSave()} disabled={saving} className="dune-button">
-          <Save className="mr-2 h-4 w-4" /> {saving ? 'Saving...' : 'Save configuration'}
+          <Save className="mr-2 h-4 w-4" /> {saving ? 'Saving…' : 'Save configuration'}
         </button>
         {dirtyCount > 0 ? (
           <span className="text-sm text-amber-600 dark:text-amber-300">
@@ -326,6 +339,14 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
           </span>
         ) : null}
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Save Configuration"
+        message={`Save changes to ${activeFile?.filename ?? 'config'}? A service restart is needed for changes to take effect.`}
+        confirmLabel="Save"
+        onConfirm={() => void handleConfirmedSave()}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

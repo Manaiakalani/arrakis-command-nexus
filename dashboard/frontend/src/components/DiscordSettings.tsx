@@ -3,6 +3,7 @@
 import { Plus, Send, TestTube2, Trash2, Webhook } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { DiscordWebhook } from '@/lib/types';
 
 const availableEvents = ['server-start', 'server-stop', 'server-crash', 'player-join', 'player-leave', 'update-available', 'backup', 'scheduled-restart', 'admin-action', 'resource-alert'];
@@ -30,6 +31,7 @@ interface DiscordSettingsProps {
 }
 
 export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, onAnnouncement }: DiscordSettingsProps) {
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DiscordWebhook[]>(webhooks);
   const [announcement, setAnnouncement] = useState('');
   const [newWebhook, setNewWebhook] = useState({ name: 'Operations Feed', url: '', enabled: true, events: availableEvents });
@@ -92,7 +94,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
                     <input type="checkbox" checked={webhook.enabled} onChange={(event) => updateDraft(webhook.id, { enabled: event.target.checked })} className="accent-amber-400" />
                     Enabled
                   </label>
-                  <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-700 dark:text-red-300" onClick={() => window.confirm('Remove this webhook?') && void onDelete(webhook.id)}>
+                  <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-700 dark:text-red-300" onClick={() => setPendingDeleteId(webhook.id)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
                   </button>
                 </div>
@@ -132,7 +134,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
 
         <div className="glass-panel p-5">
           <p className="section-title">Manual broadcast</p>
-          <h3 className="mt-1 text-lg font-semibold text-th-text">Send Announcement</h3>
+          <h3 className="mt-1 text-lg font-semibold text-th-text">Send announcement</h3>
           <textarea className="dune-input mt-4 min-h-[200px]" value={announcement} onChange={(event) => setAnnouncement(event.target.value)} placeholder="Attention, sleepers. Maintenance begins at sunset…" />
           <div className="mt-4 flex flex-wrap gap-3">
             <button
@@ -153,6 +155,15 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="Remove Webhook"
+        message="Remove this webhook? It will no longer receive notifications."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => { if (pendingDeleteId !== null) void onDelete(pendingDeleteId); setPendingDeleteId(null); }}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }

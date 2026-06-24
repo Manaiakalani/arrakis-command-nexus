@@ -235,7 +235,7 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="inline-flex items-center gap-3 text-3xl font-bold text-th-text"><Download aria-hidden="true" className="h-7 w-7 text-amber-600 dark:text-amber-300" /> Server Updates</h1>
+        <h1 className="inline-flex items-center gap-3 text-3xl font-bold text-th-text"><Download aria-hidden="true" className="h-7 w-7 text-amber-600 dark:text-amber-300" /> Server updates</h1>
         <p className="mt-1 text-sm text-th-text-m">Check for and manage Dune Awakening server updates</p>
       </div>
 
@@ -334,12 +334,12 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
           </div>
         ) : status ? (
           <div className="mt-6 space-y-4">
-            {/* Update Available Banner */}
+            {/* Update available Banner */}
             {status.update_available && (
               <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
                 <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0 text-amber-500" />
                 <div className="flex-1">
-                  <p className="font-semibold text-amber-600 dark:text-amber-300">Update Available</p>
+                  <p className="font-semibold text-amber-600 dark:text-amber-300">Update available</p>
                   <p className="mt-1 text-sm text-th-text-m">
                     A new server build is available on Steam (build {status.latest_build}). Click{' '}
                     <strong>Apply Update</strong> to auto-update, or follow the manual steps below.
@@ -395,7 +395,7 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
                   <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" /> Status
                 </div>
                 <p className={cn('mt-2 text-sm font-medium', status.update_available ? 'text-amber-600 dark:text-amber-300' : 'text-green-600 dark:text-green-400')}>
-                  {status.update_available ? 'Update Available' : 'Up to Date'}
+                  {status.update_available ? 'Update available' : 'Up to date'}
                 </p>
               </div>
             </div>

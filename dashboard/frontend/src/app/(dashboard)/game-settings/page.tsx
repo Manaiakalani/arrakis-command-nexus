@@ -265,6 +265,16 @@ export default function GameSettingsPage() {
     return acc;
   }, {} as Record<SectionId, number>), [drafts, groupedSections]);
 
+  const totalDirtyCount = useMemo(() => Object.values(dirtyBySection).reduce((sum, n) => sum + n, 0), [dirtyBySection]);
+
+  useEffect(() => {
+    if (totalDirtyCount > 0) {
+      const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+      window.addEventListener('beforeunload', handler);
+      return () => window.removeEventListener('beforeunload', handler);
+    }
+  }, [totalDirtyCount]);
+
   const jumpToSection = useCallback((id: SectionId) => {
     const element = document.getElementById(id);
     if (!element) return;

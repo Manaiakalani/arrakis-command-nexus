@@ -52,7 +52,7 @@ const navigationSections = [
     header: 'Server Control',
     items: [
       { href: '/config', label: 'Configuration', icon: Settings },
-      { href: '/game-settings', label: 'Game Settings', icon: SlidersHorizontal },
+      { href: '/game-settings', label: 'Game settings', icon: SlidersHorizontal },
       { href: '/resources', label: 'Resources', icon: Gauge },
       { href: '/system', label: 'System', icon: Cpu },
       { href: '/logs', label: 'Logs', icon: Terminal },
@@ -72,9 +72,9 @@ const navigationSections = [
     items: [
       { href: '/discord', label: 'Discord', icon: MessageSquare },
       { href: '/updates', label: 'Updates', icon: Download },
-      { href: '/audit', label: 'Audit Trail', icon: ClipboardList },
+      { href: '/audit', label: 'Audit trail', icon: ClipboardList },
       { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
-      { href: '/public', label: 'Public Status', icon: Globe },
+      { href: '/public', label: 'Public status', icon: Globe },
     ],
   },
 ];
@@ -130,7 +130,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-3',
           )}>
             <div className={cn(
-              'flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-300 shadow-dune',
+              'flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-th-accent shadow-dune',
               collapsed ? 'h-9 w-9' : 'h-12 w-12',
             )}>
               <Worm className={cn(collapsed ? 'h-5 w-5' : 'h-6 w-6')} />
@@ -213,7 +213,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
                           : 'border-transparent text-th-text-s hover:border-th-border hover:bg-th-surface-s/70 hover:text-th-text',
                       )}
                     >
-                      <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-amber-600 dark:text-amber-300' : 'text-th-text-m group-hover:text-th-text-s')} />
+                      <Icon aria-hidden="true" className={cn('h-[1.125rem] w-[1.125rem] shrink-0', active ? 'text-th-accent' : 'text-th-text-m group-hover:text-th-text-s')} />
                       <span className={cn(
                         'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300',
                         collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
