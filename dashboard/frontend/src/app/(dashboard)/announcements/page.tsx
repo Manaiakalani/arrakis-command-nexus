@@ -3,6 +3,7 @@
 import { CalendarClock, Clock3, Megaphone, Pencil, Repeat, RotateCcw, Sparkles, Trash2, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
@@ -187,11 +188,16 @@ export default function AnnouncementsPage() {
     }
   };
 
-  const handleDeleteScheduled = async (announcementId: string) => {
-    if (!window.confirm('Delete this scheduled announcement?')) {
-      return;
-    }
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
+  const handleDeleteScheduled = (announcementId: string) => {
+    setPendingDeleteId(announcementId);
+  };
+
+  const confirmDeleteScheduled = async () => {
+    const announcementId = pendingDeleteId;
+    if (!announcementId) return;
+    setPendingDeleteId(null);
     setRowBusyId(announcementId);
     try {
       await apiClient.deleteScheduledAnnouncement(announcementId);
@@ -253,7 +259,7 @@ export default function AnnouncementsPage() {
             <Megaphone aria-hidden="true" className="h-5 w-5" />
           </div>
           <div>
-            <p className="section-title">Broadcast Console</p>
+            <p className="section-title">Broadcast console</p>
             <h1 className="mt-1 text-2xl font-semibold text-th-text">In-Game Announcements</h1>
           </div>
         </div>
@@ -512,7 +518,7 @@ export default function AnnouncementsPage() {
         <div className="flex items-center justify-between border-b border-th-border-m/80 p-5">
           <div>
             <p className="section-title">Recent activity</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Clock3 aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Announcement History</h2>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Clock3 aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Announcement history</h2>
           </div>
           <button type="button" className="dune-button-muted" onClick={() => void refreshHistory()} disabled={history.loading}>
             <RotateCcw aria-hidden="true" className="mr-2 h-4 w-4" /> Refresh
@@ -553,6 +559,16 @@ export default function AnnouncementsPage() {
 
         {!history.loading && (history.data ?? []).length === 0 ? <div className="p-10 text-center text-th-text-m">No announcements have been sent yet.</div> : null}
       </div>
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="Delete Announcement"
+        message="Delete this scheduled announcement? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => void confirmDeleteScheduled()}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }
@@ -599,6 +615,7 @@ function AnnouncementsPageSkeleton() {
       </div>
       <TableSkeleton rows={5} />
       <TableSkeleton rows={5} />
+
     </div>
   );
 }

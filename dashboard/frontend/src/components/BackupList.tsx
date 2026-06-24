@@ -3,6 +3,7 @@
 import { ArchiveRestore, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { BackupEntry } from '@/lib/types';
 
 interface BackupListProps {
@@ -22,15 +23,18 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
+type PendingAction = { type: 'restore'; id: string } | { type: 'delete'; id: string } | null;
+
 export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupListProps) {
   const [scope, setScope] = useState('full');
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   return (
     <div className="glass-panel overflow-hidden">
       <div className="flex flex-col gap-4 border-b border-th-border-m/80 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <p className="section-title">Recovery vault</p>
-          <h3 className="mt-1 text-lg font-semibold text-th-text">Backup Inventory</h3>
+          <h3 className="mt-1 text-lg font-semibold text-th-text">Backup inventory</h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select value={scope} onChange={(event) => setScope(event.target.value)} className="dune-input w-full sm:min-w-[180px] sm:w-auto" aria-label="Backup scope">
@@ -64,10 +68,10 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
                 <td className="px-5 py-4 text-th-text-s capitalize">{backup.scope}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" className="dune-button-muted px-3 py-2 text-xs" onClick={() => window.confirm('Restore this backup?') && void onRestore(backup.id)}>
+                    <button type="button" className="dune-button-muted px-3 py-2 text-xs" onClick={() => setPendingAction({ type: 'restore', id: backup.id })}>
                       <ArchiveRestore className="mr-1.5 h-3.5 w-3.5" /> Restore
                     </button>
-                    <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-700 dark:text-red-300" onClick={() => window.confirm('Delete this backup?') && void onDelete(backup.id)}>
+                    <button type="button" className="dune-button-muted px-3 py-2 text-xs text-red-700 dark:text-red-300" onClick={() => setPendingAction({ type: 'delete', id: backup.id })}>
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
                     </button>
                   </div>
@@ -82,6 +86,24 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={pendingAction?.type === 'restore'}
+        title="Restore Backup"
+        message="Restore this backup? Current data will be overwritten."
+        confirmLabel="Restore"
+        onConfirm={() => { if (pendingAction?.type === 'restore') void onRestore(pendingAction.id); setPendingAction(null); }}
+        onCancel={() => setPendingAction(null)}
+      />
+      <ConfirmDialog
+        open={pendingAction?.type === 'delete'}
+        title="Delete Backup"
+        message="Delete this backup? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { if (pendingAction?.type === 'delete') void onDelete(pendingAction.id); setPendingAction(null); }}
+        onCancel={() => setPendingAction(null)}
+      />
     </div>
   );
 }

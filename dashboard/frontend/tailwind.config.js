@@ -33,6 +33,9 @@ module.exports = {
           text:        'rgb(var(--th-text) / <alpha-value>)',
           'text-s':    'rgb(var(--th-text-s) / <alpha-value>)',
           'text-m':    'rgb(var(--th-text-m) / <alpha-value>)',
+          accent:      'rgb(var(--th-accent) / <alpha-value>)',
+          'accent-success': 'rgb(var(--th-accent-success) / <alpha-value>)',
+          'accent-danger':  'rgb(var(--th-accent-danger) / <alpha-value>)',
         }
       },
       boxShadow: {

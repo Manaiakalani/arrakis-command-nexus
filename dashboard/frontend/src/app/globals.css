@@ -18,7 +18,12 @@
   --th-border-m:  232 224 210;   /* lighter warm border */
   --th-text:      41 32 18;      /* deep warm brown-black */
   --th-text-s:    92 76 52;      /* warm brown secondary */
-  --th-text-m:    133 117 90;    /* warm muted text */
+  --th-text-m:    120 104 78;    /* warm muted text */
+
+  /* Semantic accent tokens */
+  --th-accent: 180 83 9;              /* amber-700 – WCAG AA on light bg */
+  --th-accent-success: 21 128 61;     /* green-700 */
+  --th-accent-danger: 185 28 28;      /* red-700 */
 
   /* Background gradient */
   --dune-radial: radial-gradient(circle at top, rgba(245,158,11,0.10), transparent 40%),
@@ -51,6 +56,11 @@
   --th-text:      248 250 252;   /* slate-50 */
   --th-text-s:    203 213 225;   /* slate-300 */
   --th-text-m:    148 163 184;   /* slate-400 */
+
+  /* Semantic accent tokens */
+  --th-accent: 252 211 77;            /* amber-300 for dark */
+  --th-accent-success: 110 231 183;   /* emerald-300 */
+  --th-accent-danger: 252 165 165;    /* red-300 */
 
   --dune-radial: radial-gradient(circle at top, rgba(245,158,11,0.18), transparent 40%),
                  radial-gradient(circle at bottom right, rgba(251,146,60,0.12), transparent 32%);
@@ -131,7 +141,7 @@ body {
   }
 
   .section-title {
-    @apply text-sm font-semibold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-300/80;
+    @apply text-sm font-semibold uppercase tracking-[0.24em] text-th-accent;
   }
 
   .dune-button {
@@ -176,6 +186,19 @@ body {
 
   .dune-focus {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+}
+
+/* ── Global focus-visible ring for all interactive elements ── */
+@layer base {
+  button:not(.dune-button):not(.dune-button-secondary):not(.dune-button-muted):not(.dune-input),
+  a,
+  input:not(.dune-input),
+  select,
+  textarea,
+  [role= button],
+  [tabindex]:not([tabindex=-1]) {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
   }
 }
 

@@ -26,7 +26,7 @@ export function ApiError({ error, onRetry, compact, className }: ApiErrorProps) 
         <Icon className="h-3.5 w-3.5 shrink-0" />
         <span className="truncate">{message}</span>
         {onRetry && (
-          <button type="button" onClick={onRetry} className="ml-auto shrink-0 rounded p-0.5 hover:bg-red-500/20">
+          <button type="button" onClick={onRetry} aria-label="Retry" className="ml-auto shrink-0 rounded p-0.5 hover:bg-red-500/20">
             <RefreshCcw className="h-3 w-3" />
           </button>
         )}

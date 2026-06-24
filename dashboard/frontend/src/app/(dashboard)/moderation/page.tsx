@@ -1,7 +1,9 @@
 'use client';
 
 import { Shield, ShieldAlert, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
 import { useApiSWR } from '@/hooks/useApiSWR';
@@ -19,10 +21,14 @@ export default function ModerationPage() {
   const settings = useApiSWR('api/moderation/settings', () => apiClient.getChatGuardSettings(), { refreshInterval: 15_000 });
   const violations = useApiSWR('api/moderation/violations', () => apiClient.getChatGuardViolations(), { refreshInterval: 10_000, initialData: [] });
 
-  const handleClear = async () => {
-    if (!window.confirm('Clear all chat guard violations? This action cannot be undone.')) {
-      return;
-    }
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+
+  const handleClear = () => {
+    setConfirmClearOpen(true);
+  };
+
+  const confirmClear = async () => {
+    setConfirmClearOpen(false);
     try {
       await apiClient.clearChatGuardViolations();
       await Promise.all([settings.refetch(), violations.refetch()]);
@@ -120,6 +126,15 @@ export default function ModerationPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmClearOpen}
+        title="Clear Violations"
+        message="Clear all chat guard violations? This action cannot be undone."
+        confirmLabel="Clear All"
+        variant="danger"
+        onConfirm={() => void confirmClear()}
+        onCancel={() => setConfirmClearOpen(false)}
+      />
     </div>
   );
 }
@@ -157,6 +172,8 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
     <div className="rounded-3xl border border-th-border-m/80 bg-th-bg/60 p-4">
       <p className="text-xs uppercase tracking-[0.18em] text-th-text-m">{label}</p>
       <p className={`mt-3 text-xl font-semibold text-th-text ${accent ?? ''}`}>{value}</p>
+
+
     </div>
   );
 }

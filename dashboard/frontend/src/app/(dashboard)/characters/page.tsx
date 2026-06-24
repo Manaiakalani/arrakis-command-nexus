@@ -600,7 +600,7 @@ export default function CharactersPage() {
               <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-8 text-center">
                 <UserCog className="h-10 w-10 text-amber-600 dark:text-amber-300" />
                 <div>
-                  <h3 className="text-xl font-semibold text-th-text">No Characters Discovered</h3>
+                  <h3 className="text-xl font-semibold text-th-text">No characters discovered</h3>
                   <p className="mt-2 max-w-sm text-sm text-th-text-m">The dashboard could not read the game schema yet. Once character tables are exposed, this panel will automatically populate.</p>
                 </div>
               </div>
@@ -785,7 +785,7 @@ export default function CharactersPage() {
                   <Package className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="section-title">Grant Items and Resources</p>
+                  <p className="section-title">Grant items and resources</p>
                   <h2 className="mt-1 text-xl font-semibold text-th-text">Quick Grant to {selectedCharacter.name}</h2>
                 </div>
               </div>
@@ -816,8 +816,8 @@ export default function CharactersPage() {
                       <p className="text-xs font-semibold">Relog to load the item</p>
                       <p className="mt-1 text-xs opacity-90">
                         {grantResult.online
-                          ? 'The player is online, so the item is not visible yet. Have them return to the main menu and rejoin the server  -  the inventory is read from the database on login. No server restart is needed. (If it does not appear after relogging, re-grant while the player sits at the main menu, then rejoin.)'
-                          : 'The item is staged in the database. It loads when the player next joins the server  -  the inventory is read from the database on login. No server restart is needed.'}
+                          ? 'The player is online, so the item is not visible yet. Have them return to the main menu and rejoin the server — the inventory is read from the database on login. No server restart is needed. (If it does not appear after relogging, re-grant while the player sits at the main menu, then rejoin.)'
+                          : 'The item is staged in the database. It loads when the player next joins the server — the inventory is read from the database on login. No server restart is needed.'}
                       </p>
                     </div>
                   ) : null}
@@ -1945,7 +1945,7 @@ export default function CharactersPage() {
               </div>
 
               <div className="mt-6 rounded-3xl border border-th-border-m/80 bg-th-bg/30 p-5">
-                <p className="text-sm font-semibold text-th-text">Custom Item Grant</p>
+                <p className="text-sm font-semibold text-th-text">Custom item grant</p>
                 <p className="mt-1 text-xs text-th-text-m">Enter any item template ID. Search below to find valid IDs.</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_auto]">
                   <input
@@ -1979,7 +1979,7 @@ export default function CharactersPage() {
                   </div>
                   <button type="button" className="dune-button-muted text-xs" disabled={loadingCatalog} onClick={() => void handleBrowseCatalog()}>
                     {loadingCatalog ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <BookOpen className="mr-1.5 h-3.5 w-3.5" />}
-                    {catalogOpen ? 'Hide Catalog' : 'Browse All'}
+                    {catalogOpen ? 'Hide catalog' : 'Browse all'}
                   </button>
                 </div>
                 <div className="mt-3 flex gap-3">
@@ -2120,7 +2120,7 @@ export default function CharactersPage() {
                   </div>
                 ) : loadingInventory ? (
                   <div className="mt-4 flex items-center gap-2 text-sm text-th-text-m">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading inventory...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading inventory…
                   </div>
                 ) : null}
               </div>
