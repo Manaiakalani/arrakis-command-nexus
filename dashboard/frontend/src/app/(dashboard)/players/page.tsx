@@ -246,7 +246,7 @@ export default function PlayersPage() {
                 <input value={reason} onChange={(e) => setReason(e.target.value)} className="dune-input w-auto text-sm" placeholder="Custom reason…" />
               )}
               <button type="button" disabled={bulkBanning} onClick={() => void handleBulkBan()} className="dune-button text-sm">
-                <Ban aria-hidden="true" className="mr-1.5 h-3.5 w-3.5" /> {bulkBanning ? 'Banning…' : 'Ban Selected'}
+                <Ban aria-hidden="true" className="mr-1.5 h-3.5 w-3.5" /> {bulkBanning ? 'Banning…' : 'Ban selected'}
               </button>
               <button type="button" onClick={() => setSelectedSteamIds(new Set())} className="dune-button-muted text-sm">Clear</button>
             </div>
@@ -384,7 +384,7 @@ export default function PlayersPage() {
                 <input
                   id="allow-steam-id"
                   className="dune-input"
-                  placeholder="7656119..."
+                  placeholder="7656119…"
                   value={allowSteamId}
                   onChange={(event) => setAllowSteamId(event.target.value)}
                   onKeyDown={(event) => { if (event.key === 'Enter') void handleAddAllowlist(); }}
@@ -402,14 +402,14 @@ export default function PlayersPage() {
                 />
               </div>
               <button type="button" onClick={() => void handleAddAllowlist()} disabled={allowSubmitting || !allowSteamId.trim()} className="dune-button disabled:cursor-not-allowed disabled:opacity-50">
-                <UserCheck aria-hidden="true" className="mr-2 h-4 w-4" /> {allowSubmitting ? 'Adding...' : 'Add to Allowlist'}
+                <UserCheck aria-hidden="true" className="mr-2 h-4 w-4" /> {allowSubmitting ? 'Adding…' : 'Add to allowlist'}
               </button>
             </div>
           </div>
 
           <div className="glass-panel overflow-hidden">
             <div className="flex items-center justify-between border-b border-th-border-m/80 p-5">
-              <h3 className="inline-flex items-center gap-2 text-lg font-semibold text-th-text"><Shield aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Allowlisted Players</h3>
+              <h3 className="inline-flex items-center gap-2 text-lg font-semibold text-th-text"><Shield aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Allowlisted players</h3>
               <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-sm text-amber-700 dark:text-amber-200">{(allowlist.data ?? []).length}</span>
             </div>
             <div className="divide-y divide-th-border-m/80">
@@ -442,7 +442,7 @@ export default function PlayersPage() {
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300"><Ban aria-hidden="true" className="h-5 w-5" /></div>
               <div>
-                <h3 className="text-xl font-semibold text-th-text" id="ban-dialog-title">Ban Player</h3>
+                <h3 className="text-xl font-semibold text-th-text" id="ban-dialog-title">Ban player</h3>
                 <p className="text-sm text-th-text-m">{selectedPlayer.name} • {selectedPlayer.steamId}</p>
               </div>
             </div>

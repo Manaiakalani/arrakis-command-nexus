@@ -35,7 +35,7 @@ export default function DiscordPage() {
         </div>
         <div>
           <p className="section-title">Discord integration</p>
-          <h1 className="mt-1 text-2xl font-semibold text-th-text">Discord Notifications</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-th-text">Discord notifications</h1>
         </div>
       </div>
 

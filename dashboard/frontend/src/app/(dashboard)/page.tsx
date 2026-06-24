@@ -13,9 +13,9 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const readinessStyles = {
-  ok: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  warn: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-200',
-  fail: 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-300',
+  ok: 'border-emerald-500/20 bg-emerald-500/10 text-th-accent-success',
+  warn: 'border-amber-500/20 bg-amber-500/10 text-th-accent',
+  fail: 'border-red-500/20 bg-red-500/10 text-th-accent-danger',
 };
 
 const emptySystemHistory = { range: '1h', points: [] };
@@ -130,7 +130,7 @@ export default function OverviewPage() {
   return (
     <div className="space-y-6">
       {overviewError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-700 dark:text-red-300">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-th-accent-danger">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5" />
             <div>
@@ -141,12 +141,12 @@ export default function OverviewPage() {
         </div>
       )}
       <div className="flex items-center gap-3">
-        <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
+        <div className="rounded-2xl bg-amber-500/15 p-3 text-th-accent">
           <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
           <p className="section-title">Overview</p>
-          <h1 className="mt-1 text-2xl font-semibold text-th-text">Dashboard Overview</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-th-text">Dashboard overview</h1>
         </div>
       </div>
 
@@ -188,7 +188,7 @@ export default function OverviewPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="section-title">Service health matrix</p>
-              <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Activity aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Operational Services</h2>
+              <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Activity aria-hidden="true" className="h-5 w-5 text-th-accent" /> Operational services</h2>
             </div>
             <div className="flex flex-wrap gap-3">
               <button
@@ -324,7 +324,7 @@ export default function OverviewPage() {
           </div>
           <div className="glass-panel p-5">
             <p className="section-title">Fleet summary</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Map Deployment</h2>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-th-accent" /> Map deployment</h2>
             <div className="mt-5 space-y-3">
               {(maps.data ?? []).map((map) => (
                 <div key={map.name} className="flex items-center justify-between rounded-2xl border border-th-border-m/80 bg-th-surface-s/50 px-4 py-3 text-sm">
@@ -339,7 +339,7 @@ export default function OverviewPage() {
           </div>
           <div className="glass-panel p-5">
             <p className="section-title">Data protection</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Database aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Last Backup</h2>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Database aria-hidden="true" className="h-5 w-5 text-th-accent" /> Last Backup</h2>
             {(() => {
               const lastBackup = (backups.data ?? []).filter((b) => b.status === 'ready').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
               if (!lastBackup) {
@@ -352,7 +352,7 @@ export default function OverviewPage() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-th-text-m">Status</span>
-                    <span className={cn('rounded-full border px-3 py-0.5 text-xs font-semibold uppercase', isStale ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
+                    <span className={cn('rounded-full border px-3 py-0.5 text-xs font-semibold uppercase', isStale ? 'border-amber-500/30 bg-amber-500/10 text-th-accent' : 'border-emerald-500/30 bg-emerald-500/10 text-th-accent-success')}>
                       {isStale ? 'Stale' : 'Current'}
                     </span>
                   </div>
@@ -377,8 +377,8 @@ export default function OverviewPage() {
 
       {/* Per-shard monitoring */}
       <section className="glass-panel p-5">
-        <p className="section-title">Shard telemetry</p>
-        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><HardDrive aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Map Servers</h2>
+        <p className="section-title">Map telemetry</p>
+        <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><HardDrive aria-hidden="true" className="h-5 w-5 text-th-accent" /> Map Servers</h2>
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(maps.data ?? []).map((map) => {
             const memPercent = map.memoryLimitMb > 0 ? Math.round((map.memoryUsedMb / map.memoryLimitMb) * 100) : 0;
