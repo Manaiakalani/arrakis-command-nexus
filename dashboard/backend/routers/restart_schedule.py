@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 router = APIRouter(tags=["restart-schedule"])
 
 
 class RestartScheduleUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool | None = None
     intervalHours: int | None = Field(default=None, ge=1)
     warningMinutes: list[int] | None = None
 
 
 class RestartNowRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     warningMinutes: int | None = Field(default=0, ge=0)
 
 

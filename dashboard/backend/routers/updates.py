@@ -178,7 +178,7 @@ async def trigger_update(background_tasks: BackgroundTasks, request: Request):
                 )
         except Exception as exc:
             logger.exception("Background update task failed")
-            _update_result = {"success": False, "error": str(exc)}
+            _update_result = {"success": False, "error": "Update failed unexpectedly"}
 
     _update_task = asyncio.create_task(_run_update(), name="server-update")
     return {"status": "started", "message": "Update running in background — monitor logs or Discord for progress"}
@@ -194,8 +194,11 @@ async def get_trigger_status():
         return {"status": "running"}
     if _update_result is not None:
         return {"status": "done", "result": _update_result}
-    exc = _update_task.exception()
-    return {"status": "failed", "error": str(exc) if exc else "unknown"}
+    try:
+        _update_task.exception()  # consume to avoid "exception was never retrieved"
+    except Exception:
+        logger.exception("Background update task failed")
+    return {"status": "failed", "error": "Update task failed unexpectedly"}
 
 
 @router.post("/settings")

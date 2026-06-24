@@ -104,7 +104,7 @@ class CharacterService:
                 list(self.TABLE_CANDIDATES),
             )
             if not rows:
-                raise LookupError("No character-like tables found")
+                raise LookupError("No character data found on this server")
 
             ordered_rows = sorted(
                 rows,
@@ -195,7 +195,7 @@ class CharacterService:
             "id": str(row["id"]),
             "name": row.get("character_name") or row.get("funcom_id") or f"Player {row['id']}",
             "source": "funcom",
-            "table": "dune.encrypted_player_state",
+            "table": "player-state",
             "lastUpdated": self._serialize_value(row.get("last_login_time") or row.get("last_avatar_activity")),
             "stats": stats,
             "metadata": metadata,
@@ -1639,7 +1639,7 @@ class CharacterService:
             "id": str(raw_id or raw_name or f"{table}-{index}"),
             "name": str(raw_name or f"Character {index}"),
             "source": "game-db",
-            "table": f"{schema}.{table}",
+            "table": table.replace("_", "-"),
             "lastUpdated": self._serialize_value(row.get("last_updated")),
             "stats": stats,
             "metadata": metadata,

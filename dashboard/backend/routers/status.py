@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 
 from middleware.request_utils import get_client_ip
-from services import cache
 from services.env_file import read_env_var
+from services.cache import invalidate_overview
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +82,6 @@ async def _enforce_public_status_rate_limit(request: Request) -> None:
 
 @router.get("/status")
 async def get_status(request: Request) -> dict:
-    cached = cache.get("status")
-    if cached is not None:
-        return cached
-
     docker_service = request.app.state.docker_service
     postgres_service = request.app.state.postgres_service
 
@@ -113,7 +109,7 @@ async def get_status(request: Request) -> dict:
     )
 
     status_map = {"ok": "healthy", "warn": "degraded", "fail": "offline"}
-    result = {
+    return {
         "serverName": read_env_var("WORLD_NAME") or os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
         "region": os.getenv("WORLD_REGION", "North America"),
         "status": status_map.get(readiness["status"], "offline"),
@@ -124,8 +120,6 @@ async def get_status(request: Request) -> dict:
         "version": os.getenv("DUNE_IMAGE_TAG", "1979201-0-shipping"),
         "services": [_service_to_frontend(s) for s in services],
     }
-    cache.set("status", result, ttl=10)
-    return result
 
 
 @router.get("/public/status")
@@ -226,7 +220,7 @@ async def service_action(name: str, action: str, request: Request) -> dict:
         logger.error("Service action failed service=%s action=%s: %s", name, action, exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Service action failed. Check server logs for details.") from exc
 
-    cache.invalidate("status", "maps")
+    invalidate_overview()
     return {"service": name, "action": action, **result}
 
 
@@ -262,10 +256,10 @@ async def server_bulk_action(action: str, request: Request) -> dict:
             results.append({"service": svc.name, "action": action, "status": "ok"})
         except Exception as exc:  # noqa: BLE001
             logger.error("Bulk %s failed for %s: %s", action, svc.name, exc)
-            errors.append({"service": svc.name, "error": str(exc)})
+            errors.append({"service": svc.name, "error": "Action failed. Check server logs."})
 
-    cache.invalidate("status", "maps")
     overall = "ok" if not errors else ("partial" if results else "failed")
+    invalidate_overview()
     return {
         "status": overall,
         "action": action,
