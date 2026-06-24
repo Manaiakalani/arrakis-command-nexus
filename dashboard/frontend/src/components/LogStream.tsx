@@ -15,25 +15,29 @@ const severityClasses: Record<Severity, string> = {
   DEBUG: 'border-th-border bg-th-surface text-th-text-s',
 };
 
-function parseLogEvent(raw: string): LogEvent {
-  try {
-    const parsed = JSON.parse(raw) as Partial<LogEvent>;
-    return {
-      id: parsed.id ?? `${Date.now()}-${Math.random()}`,
-      timestamp: parsed.timestamp ?? new Date().toISOString(),
-      service: parsed.service ?? 'gateway',
-      level: parsed.level ?? 'INFO',
-      message: parsed.message ?? raw,
-    };
-  } catch {
-    return {
-      id: `${Date.now()}-${Math.random()}`,
-      timestamp: new Date().toISOString(),
-      service: 'gateway',
-      level: raw.includes('ERROR') ? 'ERROR' : raw.includes('WARN') ? 'WARN' : 'INFO',
-      message: raw,
-    };
+function parseLogEvent(raw: unknown): LogEvent {
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return {
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: new Date().toISOString(),
+        service: 'gateway',
+        level: (raw as string).includes('ERROR') ? 'ERROR' : (raw as string).includes('WARN') ? 'WARN' : 'INFO',
+        message: raw as string,
+      };
+    }
   }
+
+  const parsed = raw as Partial<LogEvent>;
+  return {
+    id: parsed.id ?? `${Date.now()}-${Math.random()}`,
+    timestamp: parsed.timestamp ?? new Date().toISOString(),
+    service: parsed.service ?? 'gateway',
+    level: parsed.level ?? 'INFO',
+    message: parsed.message ?? String(raw),
+  };
 }
 
 interface LogStreamProps {
@@ -50,8 +54,15 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
   const [query, setQuery] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const [seedLogs, setSeedLogs] = useState<LogEvent[]>([]);
+  const [sseMessages, setSseMessages] = useState<LogEvent[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { messages, status } = useSSE<LogEvent>(endpoint, { parse: parseLogEvent });
+
+  const handleEvent = useCallback((event: { type: string; data: unknown }) => {
+    const logEvent = parseLogEvent(event.data);
+    setSseMessages((prev) => [...prev, logEvent]);
+  }, []);
+
+  const { status } = useSSE(endpoint, { onEvent: handleEvent });
   const selectedService = controlledService ?? uncontrolledService;
 
   // Fetch initial log tail on mount
@@ -89,10 +100,10 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
   }, []);
 
   const allMessages = useMemo(() => {
-    const sseIds = new Set(messages.map((m) => m.id));
+    const sseIds = new Set(sseMessages.map((m) => m.id));
     const deduped = seedLogs.filter((s) => !sseIds.has(s.id));
-    return [...deduped, ...messages];
-  }, [seedLogs, messages]);
+    return [...deduped, ...sseMessages];
+  }, [seedLogs, sseMessages]);
 
   const availableServices = useMemo(() => {
     const fromStream = Array.from(new Set(allMessages.map((message) => message.service)));

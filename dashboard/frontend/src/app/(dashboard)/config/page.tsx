@@ -1,13 +1,52 @@
 'use client';
 
-import { CheckCircle2, FileCode, FileText, Settings, SlidersHorizontal } from 'lucide-react';
+import { CheckCircle2, FileCode, FileText, SlidersHorizontal } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useCallback, useMemo } from 'react';
 
-import { ConfigEditor } from '@/components/ConfigEditor';
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
+
+const ConfigEditor = dynamic(
+  () => import('@/components/ConfigEditor').then((mod) => mod.ConfigEditor),
+  {
+    loading: () => (
+      <div className="glass-panel overflow-hidden">
+        <div className="border-b border-th-border-m/80 p-4 sm:p-5 space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-10 w-32 rounded-full" />
+            ))}
+          </div>
+        </div>
+        <div className="space-y-6 p-4 sm:p-5">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div key={index} className="rounded-3xl border border-th-border-m/80 bg-th-bg-s/40 p-5 space-y-5">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-7 w-32" />
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {Array.from({ length: 4 }).map((__, fieldIndex) => (
+                  <div key={fieldIndex} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-11 w-full rounded-xl" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-th-border-m/80 p-4 sm:p-5">
+          <Skeleton className="h-11 w-44 rounded-xl" />
+        </div>
+      </div>
+    ),
+    ssr: false,
+  },
+);
 
 const configFiles = ['UserGame.ini', 'UserEngine.ini', 'director.ini', 'gateway.ini'];
 
