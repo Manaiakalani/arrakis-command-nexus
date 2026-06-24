@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 
 from datetime import datetime, timezone
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from db.database import SessionLocal
@@ -13,6 +15,33 @@ from db.models import AdminUser, DashboardSetting
 router = APIRouter(tags=["settings"])
 
 _world_name = os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server")
+
+
+
+# ── Pydantic request models ─────────────────────────────────────
+
+
+class SettingsImportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    settings: dict[str, dict[str, Any]]
+    version: int | None = None
+    exportedAt: str | None = None
+
+
+class AddAdminRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1)
+    role: str = "admin"
+
+
+class UpdateAdminRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str | None = None
+    enabled: bool | None = None
+
 
 DEFAULTS: dict[str, dict] = {
     "general": {
@@ -84,9 +113,8 @@ async def export_settings() -> dict:
 
 
 @router.post("/settings/import/all")
-async def import_settings(request: Request) -> dict:
-    body = await request.json()
-    settings = body.get("settings", {})
+async def import_settings(payload: SettingsImportRequest) -> dict:
+    settings = payload.settings
     imported = []
     for key, value in settings.items():
         if isinstance(value, dict):
@@ -115,12 +143,9 @@ async def list_admins() -> list[dict]:
 
 
 @router.post("/settings/admins")
-async def add_admin(request: Request) -> dict:
-    body = await request.json()
-    username = body.get("username", "").strip()
-    role = body.get("role", "admin")
-    if not username:
-        raise HTTPException(status_code=400, detail="Username is required")
+async def add_admin(payload: AddAdminRequest) -> dict:
+    username = payload.username.strip()
+    role = payload.role
     async with SessionLocal() as session:
         existing = (await session.execute(select(AdminUser).where(AdminUser.username == username))).scalar_one_or_none()
         if existing:
@@ -143,16 +168,15 @@ async def remove_admin(admin_id: int) -> dict:
 
 
 @router.put("/settings/admins/{admin_id}")
-async def update_admin(admin_id: int, request: Request) -> dict:
-    body = await request.json()
+async def update_admin(admin_id: int, payload: UpdateAdminRequest) -> dict:
     async with SessionLocal() as session:
         user = await session.get(AdminUser, admin_id)
         if not user:
             raise HTTPException(status_code=404, detail="Admin not found")
-        if "role" in body:
-            user.role = body["role"]
-        if "enabled" in body:
-            user.enabled = body["enabled"]
+        if payload.role is not None:
+            user.role = payload.role
+        if payload.enabled is not None:
+            user.enabled = payload.enabled
         await session.commit()
         return {"id": user.id, "username": user.username, "role": user.role, "enabled": user.enabled}
 
@@ -165,7 +189,6 @@ async def get_setting_section(section: str) -> dict:
 
 
 @router.put("/settings/{section}")
-async def update_setting_section(section: str, request: Request) -> dict:
-    body = await request.json()
+async def update_setting_section(section: str, body: dict[str, Any]) -> dict:
     saved = await _put_setting(section, body)
     return saved

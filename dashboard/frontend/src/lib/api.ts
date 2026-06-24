@@ -32,6 +32,7 @@ import {
   SystemMetrics,
   SystemVersion,
   UptimeData,
+  DashboardOverview,
   WatchdogCrashEvent,
   WatchdogStatus,
 } from '@/lib/types';
@@ -68,8 +69,17 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `Request failed with status ${response.status}`);
+      let message = `Request failed with status ${response.status}`;
+      try {
+        const body = await response.json();
+        if (body?.error?.message) {
+          message = body.error.message;
+        }
+      } catch {
+        const text = await response.text();
+        if (text) message = text;
+      }
+      throw new Error(message);
     }
 
     if (response.status === 204) {
@@ -271,6 +281,10 @@ export class ApiClient {
 
   getBackups() {
     return this.request<BackupEntry[]>('/backups');
+  }
+
+  getOverview() {
+    return this.request<DashboardOverview>('/dashboard/overview');
   }
 
   createBackup(scope: string) {

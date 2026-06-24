@@ -210,6 +210,18 @@ export interface BackupEntry {
   createdBy?: string;
 }
 
+
+
+export interface DashboardOverview {
+  status: ServerOverview;
+  readiness: ReadinessStatus;
+  maps: MapStatus[];
+  metrics: SystemMetrics;
+  systemHistory: MetricsHistory;
+  uptime: UptimeData;
+  backups: BackupEntry[];
+}
+
 export interface BackupSchedule {
   enabled: boolean;
   intervalHours: number;

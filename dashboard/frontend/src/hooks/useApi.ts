@@ -2,16 +2,75 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// ---------------------------------------------------------------------------
+// Module-level request deduplication cache
+// ---------------------------------------------------------------------------
+interface InflightEntry {
+  promise: Promise<unknown>;
+  subscribers: number;
+}
+
+const inflight = new Map<string, InflightEntry>();
+
+function dedupedFetch<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key);
+  if (existing) {
+    existing.subscribers++;
+    return existing.promise as Promise<T>;
+  }
+
+  const promise = fn().finally(() => {
+    inflight.delete(key);
+  });
+
+  inflight.set(key, { promise, subscribers: 1 });
+  return promise;
+}
+
+// ---------------------------------------------------------------------------
+// Focus-awareness helpers
+// ---------------------------------------------------------------------------
+type VisibilityCallback = () => void;
+const visibilityListeners = new Set<VisibilityCallback>();
+let visibilityListenerAttached = false;
+
+function ensureVisibilityListener() {
+  if (visibilityListenerAttached || typeof document === 'undefined') return;
+  visibilityListenerAttached = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      visibilityListeners.forEach((cb) => cb());
+    }
+  });
+}
+
+function subscribeVisibility(cb: VisibilityCallback): () => void {
+  ensureVisibilityListener();
+  visibilityListeners.add(cb);
+  return () => {
+    visibilityListeners.delete(cb);
+  };
+}
+
+function isDocumentHidden(): boolean {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
 interface UseApiOptions<T> {
   enabled?: boolean;
   refreshInterval?: number;
   initialData?: T;
   /** When any element changes, the fetcher is re-invoked immediately. */
   deps?: unknown[];
+  /** Custom deduplication key. Defaults to fetcher.toString(). */
+  dedupKey?: string;
 }
 
 export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> = {}) {
-  const { enabled = true, refreshInterval, initialData, deps } = options;
+  const { enabled = true, refreshInterval, initialData, deps, dedupKey } = options;
   const fetcherRef = useRef(fetcher);
   const enabledRef = useRef(enabled);
   const isMountedRef = useRef(true);
@@ -19,6 +78,13 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   const hasData = useRef(initialData !== undefined);
+
+  // Stable dedup key — falls back to fetcher source text and deps.
+  const stringifiedDeps = deps ? JSON.stringify(deps) : '';
+  const keyRef = useRef(dedupKey ?? `${fetcher.toString()}_${stringifiedDeps}`);
+  useEffect(() => {
+    keyRef.current = dedupKey ?? `${fetcher.toString()}_${stringifiedDeps}`;
+  }, [dedupKey, fetcher, stringifiedDeps]);
 
   useEffect(() => {
     fetcherRef.current = fetcher;
@@ -42,7 +108,7 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
         setLoading(true);
       }
 
-      const next = await fetcherRef.current();
+      const next = await dedupedFetch(keyRef.current, () => fetcherRef.current());
       if (!isMountedRef.current) {
         return next;
       }
@@ -65,6 +131,7 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     }
   }, []);
 
+  // Initial fetch + dep-driven refetch
   useEffect(() => {
     if (!enabled) {
       setLoading(false);
@@ -75,17 +142,63 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, run, ...(deps ?? [])]);
 
+  // Polling: pause while tab hidden, resume + immediate refetch on focus
   useEffect(() => {
     if (!enabled || !refreshInterval) {
       return;
     }
 
-    const intervalId = window.setInterval(() => {
-      void run(false);
-    }, refreshInterval);
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    return () => window.clearInterval(intervalId);
+    const startPolling = () => {
+      if (intervalId !== null) return;
+      intervalId = setInterval(() => {
+        void run(false);
+      }, refreshInterval);
+    };
+
+    const stopPolling = () => {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    // Only start polling if tab is currently visible
+    if (!isDocumentHidden()) {
+      startPolling();
+    }
+
+    // Handle tab visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        stopPolling();
+      } else {
+        void run(false); // refetch immediately on focus
+        startPolling();
+      }
+    };
+
+    const hasDocument = typeof document !== 'undefined';
+    if (hasDocument) {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      stopPolling();
+      if (hasDocument) {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
   }, [enabled, refreshInterval, run]);
+
+  // Refetch on tab re-focus even without polling
+  useEffect(() => {
+    if (!enabled || refreshInterval) return;
+    return subscribeVisibility(() => {
+      void run(false);
+    });
+  }, [enabled, run, refreshInterval]);
 
   return {
     data,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Optional
+
 import asyncio
 import logging
 import os
@@ -7,6 +9,7 @@ import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +31,32 @@ async def _write_audit(session: AsyncSession, action: str, details: dict, reques
     ))
 
 router = APIRouter(tags=["config"])
+
+# ── Pydantic request models ─────────────────────────────────────
+
+
+class ServerPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    password: str | None = None
+
+
+class ServerIdentityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    worldName: str | None = None
+    externalAddress: str | None = None
+
+
+class ConfigBulkUpdateRequest(BaseModel):
+    """Flat mapping of `section.key` to new value strings.
+
+    Extra keys are allowed because config field names are dynamic.
+    """
+    model_config = ConfigDict(extra="allow")
+
+
 
 # Human-friendly labels for Unreal-style keys
 _LABEL_OVERRIDES: dict[str, str] = {
@@ -224,7 +253,7 @@ async def get_config(filename: str, request: Request) -> dict:
 @router.put("/config/{filename}")
 async def update_config(
     filename: str,
-    payload: dict,
+    payload: ConfigBulkUpdateRequest,
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -242,7 +271,8 @@ async def update_config(
             for section, keys in current_config.sections.items()
             for key in keys
         }
-        for compound_key, value in payload.items():
+        changes = payload.model_dump()
+        for compound_key, value in changes.items():
             field = compound_to_field.get(compound_key)
             if not field:
                 logger.warning("Ignoring unknown config field %s in %s", compound_key, filename)
@@ -252,7 +282,7 @@ async def update_config(
             await service.update_config(filename, update, session)
         await _write_audit(session, "config_update", {
             "filename": filename,
-            "changes": {k: v for k, v in payload.items() if "." in k},
+            "changes": {k: v for k, v in changes.items() if "." in k},
         }, request)
         await session.commit()
         config = await service.read_config(filename)
@@ -421,6 +451,7 @@ async def get_server_password() -> dict:
 
 @router.put("/server/password")
 async def set_server_password(
+    payload: ServerPasswordRequest,
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -430,9 +461,8 @@ async def set_server_password(
     Persists the password value in the dashboard DB so it can be re-enabled later.
     Writes the .env file and restarts the game-server containers.
     """
-    body = await request.json()
-    enabled: bool = bool(body.get("enabled", False))
-    new_password: str | None = body.get("password")
+    enabled: bool = payload.enabled
+    new_password: str | None = payload.password
 
     async with _env_lock:
         _, current = _read_env_password()
@@ -507,6 +537,7 @@ async def get_server_identity() -> dict:
 
 @router.put("/server/identity")
 async def set_server_identity(
+    payload: ServerIdentityRequest,
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -517,9 +548,8 @@ async def set_server_identity(
     Writes the .env file and recreates the game-server containers so the new
     values take effect, mirroring the server-password flow.
     """
-    body = await request.json()
-    raw_world = body.get("worldName")
-    raw_external = body.get("externalAddress")
+    raw_world = payload.worldName
+    raw_external = payload.externalAddress
 
     changes: dict[str, str] = {}
     try:

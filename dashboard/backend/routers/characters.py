@@ -3,15 +3,13 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session
 from db.models import AuditLog
 
 router = APIRouter(tags=["characters"])
-
-from services import cache
 
 
 async def _write_audit(session: AsyncSession, action: str, details: dict, request: Request) -> None:
@@ -43,13 +41,7 @@ async def _notify_admin_action(request: Request, action: str, summary: str) -> N
 
 @router.get("/characters")
 async def list_characters(request: Request) -> list[dict]:
-    cached = cache.get("characters")
-    if cached is not None:
-        return cached
-
-    result = await request.app.state.character_service.list_characters()
-    cache.set("characters", result, ttl=30)
-    return result
+    return await request.app.state.character_service.list_characters()
 
 
 @router.get("/characters/stats-schema")
@@ -79,15 +71,15 @@ async def get_inventory(character_id: str, request: Request) -> dict:
 
 
 class CharacterUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     updates: dict
 
 
 @router.put("/characters/{character_id}")
 async def update_character(character_id: str, payload: CharacterUpdateRequest, request: Request) -> dict:
     try:
-        result = await request.app.state.character_service.update_character(character_id, payload.updates)
-        cache.invalidate("characters")
-        return result
+        return await request.app.state.character_service.update_character(character_id, payload.updates)
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
     except PermissionError as exc:
@@ -97,6 +89,8 @@ async def update_character(character_id: str, payload: CharacterUpdateRequest, r
 
 
 class GrantItemRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     template_id: str = Field(min_length=1)
     stack_size: int = Field(default=1, ge=1, le=10000)
     quality_level: int = Field(default=0, ge=0, le=10)
@@ -128,7 +122,6 @@ async def grant_item(
             "item_grant",
             f"Character `{character_id}` granted `{payload.template_id}` ×{payload.stack_size}",
         )
-        cache.invalidate("characters")
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -139,6 +132,8 @@ async def grant_item(
 
 
 class GrantSolariRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     amount: int
 
 
@@ -163,7 +158,6 @@ async def grant_solari(
             request, "solari_grant",
             f"Character `{character_id}` received {payload.amount} solari",
         )
-        cache.invalidate("characters")
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -172,6 +166,8 @@ async def grant_solari(
 
 
 class SetHealthRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     max_health: float
 
 
@@ -191,6 +187,8 @@ async def set_health(character_id: str, payload: SetHealthRequest, request: Requ
 
 
 class TeleportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     x: float
     y: float
     z: float
@@ -217,7 +215,6 @@ async def teleport_character(
             request, "teleport",
             f"Character `{character_id}` → ({int(payload.x)}, {int(payload.y)}, {int(payload.z)})",
         )
-        cache.invalidate("characters")
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -231,4 +228,6 @@ async def list_item_templates(request: Request, search: Optional[str] = None) ->
     try:
         return await request.app.state.character_service.list_item_templates(search)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        import logging
+        logging.getLogger(__name__).exception("list_item_templates failed")
+        raise HTTPException(status_code=500, detail="Failed to retrieve item templates. Check server logs for details.")

@@ -12,11 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session
 from db.models import AuditLog
+from services.cache import invalidate_overview
 
 router = APIRouter(tags=["maps"])
 logger = logging.getLogger(__name__)
-
-from services import cache
 
 VEHICLE_CLASS_PATTERNS = [
     "%ornithopter%",
@@ -93,7 +92,7 @@ async def list_vehicles(map_name: str, request: Request) -> list[dict]:
         columns = await _get_actor_columns(conn)
         class_column = _actor_class_column(columns)
         if class_column is None:
-            logger.warning("dune.actors has no class or class_name column for vehicle tracking")
+            logger.warning("dune.actors has no class/class_name column for vehicle tracking")
             return []
 
         owner_expr = _first_column_expr(columns, ("owner_player_id", "owner_account_id", "owner_id", "account_id"))
@@ -158,7 +157,7 @@ async def teleport_vehicle(
         columns = await _get_actor_columns(conn)
         class_column = _actor_class_column(columns)
         if class_column is None:
-            raise HTTPException(status_code=501, detail="dune.actors has no class or class_name column")
+            raise HTTPException(status_code=501, detail="Vehicle tracking is not supported on this server schema")
 
         actor = await conn.fetchrow(f"""
             SELECT id, {class_column}::text AS class_name, transform::text AS prev_transform
@@ -270,12 +269,8 @@ def _serialize_value(value: Any) -> Any:
 
 @router.get("/maps")
 async def list_maps(request: Request) -> list[dict]:
-    cached = cache.get("maps")
-    if cached is not None:
-        return cached
-
     raw_maps = await request.app.state.docker_service.list_map_statuses()
-    result = [
+    return [
         {
             "name": m.name,
             "status": m.status,
@@ -288,15 +283,13 @@ async def list_maps(request: Request) -> list[dict]:
         }
         for m in raw_maps
     ]
-    cache.set("maps", result, ttl=15)
-    return result
 
 
 @router.post("/maps/{name}/start")
 async def start_map(name: str, request: Request) -> dict[str, str]:
     try:
         result = await request.app.state.docker_service.start_container(name)
-        cache.invalidate("maps", "status")
+        invalidate_overview()
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid container name.") from exc
@@ -306,7 +299,7 @@ async def start_map(name: str, request: Request) -> dict[str, str]:
 async def stop_map(name: str, request: Request) -> dict[str, str]:
     try:
         result = await request.app.state.docker_service.stop_container(name)
-        cache.invalidate("maps", "status")
+        invalidate_overview()
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid container name.") from exc
@@ -316,7 +309,7 @@ async def stop_map(name: str, request: Request) -> dict[str, str]:
 async def restart_map(name: str, request: Request) -> dict[str, str]:
     try:
         result = await request.app.state.docker_service.restart_container(name)
-        cache.invalidate("maps", "status")
+        invalidate_overview()
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid container name.") from exc

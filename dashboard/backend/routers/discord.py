@@ -106,9 +106,9 @@ async def create_webhook(
         create_data = DiscordWebhookCreate(url=payload.url, **flags)
         entry = await request.app.state.discord_service.create_webhook(session, create_data)
         return _webhook_to_frontend(entry)
-    except Exception as exc:
+    except Exception:
         logger.exception("Failed to create Discord webhook")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Failed to create webhook") from None
 
 
 @router.put("/discord/webhooks/{webhook_id}")
