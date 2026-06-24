@@ -4,7 +4,7 @@ import { Shield, ShieldAlert, Trash2 } from 'lucide-react';
 
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 import type { ChatGuardViolation } from '@/lib/types';
 
@@ -16,8 +16,8 @@ const violationLabels: Record<ChatGuardViolation['type'], string> = {
 
 export default function ModerationPage() {
   const { toast } = useToast();
-  const settings = useApi(() => apiClient.getChatGuardSettings(), { refreshInterval: 15000 });
-  const violations = useApi(() => apiClient.getChatGuardViolations(), { refreshInterval: 10000, initialData: [] });
+  const settings = useApiSWR('api/moderation/settings', () => apiClient.getChatGuardSettings(), { refreshInterval: 15_000 });
+  const violations = useApiSWR('api/moderation/violations', () => apiClient.getChatGuardViolations(), { refreshInterval: 10_000, initialData: [] });
 
   const handleClear = async () => {
     if (!window.confirm('Clear all chat guard violations? This action cannot be undone.')) {

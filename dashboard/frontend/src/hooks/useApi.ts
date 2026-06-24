@@ -69,6 +69,13 @@ interface UseApiOptions<T> {
   dedupKey?: string;
 }
 
+/**
+ * @deprecated Migrate to {@link useApiSWR} from './useApiSWR' or use
+ * `useSWR` directly.  SWR provides built-in deduplication, focus-aware
+ * polling, and key-based caching — all of which this hook reimplements
+ * manually.  This file is kept as a fallback while remaining pages are
+ * migrated.
+ */
 export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> = {}) {
   const { enabled = true, refreshInterval, initialData, deps, dedupKey } = options;
   const fetcherRef = useRef(fetcher);

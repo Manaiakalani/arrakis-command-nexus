@@ -1,11 +1,50 @@
 'use client';
 
 import { Clock, Download, FileText, Search } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
-import { LogStream } from '@/components/LogStream';
+import { Skeleton } from '@/components/Skeleton';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+const LogStream = dynamic(
+  () => import('@/components/LogStream').then((mod) => mod.LogStream),
+  {
+    loading: () => (
+      <div className="glass-panel overflow-hidden">
+        <div className="border-b border-th-border-m/80 p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-8 w-20 rounded-full" />
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Skeleton className="h-10 w-64 rounded-xl" />
+              <Skeleton className="h-8 w-28 rounded-full" />
+              <Skeleton className="h-8 w-16 rounded-full" />
+            </div>
+          </div>
+        </div>
+        <div className="min-h-[400px] bg-th-bg/90 p-3 space-y-2">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-4">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-5 w-14 rounded" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 flex-1" />
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-th-border-m/80 px-4 py-2">
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </div>
+    ),
+    ssr: false,
+  },
+);
 
 const timeRanges = [
   { label: '1h', ms: 60 * 60 * 1000 },

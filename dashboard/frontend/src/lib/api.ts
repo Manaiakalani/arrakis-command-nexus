@@ -37,7 +37,7 @@ import {
   WatchdogStatus,
 } from '@/lib/types';
 
-const DEFAULT_BASE_URL = '/api';
+const DEFAULT_BASE_URL = '/api/v1';
 
 function resolveBaseUrl() {
   const explicitBase = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -87,6 +87,11 @@ export class ApiClient {
     }
 
     return (await response.json()) as T;
+  }
+
+  /** Public generic GET — used by the SWR default fetcher. */
+  get<T>(path: string): Promise<T> {
+    return this.request<T>(path);
   }
 
   getStatus() {
