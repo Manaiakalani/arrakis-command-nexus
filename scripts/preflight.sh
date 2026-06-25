@@ -58,6 +58,28 @@ else
   check "RAM meets the ${required_memory} MiB requirement for profile $DEPLOYMENT_PROFILE." "RAM is below the ${required_memory} MiB requirement for profile $DEPLOYMENT_PROFILE." '1'
 fi
 
+## Network address validation --------------------------------------------------
+# EXTERNAL_ADDRESS and GAME_RMQ_PUBLIC_HOST must not be the literal "auto"
+# placeholder at runtime — there is no in-container IP detection. The
+# setup/deploy wizards resolve these during initial configuration.
+ext_addr="$(strip_wrapping_quotes "${EXTERNAL_ADDRESS:-auto}")"
+rmq_host="$(strip_wrapping_quotes "${GAME_RMQ_PUBLIC_HOST:-auto}")"
+
+if [[ "$ext_addr" == "auto" || -z "$ext_addr" ]]; then
+  check 'EXTERNAL_ADDRESS is set to a real IP/hostname.' \
+    'EXTERNAL_ADDRESS is still "auto" (unresolved). Run "dune deploy" or set a real public IP in .env. Containers cannot auto-detect your public IP at runtime.' '1'
+else
+  check 'EXTERNAL_ADDRESS is set to a real IP/hostname.' '' '0'
+fi
+
+if [[ "$rmq_host" == "auto" || -z "$rmq_host" ]]; then
+  check 'GAME_RMQ_PUBLIC_HOST is set to a real IP/hostname.' \
+    'GAME_RMQ_PUBLIC_HOST is still "auto". Set it to your public IP (same as EXTERNAL_ADDRESS) in .env, or the gateway will advertise an unreachable RMQ endpoint to FLS.' '1'
+else
+  check 'GAME_RMQ_PUBLIC_HOST is set to a real IP/hostname.' '' '0'
+fi
+
+## Port availability -----------------------------------------------------------
 port_failures=0
 if have_command docker && docker_compose_ok && have_command python3 && [[ -f "$PROJECT_ROOT/docker-compose.yml" ]]; then
   mapfile -t required_ports < <(compose_expected_ports)
