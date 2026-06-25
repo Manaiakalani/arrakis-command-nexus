@@ -94,6 +94,16 @@ cmd_start() {
   run_compose up -d
   log_success 'Stack started.'
 
+  # Run a lightweight health validation after startup so obvious regressions
+  # surface immediately without waiting for an operator to run doctor.
+  log_info 'Running post-start validation...'
+  sleep 10
+  if "$PROJECT_ROOT/dune" ready >/dev/null 2>&1; then
+    log_success 'Post-start validation passed.'
+  else
+    log_warn 'Post-start validation reported a non-ready stack. Check dune status and dune logs.'
+  fi
+  
   # Apply CPU pinning if the script exists (survives container recreates)
   if [[ -x "$PROJECT_ROOT/scripts/cpu-pin.sh" ]]; then
     log_info 'Applying CPU core affinity...'
@@ -205,6 +215,15 @@ for item in items:
         any_wait = True
 print("WAIT:Services are still warming up" if any_wait else "OK:All services look healthy")
 ')"
+
+  # Look for critical errors that mean the stack is unhealthy despite container status
+  if run_compose logs --no-color --tail=500 2>/dev/null | grep -qi "ArgumentNullException"; then
+    result="FAIL:Director is crash-looping (ArgumentNullException)"
+  elif run_compose logs --no-color --tail=500 2>/dev/null | grep -qi "cannot remove parameter defaults"; then
+    result="FAIL:Database schema migration failed (cannot remove parameter defaults)"
+  elif run_compose logs --no-color --tail=500 2>/dev/null | grep -qi "GamePhaseManager ensure failures"; then
+    result="FAIL:GamePhaseManager ensure failures detected"
+  fi
 
   case "$result" in
     OK:*)
