@@ -207,5 +207,44 @@ if have_command docker && service_exists postgres 2>/dev/null; then
   fi
 fi
 
+# --- FK orphan check (director crash prevention) ---
+if have_command docker && service_exists postgres 2>/dev/null; then
+  db_name="$(strip_wrapping_quotes "${POSTGRES_DB_NAME:-${POSTGRES_DB:-dune_sb_1_4_0_0}}")"
+  orphan_count="$(run_compose exec -T postgres \
+    psql -U "${POSTGRES_USER:-dune}" -d "$db_name" -tAc \
+    "SELECT count(*) FROM dune.encrypted_player_state eps
+     LEFT JOIN dune.encrypted_accounts ea ON eps.account_id = ea.id
+     WHERE ea.id IS NULL;" 2>/dev/null || echo "-1")"
+  orphan_count="${orphan_count//[[:space:]]/}"
+
+  if [[ "$orphan_count" =~ ^[0-9]+$ ]] && ((orphan_count == 0)); then
+    add_result pass 'FK integrity' 'No orphaned player_state rows (0 missing accounts).' ''
+  elif [[ "$orphan_count" =~ ^[0-9]+$ ]] && ((orphan_count > 0)); then
+    add_result fail 'FK integrity' "$orphan_count player_state rows reference missing accounts (director will crash)." \
+      'Restore encrypted_accounts from backup or delete orphaned rows.'
+  else
+    add_result warn 'FK integrity' 'Could not query FK relationships.' ''
+  fi
+fi
+
+# --- DB Schema Function Check ---
+if have_command docker && service_exists postgres 2>/dev/null; then
+  if run_compose logs --no-color --tail=500 postgres 2>/dev/null | grep -qi "cannot remove parameter defaults"; then
+    add_result fail 'DB Schema Migration' 'Found "cannot remove parameter defaults" in Postgres logs.' 'Add DROP FUNCTION statements for the affected functions before starting the stack.'
+  else
+    add_result pass 'DB Schema Migration' 'No schema migration function errors detected.' ''
+  fi
+fi
+
+# --- Plaintext Password Leak Check ---
+if have_command docker && service_exists director 2>/dev/null; then
+  # Look for 'Password=' in director logs which indicates connection string leak
+  if run_compose logs --no-color --tail=500 director 2>/dev/null | grep -qi "Password="; then
+    add_result warn 'Security Leak' 'Director is logging database connection strings in plaintext.' 'Check director logs and suppress connection string output.'
+  else
+    add_result pass 'Security Leak' 'No plaintext passwords detected in Director logs.' ''
+  fi
+fi
+
 print_results
 exit $?

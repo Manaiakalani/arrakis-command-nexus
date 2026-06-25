@@ -80,7 +80,7 @@ async def audit_summary(session: AsyncSession = Depends(get_session)) -> dict:
 
 @router.get("/audit/export")
 async def export_audit_logs(
-    fmt: str = Query("csv", regex="^(csv|json)$"),
+    fmt: str = Query("csv", pattern="^(csv|json)$"),
     category: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
