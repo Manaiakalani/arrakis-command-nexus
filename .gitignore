@@ -9,6 +9,9 @@ secrets/
 *.p12
 *.dump
 
+# Ad-hoc restore/migration scripts (may contain credentials)
+restore-*.sh
+
 # Backups and generated data
 /backups/
 data/
