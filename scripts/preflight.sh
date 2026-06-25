@@ -60,14 +60,17 @@ fi
 
 ## Network address validation --------------------------------------------------
 # EXTERNAL_ADDRESS and GAME_RMQ_PUBLIC_HOST must not be the literal "auto"
-# placeholder at runtime — there is no in-container IP detection. The
-# setup/deploy wizards resolve these during initial configuration.
+# placeholder at runtime. The gateway has in-container IP detection as a
+# fallback, but the director and text-router (.NET binaries) do not —
+# they will pass "auto" literally to FLS, hiding the server from the browser.
+# The 'dune start' command resolves these before compose starts; this check
+# catches manual 'docker compose up' invocations that bypass the CLI.
 ext_addr="$(strip_wrapping_quotes "${EXTERNAL_ADDRESS:-auto}")"
 rmq_host="$(strip_wrapping_quotes "${GAME_RMQ_PUBLIC_HOST:-auto}")"
 
 if [[ "$ext_addr" == "auto" || -z "$ext_addr" ]]; then
   check 'EXTERNAL_ADDRESS is set to a real IP/hostname.' \
-    'EXTERNAL_ADDRESS is still "auto" (unresolved). Run "dune deploy" or set a real public IP in .env. Containers cannot auto-detect your public IP at runtime.' '1'
+    'EXTERNAL_ADDRESS is still "auto" (unresolved). Run "dune start" to auto-resolve, or set a real public IP in .env.' '1'
 else
   check 'EXTERNAL_ADDRESS is set to a real IP/hostname.' '' '0'
 fi
