@@ -187,9 +187,11 @@ def fix_load_world_partition(log, quiet=False):
                     "load_world_partition already patched, skipping"
                 )
                 return
-            # CREATE OR REPLACE (not DROP + CREATE) keeps the heavily-used
-            # partition-claim function continuously available; the signature is
-            # stable so a replace always succeeds.
+            # DROP then CREATE to avoid "cannot remove parameter defaults"
+            # errors when the function signature changes between versions.
+            cur.execute("""
+                DROP FUNCTION IF EXISTS dune.load_world_partition(TEXT, TEXT, BIGINT, BIGINT);
+            """)
             cur.execute("""
                 CREATE OR REPLACE FUNCTION dune.load_world_partition(
                     in_map_name TEXT, in_server_id TEXT,
