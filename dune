@@ -88,10 +88,44 @@ redact_stream() {
 
 cmd_start() {
   require_compose_stack
+  resolve_auto_addresses
   "$PROJECT_ROOT/scripts/preflight.sh"
   log_step "Starting the Dune stack using profile '$DEPLOYMENT_PROFILE'."
   run_compose up -d
   log_success 'Stack started.'
+}
+
+# Resolve EXTERNAL_ADDRESS and GAME_RMQ_PUBLIC_HOST if set to "auto".
+# The director and text-router are .NET binaries without in-container IP
+# detection, so we resolve before docker compose reads .env.  Values are
+# exported into the shell environment (which overrides .env for compose)
+# but NOT written back — "auto" is preserved for future re-resolution
+# on hosts with dynamic public IPs.
+resolve_auto_addresses() {
+  local ext_addr rmq_host resolved
+  ext_addr="$(strip_wrapping_quotes "${EXTERNAL_ADDRESS:-auto}")"
+  rmq_host="$(strip_wrapping_quotes "${GAME_RMQ_PUBLIC_HOST:-auto}")"
+
+  if [[ "$ext_addr" == "auto" || -z "$ext_addr" ]]; then
+    resolved="$(curl -fsS --connect-timeout 5 https://api.ipify.org 2>/dev/null \
+      || curl -fsS --connect-timeout 5 https://ifconfig.me 2>/dev/null || true)"
+    resolved="${resolved//[[:space:]]/}"
+    if [[ -n "$resolved" && "$resolved" =~ ^[0-9A-Za-z.:_-]+$ ]]; then
+      log_info "Resolved EXTERNAL_ADDRESS=auto -> $resolved"
+      export EXTERNAL_ADDRESS="$resolved"
+    else
+      log_warn 'Could not detect public IP. EXTERNAL_ADDRESS remains "auto".'
+      log_warn 'The server may not appear in the browser. Set a real IP in .env.'
+    fi
+  fi
+
+  if [[ "$rmq_host" == "auto" || -z "$rmq_host" ]]; then
+    resolved="${resolved:-$(strip_wrapping_quotes "${EXTERNAL_ADDRESS:-}")}"
+    if [[ -n "$resolved" && "$resolved" != "auto" ]]; then
+      log_info "Resolved GAME_RMQ_PUBLIC_HOST=auto -> $resolved"
+      export GAME_RMQ_PUBLIC_HOST="$resolved"
+    fi
+  fi
 }
 
 cmd_stop() {
