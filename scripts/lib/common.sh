@@ -131,6 +131,12 @@ load_env_file() {
       if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then
         value="${value:1:${#value}-2}"
       fi
+      # Preserve runtime-resolved addresses so .env "auto" doesn't overwrite them.
+      if [[ -n "${__DUNE_ADDR_RESOLVED:-}" ]] \
+         && [[ "$key" == "EXTERNAL_ADDRESS" || "$key" == "GAME_RMQ_PUBLIC_HOST" ]] \
+         && [[ -n "${!key+x}" ]]; then
+        continue
+      fi
       export "$key=$value"
     done < "$env_file"
   fi

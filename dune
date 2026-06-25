@@ -126,6 +126,10 @@ resolve_auto_addresses() {
       export GAME_RMQ_PUBLIC_HOST="$resolved"
     fi
   fi
+
+  # Signal to load_env_file() that these vars were resolved at runtime
+  # and must not be overwritten by .env values during preflight.
+  export __DUNE_ADDR_RESOLVED=1
 }
 
 cmd_stop() {
