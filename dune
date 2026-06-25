@@ -93,6 +93,13 @@ cmd_start() {
   log_step "Starting the Dune stack using profile '$DEPLOYMENT_PROFILE'."
   run_compose up -d
   log_success 'Stack started.'
+
+  # Apply CPU pinning if the script exists (survives container recreates)
+  if [[ -x "$PROJECT_ROOT/scripts/cpu-pin.sh" ]]; then
+    log_info 'Applying CPU core affinity...'
+    bash "$PROJECT_ROOT/scripts/cpu-pin.sh" 2>/dev/null || \
+      log_warn 'CPU pinning failed (non-fatal). Run: bash scripts/cpu-pin.sh'
+  fi
 }
 
 # Resolve EXTERNAL_ADDRESS and GAME_RMQ_PUBLIC_HOST if set to "auto".
