@@ -486,6 +486,15 @@ services:
         "$$OPT_SERVERNAME" "$$HOST_DATACENTER_ID" "$$OPT_DISPLAY_NAME"
         > /etc/app/conf.d/gateway.ini;
         cat /etc/app/conf.d/gateway.ini;
+        if [ "$$GAME_RMQ_PUBLIC_HOST" = "auto" ] || [ -z "$$GAME_RMQ_PUBLIC_HOST" ]; then
+          GAME_RMQ_PUBLIC_HOST=$$(curl -fsS --connect-timeout 5 https://api.ipify.org 2>/dev/null || curl -fsS --connect-timeout 5 https://ifconfig.me 2>/dev/null || echo "");
+          if [ -z "$$GAME_RMQ_PUBLIC_HOST" ]; then echo "[gateway] FATAL: GAME_RMQ_PUBLIC_HOST=auto but public IP detection failed. Set a real IP in .env."; exit 1; fi;
+          echo "[gateway] Resolved GAME_RMQ_PUBLIC_HOST=auto -> $$GAME_RMQ_PUBLIC_HOST";
+        fi;
+        if [ "$$HOST_DATACENTER_IP_ADDRESS" = "auto" ] || [ -z "$$HOST_DATACENTER_IP_ADDRESS" ]; then
+          export HOST_DATACENTER_IP_ADDRESS="$$GAME_RMQ_PUBLIC_HOST";
+          echo "[gateway] Resolved HOST_DATACENTER_IP_ADDRESS=auto -> $$HOST_DATACENTER_IP_ADDRESS";
+        fi;
         sleep 30;
         exec python -m service
         -c /Tools/Battlegroups/GatewayService/service/configs/service.conf
