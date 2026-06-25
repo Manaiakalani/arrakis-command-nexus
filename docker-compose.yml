@@ -284,7 +284,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - python -c "import os; os.kill(1, 0)"
+        - python -c "import os, socket; os.kill(1, 0); socket.create_connection(('postgres', 5432), 2).close()"
       interval: 30s
       timeout: 5s
       retries: 3
@@ -301,6 +301,12 @@ services:
     <<: *container-security
     image: funcom/self-hosting/seabass-server-bg-director:${DUNE_IMAGE_TAG}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -314,6 +320,7 @@ services:
       - --RMQAdminPort
       - "5672"
     environment:
+      Logging__LogLevel__Default: Warning
       Database__address: postgres
       Database__port: "5432"
       Database__user: dune
@@ -388,7 +395,9 @@ services:
       db-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "kill -0 1"]
+      test:
+        - CMD-SHELL
+        - python -c "import os, socket; os.kill(1, 0); socket.create_connection(('postgres', 5432), 2).close(); socket.create_connection(('admin-rmq', 5672), 2).close(); socket.create_connection(('game-rmq', 5672), 2).close()"
       interval: 30s
       timeout: 5s
       retries: 3
@@ -457,7 +466,9 @@ services:
       db-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "kill -0 1"]
+      test:
+        - CMD-SHELL
+        - python -c "import os, socket; os.kill(1, 0); socket.create_connection(('postgres', 5432), 2).close(); socket.create_connection(('admin-rmq', 5672), 2).close(); socket.create_connection(('game-rmq', 5672), 2).close()"
       interval: 30s
       timeout: 5s
       retries: 3
@@ -538,7 +549,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - python -c "import os, signal; os.kill(1, 0)"
+        - python -c "import os, socket; os.kill(1, 0); socket.create_connection(('postgres', 5432), 2).close(); socket.create_connection(('game-rmq', 5672), 2).close()"
       interval: 30s
       timeout: 5s
       retries: 3

@@ -156,6 +156,9 @@ def main() -> int:
             cur.execute(
                 f'ALTER DATABASE "{DATABASE}" SET search_path TO {SCHEMA}, public'
             )
+            # WORKAROUND: Drop store_recovered_vehicle so next schema update recreates it with new signature
+            # (Fixes "cannot remove parameter defaults" when migrating account_id -> character_id)
+            cur.execute("DROP FUNCTION IF EXISTS dune.store_recovered_vehicle CASCADE")
 
     seed_world_partitions(log)
 
