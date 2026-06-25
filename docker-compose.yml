@@ -301,12 +301,6 @@ services:
     <<: *container-security
     image: funcom/self-hosting/seabass-server-bg-director:${DUNE_IMAGE_TAG}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -397,11 +391,11 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - python -c "import os, socket; os.kill(1, 0); socket.create_connection(('postgres', 5432), 2).close(); socket.create_connection(('admin-rmq', 5672), 2).close(); socket.create_connection(('game-rmq', 5672), 2).close()"
+        - wget -qO- http://localhost:8080/health >/dev/null 2>&1 && python -c "import socket; socket.create_connection(('postgres', 5432), 2).close(); socket.create_connection(('admin-rmq', 5672), 2).close(); socket.create_connection(('game-rmq', 5672), 2).close()"
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 45s
     networks:
       default:
         ipv4_address: 10.80.0.5
