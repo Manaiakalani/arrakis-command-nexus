@@ -318,8 +318,36 @@ run_restart_step() {
 
   if confirm 'Restart the stack with the updated images now?' 'Y'; then
     "$PROJECT_ROOT/dune" restart
+    sync_dashboard_update_state
   else
     log_info 'Restart skipped. Run dune restart when you are ready.'
+  fi
+}
+
+sync_dashboard_update_state() {
+  # Notify the dashboard API that the update completed so it clears the
+  # "update available" notification (and Discord alert).  Best-effort only.
+  local api_port admin_token api_url
+  api_port="$(strip_wrapping_quotes "${DASHBOARD_API_PORT:-8080}")"
+  admin_token="$(strip_wrapping_quotes "${DUNE_ADMIN_TOKEN:-}")"
+
+  if [[ -z "$admin_token" ]]; then
+    log_info 'No DUNE_ADMIN_TOKEN set — skipping dashboard update sync.'
+    return 0
+  fi
+
+  # Try container-internal first (API port is not host-mapped), then localhost
+  api_url="http://localhost:${api_port}/api/updates/mark-current"
+  if have_command docker && run_compose exec -T dashboard-api \
+       curl -fsS -X POST "http://localhost:8080/api/updates/mark-current" \
+       -H "X-Admin-Token: ${admin_token}" >/dev/null 2>&1; then
+    log_success 'Dashboard notified: server marked as up-to-date.'
+  elif have_command curl && curl -fsS -X POST "$api_url" \
+       -H "X-Admin-Token: ${admin_token}" >/dev/null 2>&1; then
+    log_success 'Dashboard notified: server marked as up-to-date.'
+  else
+    log_warn 'Could not reach dashboard API to clear update notification.'
+    log_warn "Run manually: curl -X POST $api_url -H 'X-Admin-Token: <token>'"
   fi
 }
 

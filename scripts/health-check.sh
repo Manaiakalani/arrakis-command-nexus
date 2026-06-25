@@ -171,5 +171,41 @@ else
   add_result fail 'Funcom token' 'No Funcom token was found.' 'Run dune init or place the token in secrets/funcom-token.txt.'
 fi
 
+# --- Farm state check (catches DB mismatch / dead connections) ---
+if have_command docker && service_exists postgres 2>/dev/null; then
+  db_name="$(strip_wrapping_quotes "${POSTGRES_DB_NAME:-${POSTGRES_DB:-dune_sb_1_4_0_0}}")"
+  farm_count="$(run_compose exec -T postgres \
+    psql -U "${POSTGRES_USER:-dune}" -d "$db_name" -tAc \
+    "SELECT count(*) FROM dune.farm_state WHERE ready = true;" 2>/dev/null || echo "0")"
+  farm_count="${farm_count//[[:space:]]/}"
+
+  if [[ "$farm_count" =~ ^[0-9]+$ ]] && ((farm_count > 0)); then
+    add_result pass 'Farm state' "$farm_count game server(s) registered and ready in database." ''
+  elif [[ "$farm_count" == "0" ]]; then
+    add_result fail 'Farm state' 'No game servers in farm_state (0 ready rows).' \
+      'Game servers may have dead DB connections. Check for schema mismatch: dune logs survival_1 | grep -i schema'
+  else
+    add_result warn 'Farm state' 'Could not query farm_state table.' \
+      'Verify the schema exists: docker exec dune-awakening-postgres-1 psql -U dune -d '"$db_name"' -c "\\dt dune.*"'
+  fi
+fi
+
+# --- Image / DB schema version alignment check ---
+if have_command docker && service_exists postgres 2>/dev/null; then
+  current_tag="$(strip_wrapping_quotes "${DUNE_IMAGE_TAG:-unknown}")"
+  # Extract the expected schema branch from game server logs (format: sb_X_Y_Z_W)
+  schema_in_logs="$(run_compose logs --no-color --tail=500 survival_1 2>/dev/null \
+    | grep -oP 'sb_[0-9]+_[0-9]+_[0-9]+_[0-9]+' | head -1 || true)"
+  schema_in_db="$db_name"
+
+  if [[ -n "$schema_in_logs" && "$schema_in_logs" != "$schema_in_db" ]]; then
+    add_result fail 'Schema alignment' \
+      "Game binary expects '$schema_in_logs' but database is '$schema_in_db'." \
+      'Recreate the database: ./dune backup && docker exec postgres dropdb ... && ./dune db-init'
+  elif [[ -n "$schema_in_logs" ]]; then
+    add_result pass 'Schema alignment' "Game binary and database both use '$schema_in_logs'." ''
+  fi
+fi
+
 print_results
 exit $?
