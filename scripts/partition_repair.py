@@ -91,6 +91,26 @@ def wait_for_servers(log, min_servers=2):
     return False
 
 
+def _apply_function_definition(log, function_name, create_sql, drop_sql):
+    with get_connection() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            try:
+                cur.execute(create_sql)
+            except Exception as exc:
+                message = str(exc)
+                if "cannot remove parameter defaults from existing function" not in message.lower():
+                    raise
+                log.warning(
+                    "CREATE OR REPLACE failed for %s (%s); dropping and recreating",
+                    function_name,
+                    message,
+                )
+                if drop_sql:
+                    cur.execute(drop_sql)
+                cur.execute(create_sql)
+
+
 def fix_gateway_function(log, quiet=False):
     """Patch get_active_servers_for_gateway() to report each server's true
     per-partition map and to use an INNER JOIN on world_partition.
@@ -132,7 +152,7 @@ def fix_gateway_function(log, quiet=False):
             # false-negative if a future definition merely mentions wp.map in a
             # comment while still selecting fs.map.
             if row and "wp.map, wp.partition_id" not in (row[0] or "").lower():
-                cur.execute("""
+                create_sql = """
                     CREATE OR REPLACE FUNCTION dune.get_active_servers_for_gateway()
                     RETURNS TABLE(server_id text, map text, partition_id bigint,
                                   dimension_index integer, game_addr inet,
@@ -149,7 +169,13 @@ def fix_gateway_function(log, quiet=False):
                             JOIN farm_state AS fs ON fs.server_id = asi.server_id;
                     END
                     $$;
-                """)
+                """
+                _apply_function_definition(
+                    log,
+                    "get_active_servers_for_gateway",
+                    create_sql,
+                    "DROP FUNCTION IF EXISTS dune.get_active_servers_for_gateway();",
+                )
                 log.info(
                     "Patched get_active_servers_for_gateway: report wp.map "
                     "(per-partition map, fixes overworld discovery) + INNER JOIN"
@@ -189,10 +215,7 @@ def fix_load_world_partition(log, quiet=False):
                 return
             # DROP then CREATE to avoid "cannot remove parameter defaults"
             # errors when the function signature changes between versions.
-            cur.execute("""
-                DROP FUNCTION IF EXISTS dune.load_world_partition(TEXT, TEXT, BIGINT, BIGINT);
-            """)
-            cur.execute("""
+            create_sql = """
                 CREATE OR REPLACE FUNCTION dune.load_world_partition(
                     in_map_name TEXT, in_server_id TEXT,
                     in_desired_dimension_index BIGINT, in_desired_partition_id BIGINT)
@@ -257,7 +280,13 @@ def fix_load_world_partition(log, quiet=False):
                     END IF;
                 END
                 $FUNC$;
-            """)
+            """
+            _apply_function_definition(
+                log,
+                "load_world_partition",
+                create_sql,
+                "DROP FUNCTION IF EXISTS dune.load_world_partition(TEXT, TEXT, BIGINT, BIGINT);",
+            )
             log.info("Patched load_world_partition: map-agnostic primary + Overmap fallback")
 
 

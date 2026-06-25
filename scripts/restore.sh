@@ -33,6 +33,30 @@ restore_config_archive() {
   tar -xzf "$archive_file" -C "$PROJECT_ROOT"
 }
 
+validate_restored_database() {
+  local db_name="${POSTGRES_DB_NAME:-${POSTGRES_DB:-dune_sb_1_4_0_0}}"
+  local farm_state_exists world_partition_exists
+
+  log_step 'Validating restored database objects.'
+  farm_state_exists="$(run_compose exec -T postgres \
+    psql -U "${POSTGRES_USER:-dune}" -d "$db_name" -tAc \
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'dune' AND table_name = 'farm_state');" 2>/dev/null || true)"
+  world_partition_exists="$(run_compose exec -T postgres \
+    psql -U "${POSTGRES_USER:-dune}" -d "$db_name" -tAc \
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'dune' AND table_name = 'world_partition');" 2>/dev/null || true)"
+
+  farm_state_exists="${farm_state_exists//[[:space:]]/}"
+  world_partition_exists="${world_partition_exists//[[:space:]]/}"
+
+  if [[ "$farm_state_exists" == 't' && "$world_partition_exists" == 't' ]]; then
+    log_success 'Post-restore validation passed: dune.farm_state and dune.world_partition are present.'
+    return 0
+  fi
+
+  log_warn 'Post-restore validation failed: expected core Dune tables were not found.'
+  return 1
+}
+
 [[ $# -eq 1 ]] || {
   usage
   exit 1
@@ -104,6 +128,10 @@ esac
 if ((${#restart_services[@]} > 0)); then
   log_step 'Restarting game services.'
   run_compose up -d "${restart_services[@]}"
+fi
+
+if [[ "$database_restored" == 'true' ]]; then
+  validate_restored_database
 fi
 
 printf '\nRestore completed.\n'
