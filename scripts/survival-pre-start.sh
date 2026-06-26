@@ -86,6 +86,23 @@ write_usersettings_ini "$SAVED_ROOT/UserSettings"
 # Map-specific subdirectory (UE5 per-map SavedDir — Overmap uses Saved/Overmap/, etc.)
 write_usersettings_ini "$SAVED_ROOT/$MAP_NAME/UserSettings"
 
+# Directly patch DefaultGame.ini MapFpsSettings for reliable FPS override.
+# The UserGame.ini +/- array syntax may not take effect in all UE5 server
+# builds; patching the base config before the binary starts is guaranteed.
+# DefaultGame.ini lives in the container image (not a volume) so the patch
+# is ephemeral per container lifecycle — this script re-applies it on every
+# boot, keeping the repo config the single source of truth.
+DEFAULT_GAME_INI="/home/dune/server/DuneSandbox/Config/DefaultGame.ini"
+if [ -f "$DEFAULT_GAME_INI" ]; then
+  # Survival (HaggaBasin): 20 → 30 FPS
+  sed -i 's/m_Map=(Name="HaggaBasin"), m_MaxFps=20/m_Map=(Name="HaggaBasin"), m_MaxFps=30/' "$DEFAULT_GAME_INI"
+  # Hubs: 10 → 20 FPS
+  sed -i 's/m_Map=(Name="HarkoVillage"), m_MaxFps=10/m_Map=(Name="HarkoVillage"), m_MaxFps=20/' "$DEFAULT_GAME_INI"
+  sed -i 's/m_Map=(Name="Arrakeen"), m_MaxFps=10/m_Map=(Name="Arrakeen"), m_MaxFps=20/' "$DEFAULT_GAME_INI"
+  sed -i 's/m_Map=(Name="Arakkeen"), m_MaxFps=10/m_Map=(Name="Arakkeen"), m_MaxFps=20/' "$DEFAULT_GAME_INI"
+  echo "[pre-start] Patched DefaultGame.ini: survival FPS 20→30, hubs 10→20"
+fi
+
 # Wait for the target game port to be released by the previous container instance
 # before launching. This avoids the container-recreation bind race we hit with
 # host networking / UDP when the old server socket is still closing.
