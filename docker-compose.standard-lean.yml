@@ -106,6 +106,10 @@ services:
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=60
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=500000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=500000
+      - -ini:engine:[/Script/DuneSandbox.MapFpsSettings]:Overmap=30
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Systems/Overmap/Overmap.Overmap
       - -Port=7778
@@ -156,6 +160,10 @@ services:
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=60
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=500000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=500000
+      - -ini:engine:[/Script/DuneSandbox.MapFpsSettings]:HaggaBasin=30
       # Sandstorm crash mitigation (SIGSEGV at 0x320 in BeginPlay)
       - -ini:engine:[ConsoleVariables]:Sandstorm.Enabled=false
       - -ini:engine:[ConsoleVariables]:Sandstorm.Treasure.Enabled=false
@@ -209,6 +217,10 @@ services:
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=60
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=500000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=500000
+      - -ini:engine:[/Script/DuneSandbox.MapFpsSettings]:DeepDesert=30
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
       - -Port=7779
@@ -259,6 +271,10 @@ services:
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=60
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=500000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=500000
+      - -ini:engine:[/Script/DuneSandbox.MapFpsSettings]:Arrakeen=30
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/Arrakeen/SH_Arrakeen.SH_Arrakeen
       - -Port=7780
@@ -309,6 +325,10 @@ services:
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=60
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=500000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=500000
+      - -ini:engine:[/Script/DuneSandbox.MapFpsSettings]:HarkoVillage=30
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/HarkoVillage/SH_HarkoVillage.SH_HarkoVillage
       - -Port=7781
