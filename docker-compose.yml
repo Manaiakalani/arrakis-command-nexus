@@ -391,7 +391,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - wget -qO- http://localhost:8080/health >/dev/null 2>&1 && python -c "import socket; socket.create_connection(('postgres', 5432), 2).close(); socket.create_connection(('admin-rmq', 5672), 2).close(); socket.create_connection(('game-rmq', 5672), 2).close()"
+        - wget -qO /dev/null http://127.0.0.1:8080/ && nc -z postgres 5432 && nc -z admin-rmq 5672 && nc -z game-rmq 5672
       interval: 30s
       timeout: 10s
       retries: 3
@@ -462,7 +462,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - python -c "import os, socket; os.kill(1, 0); socket.create_connection(('postgres', 5432), 2).close(); socket.create_connection(('admin-rmq', 5672), 2).close(); socket.create_connection(('game-rmq', 5672), 2).close()"
+        - wget -qO /dev/null http://127.0.0.1:8080/status && nc -z postgres 5432 && nc -z admin-rmq 5672 && nc -z game-rmq 5672
       interval: 30s
       timeout: 5s
       retries: 3
