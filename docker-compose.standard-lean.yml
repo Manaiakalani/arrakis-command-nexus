@@ -102,10 +102,6 @@ services:
       - --RMQAdminPort=5672
       - -MultiHome=$$POD_IP
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Systems/Overmap/Overmap.Overmap
       - -Port=7778
@@ -152,10 +148,11 @@ services:
       - --RMQAdminPort=5672
       - -MultiHome=$$POD_IP
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+      # Sandstorm crash mitigation (SIGSEGV at 0x320 in BeginPlay)
+      - -ini:engine:[ConsoleVariables]:Sandstorm.Enabled=false
+      - -ini:engine:[ConsoleVariables]:Sandstorm.Treasure.Enabled=false
+      - -ini:game:[/Script/DuneSandbox.SandStormConfig]:m_bAutoSpawnEnabled=false
+      - -ini:game:[/Script/DuneSandbox.SandStormConfig]:m_bCoriolisAutoSpawnEnabled=false
       - -Port=7777
       - -IGWPort=7888
       - -PartitionIndex=1
@@ -200,10 +197,6 @@ services:
       - --RMQAdminPort=5672
       - -MultiHome=$$POD_IP
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/Arrakis/DeepDesert_1/DeepDesert_1.DeepDesert_1
       - -Port=7779
@@ -250,10 +243,6 @@ services:
       - --RMQAdminPort=5672
       - -MultiHome=$$POD_IP
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/Arrakeen/SH_Arrakeen.SH_Arrakeen
       - -Port=7780
@@ -300,10 +289,6 @@ services:
       - --RMQAdminPort=5672
       - -MultiHome=$$POD_IP
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
-      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       # Override ServerDefaultMap so this partition loads its intended level; a positional map arg placed after options is ignored by UE (see docker-compose.basic.yml overmap for rationale).
       - -ini:engine:[/Script/EngineSettings.GameMapsSettings]:ServerDefaultMap=/Game/Dune/Maps/SocialHubs/HarkoVillage/SH_HarkoVillage.SH_HarkoVillage
       - -Port=7781
