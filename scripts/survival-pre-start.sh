@@ -11,32 +11,80 @@ if [[ ! "$MAP_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
   exit 1
 fi
 
-# Write Bgd.ServerDisplayName to UserEngine.ini before the game starts.
-# The -ini:engine:[ConsoleVariables]:Bgd.ServerDisplayName= command-line arg
-# splits on spaces, so we write directly to the UserSettings ini file instead.
-# UE5 reads UserSettings from Saved/UserSettings/ (root) AND from
-# Saved/<MapName>/UserSettings/ (map-specific subdirectory). We write both
-# so the name is applied regardless of which path the binary uses.
+# Copy the repo-mounted engine AND game config into the per-map Saved/UserSettings
+# tree before the game starts, then apply the per-partition display name override.
+# The engine binary reads UserSettings from Saved/UserSettings/ (root) and from
+# Saved/<MapName>/UserSettings/ (map-specific subdirectory); we write both so the
+# settings are applied regardless of which path the binary uses.
+#
+# run.sh only symlinks Saved/UserSettings → Engine config path. We also need
+# the Game config path so UE5 finds UserGame.ini (e.g. MapFpsSettings overrides).
 SAVED_ROOT="/home/dune/server/DuneSandbox/Saved"
+WORKSPACE_USERENGINE="/workspace/config/UserEngine.ini"
+WORKSPACE_USERGAME="/workspace/config/UserGame.ini"
+
+# Symlink UserSettings into the UE5 Game config path (DuneSandbox project).
+# run.sh already handles Engine; this handles Game config (UserGame.ini).
+GAME_CONFIG_DIR="/home/dune/.config/Epic/Unreal Engine/DuneSandbox"
+mkdir -p "$GAME_CONFIG_DIR"
+ln -sfn "$SAVED_ROOT/UserSettings" "$GAME_CONFIG_DIR/Config"
+echo "[pre-start] Linked UserSettings → Game config path"
 # Per-partition display name overrides DUNE_SERVER_DISPLAY_NAME and WORLD_NAME
 DISPLAY_NAME="${PARTITION_DISPLAY_NAME:-${DUNE_SERVER_DISPLAY_NAME:-${WORLD_NAME:-}}}"
-if [ -n "$DISPLAY_NAME" ]; then
-  write_usersettings_ini() {
-    local dir="$1"
-    mkdir -p "$dir"
-    # Always rewrite so display name changes take effect on restart.
-    cat > "$dir/UserEngine.ini" << INIEOF
-# arrakis-command-nexus managed -- do not edit manually
-[ConsoleVariables]
-Bgd.ServerDisplayName=$DISPLAY_NAME
-INIEOF
-    echo "[pre-start] Wrote Bgd.ServerDisplayName='$DISPLAY_NAME' to $dir/UserEngine.ini"
-  }
-  # Root-level UserSettings (read by some map binaries)
-  write_usersettings_ini "$SAVED_ROOT/UserSettings"
-  # Map-specific subdirectory (UE5 per-map SavedDir — Overmap uses Saved/Overmap/, etc.)
-  write_usersettings_ini "$SAVED_ROOT/$MAP_NAME/UserSettings"
-fi
+write_usersettings_ini() {
+  local dir="$1"
+  mkdir -p "$dir"
+  local target="$dir/UserEngine.ini"
+  local source="$WORKSPACE_USERENGINE"
+
+  if [ -f "$source" ]; then
+    cp "$source" "$target"
+  else
+    : > "$target"
+  fi
+
+  # Also copy UserGame.ini (MapFpsSettings, gameplay overrides) if it exists.
+  local game_source="$WORKSPACE_USERGAME"
+  local game_target="$dir/UserGame.ini"
+  if [ -f "$game_source" ]; then
+    cp "$game_source" "$game_target"
+    echo "[pre-start] Copied UserGame.ini to $game_target"
+  fi
+
+  if [ -n "$DISPLAY_NAME" ]; then
+    python3 - "$target" "$DISPLAY_NAME" <<'PY'
+import pathlib
+import re
+import sys
+
+target_path, display_name = sys.argv[1:]
+path = pathlib.Path(target_path)
+lines = path.read_text(encoding="utf-8").splitlines()
+replaced = False
+for index, line in enumerate(lines):
+    if re.match(r"^\s*Bgd\.ServerDisplayName\s*=", line):
+        lines[index] = f"Bgd.ServerDisplayName={display_name}"
+        replaced = True
+        break
+if not replaced:
+    if not lines or lines[-1] != "":
+        lines.append("")
+    if "[ConsoleVariables]" not in lines:
+        lines.extend(["[ConsoleVariables]"])
+    lines.append(f"Bgd.ServerDisplayName={display_name}")
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+  fi
+
+  echo "[pre-start] Applied engine config to $target"
+  if [ -n "$DISPLAY_NAME" ]; then
+    echo "[pre-start] Wrote Bgd.ServerDisplayName='$DISPLAY_NAME' to $target"
+  fi
+}
+# Root-level UserSettings (read by some map binaries)
+write_usersettings_ini "$SAVED_ROOT/UserSettings"
+# Map-specific subdirectory (UE5 per-map SavedDir — Overmap uses Saved/Overmap/, etc.)
+write_usersettings_ini "$SAVED_ROOT/$MAP_NAME/UserSettings"
 
 # Wait for the target game port to be released by the previous container instance
 # before launching. This avoids the container-recreation bind race we hit with
