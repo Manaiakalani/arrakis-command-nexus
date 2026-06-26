@@ -19,8 +19,7 @@
 # first physical cores and put the rest in the background pool.
 #
 # FALLBACK ONLY: if detection fails, the legacy 6C/12T layout is used:
-#   CPUSET_SURVIVAL=0,1,6,7
-#   CPUSET_DEEP_DESERT=2,8
+#   CPUSET_SURVIVAL=0,1,2,6,7,8   (shared by survival + deep_desert)
 #   CPUSET_BACKGROUND=3,4,5,9,10,11
 # Override CPUSET_* for unusual hardware or hand-tuned layouts.
 #
@@ -87,8 +86,7 @@ all_online_cpus() {
 }
 
 detect_cpuset_defaults() {
-  local fallback_survival='0,1,6,7'
-  local fallback_deep_desert='2,8'
+  local fallback_survival='0,1,2,6,7,8'
   local fallback_background='3,4,5,9,10,11'
   local cpu_dir cpu online pkg core key freq
   local -A core_cpus=()
@@ -113,7 +111,7 @@ detect_cpuset_defaults() {
 
   if ((${#core_cpus[@]} == 0)); then
     DETECTED_CPUSET_SURVIVAL="$fallback_survival"
-    DETECTED_CPUSET_DEEP_DESERT="$fallback_deep_desert"
+    DETECTED_CPUSET_DEEP_DESERT="$fallback_survival"
     DETECTED_CPUSET_BACKGROUND="$fallback_background"
     return 0
   fi
@@ -125,31 +123,43 @@ detect_cpuset_defaults() {
   )
 
   DETECTED_CPUSET_SURVIVAL=''
-  DETECTED_CPUSET_DEEP_DESERT=''
   DETECTED_CPUSET_BACKGROUND=''
 
-  local survival_cores=2
-  local deep_desert_cores=1
-  if ((${#records[@]} <= 2)); then
-    survival_cores=1
+  # On hybrid CPUs (Intel 12th-gen+), all high-frequency P-cores go to the
+  # shared player-facing pool (used by both survival_1 and deep_desert_1).
+  # Lower-frequency E-cores form the background pool for hubs and infra.
+  #
+  # The old layout gave deep_desert only 1 physical core (2 logical CPUs),
+  # causing catastrophic game-thread starvation: UE5 spawns ~52 threads per
+  # server but only 2 CPUs were available, producing 5-22 second tick stalls
+  # and severe rubberbanding.
+  #
+  # Boundary: any core whose max frequency >= 80% of the fastest core is
+  # classified as a P-core. On non-hybrid CPUs all cores share a pool.
+  local top_freq=0
+  if ((${#records[@]} > 0)); then
+    top_freq="${records[0]%% *}"
+    top_freq=$((10#$top_freq))
   fi
+  local threshold=$(( top_freq * 80 / 100 ))
 
-  local idx=0
   for record in "${records[@]}"; do
+    local freq="${record%% *}"
+    freq=$((10#$freq))
     cpus="${record#* * }"
-    if ((idx < survival_cores)); then
+    if ((top_freq > 0 && freq >= threshold)); then
       DETECTED_CPUSET_SURVIVAL="$(append_csv "$DETECTED_CPUSET_SURVIVAL" "$cpus")"
-    elif ((idx < survival_cores + deep_desert_cores)); then
-      DETECTED_CPUSET_DEEP_DESERT="$(append_csv "$DETECTED_CPUSET_DEEP_DESERT" "$cpus")"
     else
       DETECTED_CPUSET_BACKGROUND="$(append_csv "$DETECTED_CPUSET_BACKGROUND" "$cpus")"
     fi
-    idx=$((idx + 1))
   done
 
+  # Both player-facing maps share the same P-core pool
+  DETECTED_CPUSET_DEEP_DESERT="$DETECTED_CPUSET_SURVIVAL"
+
   DETECTED_CPUSET_SURVIVAL="${DETECTED_CPUSET_SURVIVAL:-$(all_online_cpus || printf '%s' "$fallback_survival")}"
-  DETECTED_CPUSET_DEEP_DESERT="${DETECTED_CPUSET_DEEP_DESERT:-$DETECTED_CPUSET_SURVIVAL}"
-  DETECTED_CPUSET_BACKGROUND="${DETECTED_CPUSET_BACKGROUND:-$DETECTED_CPUSET_DEEP_DESERT}"
+  DETECTED_CPUSET_DEEP_DESERT="$DETECTED_CPUSET_SURVIVAL"
+  DETECTED_CPUSET_BACKGROUND="${DETECTED_CPUSET_BACKGROUND:-$(all_online_cpus || printf '%s' "$fallback_background")}"
 }
 
 detect_primary_nic() {
@@ -174,15 +184,15 @@ detect_primary_nic() {
 }
 
 detect_cpuset_defaults
-CPUSET_SURVIVAL="${CPUSET_SURVIVAL:-$DETECTED_CPUSET_SURVIVAL}"           # main world: 2 physical cores where possible
-CPUSET_DEEP_DESERT="${CPUSET_DEEP_DESERT:-$DETECTED_CPUSET_DEEP_DESERT}" # heavy destination: 1 physical core where possible
-CPUSET_BACKGROUND="${CPUSET_BACKGROUND:-$DETECTED_CPUSET_BACKGROUND}"     # hubs + infra + NIC IRQs
+CPUSET_SURVIVAL="${CPUSET_SURVIVAL:-$DETECTED_CPUSET_SURVIVAL}"           # player-facing: all P-cores (shared by survival + deep_desert)
+CPUSET_DEEP_DESERT="${CPUSET_DEEP_DESERT:-$DETECTED_CPUSET_DEEP_DESERT}" # shares survival pool (was 1 core — caused tick stalls)
+CPUSET_BACKGROUND="${CPUSET_BACKGROUND:-$DETECTED_CPUSET_BACKGROUND}"     # hubs + infra: E-cores
 
 cpuset_for() {
   case "$1" in
-    survival_1)     echo "$CPUSET_SURVIVAL" ;;
-    deep_desert_1)  echo "$CPUSET_DEEP_DESERT" ;;
-    *)              echo "$CPUSET_BACKGROUND" ;;
+    survival_1)    echo "$CPUSET_SURVIVAL" ;;
+    deep_desert_1) echo "$CPUSET_DEEP_DESERT" ;;
+    *)             echo "$CPUSET_BACKGROUND" ;;
   esac
 }
 
