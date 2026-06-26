@@ -72,6 +72,12 @@ net.core.wmem_default = 4194304
 # Increase connection backlog for burst player joins
 net.core.somaxconn = 4096
 net.core.netdev_max_backlog = 5000
+# Increase softnet budget to reduce time_squeeze events on busy CPUs.
+# Default 300 packets / 2000 us is too low when multiple game servers
+# share a NIC; the kernel drops back to the poll loop before draining
+# all pending packets, causing scheduling jitter on game-server cores.
+net.core.netdev_budget = 600
+net.core.netdev_budget_usecs = 4000
 
 # --- General ---
 # Increase max open files for containers with many connections

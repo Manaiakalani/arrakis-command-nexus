@@ -1,6 +1,9 @@
 # Hard-coded for Intel Core Ultra 7 155H (P-cores 0-5, E-cores 6-21).
 # Adjust ranges if running on different hardware. The cpu-pin.sh script
 # auto-detects topology at runtime; this overlay is for docker-compose only.
+# CPU pinning overlay — Intel Core Ultra 7 155H layout
+# P-cores 0-5 (shared by survival + deep_desert), E-cores 6-21 (hubs + infra)
+# Adjust cpuset values for different hardware.
 services:
   survival_1:
     cpuset: "0-5"
