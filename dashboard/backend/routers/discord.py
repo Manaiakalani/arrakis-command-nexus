@@ -65,6 +65,17 @@ class FrontendWebhookCreate(BaseModel):
     lastTriggeredAt: str | None = None
     recentEvents: list | None = None
 
+    @property
+    def validated_url(self) -> str:
+        """Validate that the URL is a Discord webhook to prevent SSRF."""
+        _ALLOWED_PREFIXES = (
+            "https://discord.com/api/webhooks/",
+            "https://discordapp.com/api/webhooks/",
+        )
+        if not self.url.startswith(_ALLOWED_PREFIXES):
+            raise ValueError("URL must be a Discord webhook URL (https://discord.com/api/webhooks/...)")
+        return self.url
+
 
 class FrontendWebhookUpdate(BaseModel):
     name: str | None = None
@@ -103,9 +114,13 @@ async def create_webhook(
 ) -> dict:
     try:
         flags = _events_to_flags(payload.events)
+        # Validate Discord webhook URL to prevent SSRF
+        _ = payload.validated_url
         create_data = DiscordWebhookCreate(url=payload.url, **flags)
         entry = await request.app.state.discord_service.create_webhook(session, create_data)
         return _webhook_to_frontend(entry)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
     except Exception:
         logger.exception("Failed to create Discord webhook")
         raise HTTPException(status_code=500, detail="Failed to create webhook") from None

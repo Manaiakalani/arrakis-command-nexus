@@ -19,6 +19,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from middleware.request_utils import get_client_ip
+
 _EXEMPT_PATHS = frozenset({"/health", "/api/health", "/ready", "/api/ready"})
 
 _RPM = int(os.getenv("DUNE_RATE_LIMIT_RPM", "120"))
@@ -58,7 +60,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.url.path in _EXEMPT_PATHS:
             return await call_next(request)  # type: ignore[misc]
 
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = get_client_ip(request)
         now = time.monotonic()
 
         # Periodic cleanup of stale buckets (every 5 minutes)

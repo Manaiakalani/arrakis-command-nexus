@@ -12,7 +12,7 @@ from starlette.responses import Response
 
 from middleware.request_utils import get_client_ip, get_sanitized_path
 
-SAFE_PATHS = {"/api/ping", "/api/health", "/api/public/status"}
+SAFE_PATHS = {"/api/ping", "/api/health", "/api/ready", "/api/v1/health", "/api/v1/ready", "/api/public/status"}
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _TRUE_VALUES = {"1", "true", "yes", "on"}
 _REQUIRED_VALUES = _TRUE_VALUES | {"required"}
@@ -59,8 +59,12 @@ def _auth_error(request: Request) -> tuple[int, str] | None:
         return None
 
     expected_token = os.getenv("DUNE_ADMIN_TOKEN", "").strip()
-    read_auth_required = os.getenv("DUNE_ADMIN_READ_AUTH", "false").lower() in _REQUIRED_VALUES
+    read_auth_required = os.getenv("DUNE_ADMIN_READ_AUTH", "true").lower() in _REQUIRED_VALUES
     provided_token = request.headers.get("X-Admin-Token", "").strip()
+
+    # SSE endpoints cannot send headers — accept token from query param
+    if not provided_token and path.startswith("/api/events/"):
+        provided_token = request.query_params.get("token", "").strip()
 
     if request.method == "GET" and not read_auth_required:
         return None
