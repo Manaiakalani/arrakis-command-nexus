@@ -143,8 +143,10 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
               {field.description ? <p className="mt-1 text-sm text-th-text-m">{field.description}</p> : null}
               {defaultHint ? <p className="mt-1 text-xs text-th-text-m/60">{defaultHint}</p> : null}
             </div>
-            <div className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors cursor-pointer"
-              style={{ backgroundColor: Boolean(value) ? 'rgb(245, 158, 11)' : 'rgb(107, 114, 128)' }}
+            <div className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors cursor-pointer',
+                Boolean(value) ? 'bg-amber-500' : 'bg-slate-500',
+              )}
             >
               <input
                 type="checkbox"

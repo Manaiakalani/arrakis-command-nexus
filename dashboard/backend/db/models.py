@@ -76,7 +76,7 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(255), index=True)
     details: Mapped[dict[str, Any]] = mapped_column(JSON())
     performed_by: Mapped[str] = mapped_column(String(255), default="dashboard")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
 
 
 class MetricSnapshot(Base):

@@ -25,6 +25,10 @@ interface UseDashboardSSEOptions {
   onUpdate: (patch: Partial<DashboardOverview>) => void;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 /**
  * Connects to the SSE stream and patches DashboardOverview state
  * as events arrive. Falls back silently — the parent component
@@ -43,23 +47,28 @@ export function useDashboardSSE(options: UseDashboardSSEOptions) {
 
       switch (eventType) {
         case 'status-update':
-          update({ status: data as unknown as DashboardOverview['status'] });
+          if (isRecord(data)) {
+            update({ status: data as unknown as DashboardOverview['status'] });
+          }
           break;
         case 'map-update':
-          update({ maps: data as unknown as DashboardOverview['maps'] });
+          if (Array.isArray(data)) {
+            update({ maps: data as unknown as DashboardOverview['maps'] });
+          }
           break;
         case 'metrics-update':
-          update({ metrics: data as unknown as DashboardOverview['metrics'] });
+          if (isRecord(data)) {
+            update({ metrics: data as unknown as DashboardOverview['metrics'] });
+          }
           break;
         case 'player-update':
-          // player-update only contains { playersOnline: number }
-          // Merge it into the status sub-object
-          update({
-            status: { playersOnline: (data as unknown as { playersOnline: number }).playersOnline } as DashboardOverview['status'],
-          });
+          if (isRecord(data) && typeof data.playersOnline === 'number') {
+            update({
+              status: { playersOnline: data.playersOnline } as unknown as DashboardOverview['status'],
+            });
+          }
           break;
         case 'connected':
-          // No state update needed — just confirms connection
           break;
         default:
           break;

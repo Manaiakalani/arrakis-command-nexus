@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -271,7 +271,7 @@ async def remove_allowlist(
 
 @router.get("/players/connections")
 async def list_connections(
-    limit: int = 200,
+    limit: int = Query(200, ge=1, le=1000),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
     result = await session.execute(

@@ -69,10 +69,10 @@ export default function OverviewPage() {
   });
 
 
-  const refetchOverview = async () => { await overviewMutate(); };
-  const status = useMemo(() => ({ data: overviewData?.status, loading: overviewLoading, error: overviewError, refetch: refetchOverview }), [overviewData, overviewLoading, overviewError, overviewMutate]);
+  const refetchOverview = useCallback(async () => { await overviewMutate(); }, [overviewMutate]);
+  const status = useMemo(() => ({ data: overviewData?.status, loading: overviewLoading, error: overviewError, refetch: refetchOverview }), [overviewData?.status, overviewLoading, overviewError, refetchOverview]);
   const readiness = useMemo(() => ({ data: overviewData?.readiness }), [overviewData?.readiness]);
-  const maps = useMemo(() => ({ data: overviewData?.maps, refetch: refetchOverview }), [overviewData, overviewMutate]);
+  const maps = useMemo(() => ({ data: overviewData?.maps, refetch: refetchOverview }), [overviewData?.maps, refetchOverview]);
   const metrics = useMemo(() => ({ data: overviewData?.metrics }), [overviewData?.metrics]);
   const resourceHistory = useMemo(() => ({ data: overviewData?.systemHistory ?? emptySystemHistory }), [overviewData?.systemHistory]);
   const uptime = useMemo(() => ({ data: overviewData?.uptime ?? emptyUptimeData }), [overviewData?.uptime]);

@@ -59,7 +59,7 @@ def _auth_error(request: Request) -> tuple[int, str] | None:
         return None
 
     expected_token = os.getenv("DUNE_ADMIN_TOKEN", "").strip()
-    read_auth_required = os.getenv("DUNE_ADMIN_READ_AUTH", "false").lower() in _REQUIRED_VALUES
+    read_auth_required = os.getenv("DUNE_ADMIN_READ_AUTH", "true").lower() in _REQUIRED_VALUES
     provided_token = request.headers.get("X-Admin-Token", "").strip()
 
     if request.method == "GET" and not read_auth_required:

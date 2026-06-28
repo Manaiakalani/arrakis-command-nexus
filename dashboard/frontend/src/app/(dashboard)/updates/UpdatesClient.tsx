@@ -98,8 +98,8 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
           setChecking(false);
         }
       }, 5_000);
-    } catch (error: any) {
-      toast(error?.message || 'Failed to check for updates', 'error');
+    } catch (error) {
+      toast((error instanceof Error ? error.message : null) || 'Failed to check for updates', 'error');
       setChecking(false);
     }
   };
@@ -114,8 +114,8 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
       } else {
         toast(result.error || 'Failed to mark as current', 'error');
       }
-    } catch (error: any) {
-      toast(error?.message || 'Failed to mark as current', 'error');
+    } catch (error) {
+      toast((error instanceof Error ? error.message : null) || 'Failed to mark as current', 'error');
       console.error(error);
     } finally {
       setMarking(false);
@@ -174,9 +174,9 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
         setUpdatePhase('failed');
         toast(result.error || 'Failed to start update', 'error');
       }
-    } catch (error: any) {
+    } catch (error) {
       setUpdatePhase('failed');
-      toast(error?.message || 'Failed to trigger update', 'error');
+      toast((error instanceof Error ? error.message : null) || 'Failed to trigger update', 'error');
       console.error(error);
     } finally {
       setTriggering(false);
@@ -195,8 +195,8 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
       toast('Rollback complete — pre-update backup restored', 'success');
       setUpdatePhase('idle');
       await loadStatus();
-    } catch (error: any) {
-      toast(error?.message || 'Rollback failed', 'error');
+    } catch (error) {
+      toast((error instanceof Error ? error.message : null) || 'Rollback failed', 'error');
     } finally {
       setRollingBack(false);
     }
@@ -210,8 +210,8 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
       const result = await apiClient.setAutoUpdate(newValue);
       setStatus((prev) => prev ? { ...prev, auto_update_enabled: result.auto_update_enabled } : prev);
       toast(result.auto_update_enabled ? 'Auto-update enabled' : 'Auto-update disabled', 'success');
-    } catch (error: any) {
-      toast(error?.message || 'Failed to update setting', 'error');
+    } catch (error) {
+      toast((error instanceof Error ? error.message : null) || 'Failed to update setting', 'error');
     }
   };
 
