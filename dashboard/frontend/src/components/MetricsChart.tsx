@@ -93,7 +93,7 @@ export function MetricsChart({
   const tooltipStyles = getTooltipStyles();
 
   return (
-    <div className="glass-panel p-5">
+    <div className="glass-panel p-5" role="img" aria-label={`${title} chart: ${series.map((s) => s.label).join(', ')}`}>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="section-title">Telemetry</p>

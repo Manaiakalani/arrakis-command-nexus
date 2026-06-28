@@ -59,7 +59,7 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
 
   const handleEvent = useCallback((event: { type: string; data: unknown }) => {
     const logEvent = parseLogEvent(event.data);
-    setSseMessages((prev) => [...prev, logEvent]);
+    setSseMessages((prev) => [...prev, logEvent].slice(-2000));
   }, []);
 
   const { status } = useSSE(endpoint, { onEvent: handleEvent });
