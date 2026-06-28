@@ -11,6 +11,8 @@ export function middleware(request: NextRequest) {
   }
 
   const requestHeaders = new Headers(request.headers);
+  // Strip client-supplied role header to prevent privilege escalation
+  requestHeaders.delete('X-Admin-Role');
   if (!requestHeaders.has('X-Admin-Token')) {
     requestHeaders.set('X-Admin-Token', token);
   }
