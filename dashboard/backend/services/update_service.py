@@ -412,28 +412,8 @@ class UpdateService:
                 verify_error = str(exc)
                 logger.warning("Post-update verification error: %s", exc)
 
-            # Rollback if update failed or verification failed
-            if errors or not verify_ok:
-                logger.error("Update failed or verification failed, rolling back to tag %s", old_tag)
-                if old_tag and old_tag != "unknown" and old_tag != new_tag:
-                    if env_file.exists():
-                        lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
-                        for i, line in enumerate(lines):
-                            if line.startswith("DUNE_IMAGE_TAG="):
-                                lines[i] = f"DUNE_IMAGE_TAG={old_tag}\n"
-                                break
-                        env_file.write_text("".join(lines), encoding="utf-8")
-                        logger.info("Reverted DUNE_IMAGE_TAG=%s in .env", old_tag)
-                    self.current_tag = old_tag
-
-                    try:
-                        logger.info("Rolling back containers to %s", old_tag)
-                        await self._compose_recreate_tagged_services()
-                    except Exception as rb_exc:
-                        logger.error("Rollback recreate failed: %s", rb_exc)
-                        errors["_rollback"] = str(rb_exc)
-
-            # Mark as current based on recreate + verification outcome
+            # Mark as current or rollback based on recreate + verification outcome
+            rolled_back = False
             if verify_ok and not errors:
                 if self._latest_steam_build:
                     self._baseline_steam_build = self._latest_steam_build
@@ -449,37 +429,31 @@ class UpdateService:
                 self._last_check = datetime.now()
                 self._persist_state()
                 logger.warning("Update applied but verification could not run: %s", verify_error)
-            elif not errors and not verify_ok:
-                # Compose succeeded but verification found mismatches — DON'T mark current
-                errors["_verification"] = "Image tag mismatch detected after compose recreate"
-                logger.error(
-                    "Update compose succeeded but image verification FAILED for tag %s — "
-                    "NOT marking as current", new_tag
-                )
             else:
+                # Either compose errors or verification found mismatches
+                if not errors and not verify_ok:
+                    errors["_verification"] = "Image tag mismatch detected after compose recreate"
                 logger.error(
-                    "Update partially failed — NOT marking as current. "
-                    "Errors: %s", errors
+                    "Update failed — NOT marking as current. Errors: %s", errors
                 )
-
-            # Rollback .env to old tag if update failed and old tag is valid
-            if errors and old_tag and old_tag != "unknown" and old_tag != new_tag:
-                logger.warning("Rolling back DUNE_IMAGE_TAG to %s in .env", old_tag)
-                try:
-                    if env_file.exists():
-                        lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
-                        for i, line in enumerate(lines):
-                            if line.startswith("DUNE_IMAGE_TAG="):
-                                lines[i] = f"DUNE_IMAGE_TAG={old_tag}\n"
-                                break
-                        env_file.write_text("".join(lines), encoding="utf-8")
-                    self.current_tag = old_tag
-                    # Attempt to restore containers to old tag
-                    await self._compose_recreate_tagged_services()
-                    logger.info("Rollback to %s completed", old_tag)
-                except Exception as rb_exc:
-                    errors["_rollback"] = str(rb_exc)
-                    logger.error("Rollback failed: %s", rb_exc)
+                # Rollback .env and containers to old tag
+                if old_tag and old_tag != "unknown" and old_tag != new_tag:
+                    rolled_back = True
+                    logger.warning("Rolling back DUNE_IMAGE_TAG to %s", old_tag)
+                    try:
+                        if env_file.exists():
+                            lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
+                            for i, line in enumerate(lines):
+                                if line.startswith("DUNE_IMAGE_TAG="):
+                                    lines[i] = f"DUNE_IMAGE_TAG={old_tag}\n"
+                                    break
+                            env_file.write_text("".join(lines), encoding="utf-8")
+                        self.current_tag = old_tag
+                        await self._compose_recreate_tagged_services()
+                        logger.info("Rollback to %s completed", old_tag)
+                    except Exception as rb_exc:
+                        errors["_rollback"] = str(rb_exc)
+                        logger.error("Rollback failed: %s", rb_exc)
 
             await self._log_audit("update_triggered", {
                 "new_tag": new_tag,
@@ -649,6 +623,10 @@ class UpdateService:
     async def _verify_image_tags(self, expected_tag: str) -> bool:
         """Verify all running funcom containers use the expected image tag."""
         import shutil
+
+        if not expected_tag:
+            logger.warning("Cannot verify image tags: expected_tag is empty")
+            return False
 
         docker_bin = shutil.which("docker")
         if not docker_bin:
