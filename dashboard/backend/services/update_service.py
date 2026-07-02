@@ -269,6 +269,7 @@ class UpdateService:
 
             proc = await asyncio.create_subprocess_exec(
                 steamcmd_bin,
+                "+@sSteamCmdForcePlatformType", "linux",
                 "+force_install_dir", steam_dir,
                 "+login", "anonymous",
                 "+app_update", steam_app_id, "validate",
