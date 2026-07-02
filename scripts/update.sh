@@ -284,7 +284,7 @@ run_download_step() {
   set_env_value DUNE_STEAM_SERVER_DIR "$steam_dir"
 
   log_step 'Downloading the latest Funcom server package via steamcmd.'
-  steamcmd +force_install_dir "$steam_dir" +login anonymous +app_update "$steam_app_id" validate +quit
+  steamcmd +@sSteamCmdForcePlatformType linux +force_install_dir "$steam_dir" +login anonymous +app_update "$steam_app_id" validate +quit
 }
 
 run_load_step() {
