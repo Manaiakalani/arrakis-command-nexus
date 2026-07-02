@@ -380,12 +380,14 @@ class UpdateService:
 
             # Verify all tagged services are running the expected image
             verify_ok = False
+            verify_error = None
             try:
                 verify_ok = await self._verify_image_tags(new_tag)
             except Exception as exc:
-                logger.warning("Post-update verification failed: %s", exc)
+                verify_error = str(exc)
+                logger.warning("Post-update verification error: %s", exc)
 
-            # Only mark as current if recreate succeeded and verification passed
+            # Mark as current based on recreate + verification outcome
             if verify_ok and not errors:
                 if self._latest_steam_build:
                     self._baseline_steam_build = self._latest_steam_build
@@ -393,14 +395,21 @@ class UpdateService:
                 self._last_check = datetime.now()
                 self._persist_state()
                 logger.info("Update verified: all services running tag %s", new_tag)
-            elif not errors:
-                # Recreate succeeded but verification pending — still mark current
+            elif not errors and verify_error:
+                # Compose succeeded but verification couldn't run (e.g. docker ps failed)
                 if self._latest_steam_build:
                     self._baseline_steam_build = self._latest_steam_build
                 self._update_available = False
                 self._last_check = datetime.now()
                 self._persist_state()
-                logger.warning("Update applied but verification inconclusive for tag %s", new_tag)
+                logger.warning("Update applied but verification could not run: %s", verify_error)
+            elif not errors and not verify_ok:
+                # Compose succeeded but verification found mismatches — DON'T mark current
+                errors["_verification"] = "Image tag mismatch detected after compose recreate"
+                logger.error(
+                    "Update compose succeeded but image verification FAILED for tag %s — "
+                    "NOT marking as current", new_tag
+                )
             else:
                 logger.error(
                     "Update partially failed — NOT marking as current. "
