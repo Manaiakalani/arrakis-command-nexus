@@ -85,14 +85,11 @@ class UpdateService:
             self._last_check = datetime.now()
             self._latest_steam_build = latest_build
 
-            # Bootstrap baseline on first successful check. Read the actual
-            # installed build from the Steam appmanifest so we don't false-clear
-            # an upgrade that's pending when the dashboard first comes online on
-            # an out-of-date host. Falls back to `latest_build` only when no
-            # appmanifest is readable (no installation yet, or the dashboard
-            # can't reach the steam dir).
+            # Reconcile baseline with appmanifest. If the appmanifest shows a
+            # newer build than our persisted baseline (e.g. after an OOM during
+            # image loading), adopt the appmanifest value as the true baseline.
+            installed = await self._get_installed_build_id()
             if not self._baseline_steam_build:
-                installed = await self._get_installed_build_id()
                 if installed and installed.isdigit():
                     self._baseline_steam_build = installed
                     logger.info(
@@ -108,6 +105,14 @@ class UpdateService:
                         "again after fixing DUNE_STEAM_SERVER_DIR.",
                         latest_build,
                     )
+            elif installed and installed.isdigit():
+                baseline_int = int(self._baseline_steam_build) if self._baseline_steam_build.isdigit() else 0
+                if int(installed) > baseline_int:
+                    logger.info(
+                        "Appmanifest build %s is newer than persisted baseline %s — adopting",
+                        installed, self._baseline_steam_build,
+                    )
+                    self._baseline_steam_build = installed
 
             # An update is available only when Steam has a newer build than our baseline
             self._update_available = (latest_build != self._baseline_steam_build)
