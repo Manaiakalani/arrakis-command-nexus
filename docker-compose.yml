@@ -631,6 +631,7 @@ services:
       STEAM_APP_ID: ${STEAM_APP_ID:-4754530}
       UPDATE_CHECK_INTERVAL_HOURS: ${UPDATE_CHECK_INTERVAL_HOURS:-6}
       UPDATE_AUTO_UPDATE: ${UPDATE_AUTO_UPDATE:-false}
+      COMPOSE_FILE: ${COMPOSE_FILE:-}
       DUNE_COMPOSE_OVERLAY: ${DUNE_COMPOSE_OVERLAY:-basic}
       DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-basic}
       DUNE_HOSTNET_OVERLAY: ${DUNE_HOSTNET_OVERLAY:-}
@@ -653,12 +654,9 @@ services:
       - ./dashboard-data:/workspace/data
       - ./scripts:/workspace/scripts:ro
       - ${DUNE_STEAM_SERVER_DIR:-./steam}:/workspace/steam
-      - ./docker-compose.yml:/workspace/compose/docker-compose.yml:ro
-      - ./docker-compose.basic.yml:/workspace/compose/docker-compose.basic.yml:ro
-      - ./docker-compose.standard.yml:/workspace/compose/docker-compose.standard.yml:ro
-      - ./docker-compose.full.yml:/workspace/compose/docker-compose.full.yml:ro
-      - ./docker-compose.dashboard.yml:/workspace/compose/docker-compose.dashboard.yml:ro
-      - ./docker-compose.hostnet.yml:/workspace/compose/docker-compose.hostnet.yml:ro
+      # Mount entire repo so all compose overlays (standard-lean, hostnet-lean,
+      # cpupin, etc.) are available for update-time compose recreate
+      - .:/workspace/compose:ro
     depends_on:
       postgres:
         condition: service_healthy
