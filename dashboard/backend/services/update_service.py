@@ -372,7 +372,12 @@ class UpdateService:
             if not new_tag and loaded_tags:
                 new_tag = loaded_tags[-1].split(":")[-1]
 
+            # Read old_tag from .env directly — self.current_tag may be stale
+            # if .env was modified since dashboard startup
             old_tag = self.current_tag
+            if env_file.exists():
+                dotenv = self._load_dotenv_values(env_file)
+                old_tag = dotenv.get("DUNE_IMAGE_TAG", old_tag)
 
             if new_tag:
                 # Update DUNE_IMAGE_TAG in .env
@@ -404,35 +409,34 @@ class UpdateService:
                 errors["_compose"] = str(exc)
 
             # Verify all tagged services are running the expected image
-            verify_ok = False
-            verify_error = None
+            verify_result = {"ok": False, "mismatch": False, "inconclusive": True, "mismatched": [], "error": "not run"}
             try:
-                verify_ok = await self._verify_image_tags(new_tag)
+                verify_result = await self._verify_image_tags(new_tag)
             except Exception as exc:
-                verify_error = str(exc)
+                verify_result = {"ok": False, "mismatch": False, "inconclusive": True, "mismatched": [], "error": str(exc)}
                 logger.warning("Post-update verification error: %s", exc)
 
             # Mark as current or rollback based on recreate + verification outcome
             rolled_back = False
-            if verify_ok and not errors:
+            if verify_result["ok"] and not errors:
                 if self._latest_steam_build:
                     self._baseline_steam_build = self._latest_steam_build
                 self._update_available = False
                 self._last_check = datetime.now()
                 self._persist_state()
                 logger.info("Update verified: all services running tag %s", new_tag)
-            elif not errors and verify_error:
-                # Compose succeeded but verification couldn't run (e.g. docker ps failed)
+            elif not errors and verify_result["inconclusive"]:
+                # Compose succeeded but verification couldn't determine tag status
                 if self._latest_steam_build:
                     self._baseline_steam_build = self._latest_steam_build
                 self._update_available = False
                 self._last_check = datetime.now()
                 self._persist_state()
-                logger.warning("Update applied but verification could not run: %s", verify_error)
+                logger.warning("Update applied but verification inconclusive: %s", verify_result.get("error"))
             else:
-                # Either compose errors or verification found mismatches
-                if not errors and not verify_ok:
-                    errors["_verification"] = "Image tag mismatch detected after compose recreate"
+                # Either compose errors or verification found real mismatches
+                if not errors and verify_result["mismatch"]:
+                    errors["_verification"] = f"Image tag mismatch: {verify_result['mismatched']}"
                 logger.error(
                     "Update failed — NOT marking as current. Errors: %s", errors
                 )
@@ -469,7 +473,8 @@ class UpdateService:
                 "loaded_tags": loaded_tags,
                 "restarted": restarted,
                 "errors": errors,
-                "verified": verify_ok,
+                "verified": verify_result["ok"],
+                "verification_inconclusive": verify_result.get("inconclusive", False),
             }
 
         except asyncio.TimeoutError:
@@ -550,14 +555,52 @@ class UpdateService:
         logger.info("Resolved compose files for update recreate: %s", [str(p) for p in deduped])
         return deduped, errors
 
-    async def _compose_recreate_tagged_services(self) -> tuple[list[str], dict[str, str]]:
-        """Recreate all compose services that use DUNE_IMAGE_TAG.
+    async def _discover_tagged_services(self, base_compose_cmd: list[str]) -> tuple[list[str], str | None]:
+        """Discover services whose image contains funcom self-hosting images.
 
-        Uses ``docker compose up -d --force-recreate --remove-orphans`` which:
-        - Picks up the new DUNE_IMAGE_TAG from .env
-        - Recreates containers with the new image (restart alone won't do this)
-        - Removes orphan containers (e.g. deep_desert_1 if not in active profile)
-        - Handles proper startup ordering via depends_on
+        Uses ``docker compose config`` to inspect the resolved config and
+        returns only service names that reference ``funcom/self-hosting/``.
+        This prevents recreating the dashboard container during updates.
+        """
+        cmd = list(base_compose_cmd) + ["config", "--format", "json"]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=self._docker_environment(),
+            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=30)
+            if proc.returncode != 0:
+                err = stderr_bytes.decode(errors="replace") if stderr_bytes else "unknown"
+                return [], f"docker compose config failed (rc={proc.returncode}): {err[:200]}"
+
+            config = json.loads(stdout_bytes.decode(errors="replace"))
+            services = config.get("services", {})
+            tagged = []
+            for name, svc in services.items():
+                image = svc.get("image", "")
+                if "funcom/self-hosting/" in image:
+                    tagged.append(name)
+
+            if not tagged:
+                return [], "No services found with funcom/self-hosting/ images"
+
+            return sorted(tagged), None
+        except json.JSONDecodeError as exc:
+            return [], f"Failed to parse compose config JSON: {exc}"
+        except asyncio.TimeoutError:
+            return [], "docker compose config timed out (30s)"
+        except Exception as exc:
+            return [], str(exc)
+
+    async def _compose_recreate_tagged_services(self) -> tuple[list[str], dict[str, str]]:
+        """Recreate compose services that use DUNE_IMAGE_TAG (funcom images).
+
+        Scopes recreate to only funcom-tagged services so the dashboard
+        container (which is executing this update) is never killed mid-flight.
+        Uses ``--force-recreate`` to pick up new image tags and
+        ``--remove-orphans`` to clean up stopped profiles.
         """
         import shutil
 
@@ -581,13 +624,31 @@ class UpdateService:
             logger.error("Compose recreate pre-flight failed: %s", error)
             return [], {"_compose_preflight": error}
 
-        cmd = [docker_bin, "compose", "--project-directory", str(project_dir)]
+        # Build base compose command
+        base_cmd = [docker_bin, "compose", "--project-directory", str(project_dir)]
         for f in compose_files:
-            cmd.extend(["-f", str(f)])
-        env_flag = str(env_file)
-        cmd.extend(["--env-file", env_flag, "up", "-d", "--force-recreate", "--remove-orphans"])
+            base_cmd.extend(["-f", str(f)])
+        base_cmd.extend(["--env-file", str(env_file)])
 
-        logger.info("Compose recreate env file: %s", env_flag)
+        # Discover which services use funcom images to avoid recreating dashboard
+        tagged_services, discover_error = await self._discover_tagged_services(base_cmd)
+        if discover_error:
+            logger.warning(
+                "Could not discover tagged services (%s). "
+                "Falling back to full recreate — dashboard may restart.",
+                discover_error,
+            )
+
+        if tagged_services:
+            logger.info("Funcom-tagged services to recreate: %s", tagged_services)
+        else:
+            logger.warning("No funcom-tagged services discovered; will recreate all services")
+
+        cmd = list(base_cmd) + ["up", "-d", "--force-recreate", "--remove-orphans"]
+        if tagged_services:
+            cmd.extend(tagged_services)
+
+        logger.info("Compose recreate env file: %s", str(env_file))
         logger.info("Compose recreate files: %s", [str(p) for p in compose_files])
         logger.info("Compose recreate: %s", " ".join(cmd))
         try:
@@ -620,17 +681,28 @@ class UpdateService:
         except Exception as exc:
             return [], {"_compose": str(exc)}
 
-    async def _verify_image_tags(self, expected_tag: str) -> bool:
-        """Verify all running funcom containers use the expected image tag."""
+    async def _verify_image_tags(self, expected_tag: str) -> dict[str, Any]:
+        """Verify all running funcom containers use the expected image tag.
+
+        Returns a structured result distinguishing real mismatches from
+        inconclusive Docker CLI failures:
+            ok: all funcom containers match expected_tag
+            mismatch: at least one container has a different tag
+            inconclusive: verification could not complete (CLI error, etc.)
+            mismatched: list of "name=image" strings for containers with wrong tags
+            error: error message if inconclusive
+        """
         import shutil
+
+        empty_result = {"ok": False, "mismatch": False, "inconclusive": True, "mismatched": [], "error": ""}
 
         if not expected_tag:
             logger.warning("Cannot verify image tags: expected_tag is empty")
-            return False
+            return {**empty_result, "error": "expected_tag is empty"}
 
         docker_bin = shutil.which("docker")
         if not docker_bin:
-            return False
+            return {**empty_result, "error": "docker binary not found"}
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -640,32 +712,44 @@ class UpdateService:
                 env=self._docker_environment(),
             )
             stdout_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+
+            if proc.returncode != 0:
+                return {**empty_result, "error": f"docker ps failed (rc={proc.returncode})"}
+
             output = stdout_bytes.decode(errors="replace") if stdout_bytes else ""
 
             mismatched = []
+            matched = 0
             for line in output.strip().splitlines():
                 parts = line.split(None, 1)
                 if len(parts) != 2:
                     continue
                 name, image = parts
-                # Only check funcom game/infra images
                 if "funcom/self-hosting/" not in image:
                     continue
                 if expected_tag not in image:
                     mismatched.append(f"{name}={image}")
+                else:
+                    matched += 1
 
             if mismatched:
                 logger.error(
                     "Image tag mismatch after update! Expected %s, found: %s",
                     expected_tag, mismatched,
                 )
-                return False
+                return {"ok": False, "mismatch": True, "inconclusive": False, "mismatched": mismatched, "error": None}
 
-            logger.info("All funcom containers verified running tag %s", expected_tag)
-            return True
+            if matched == 0:
+                logger.warning("No funcom containers found to verify")
+                return {**empty_result, "error": "No funcom containers found"}
+
+            logger.info("All %d funcom containers verified running tag %s", matched, expected_tag)
+            return {"ok": True, "mismatch": False, "inconclusive": False, "mismatched": [], "error": None}
+        except asyncio.TimeoutError:
+            return {**empty_result, "error": "docker ps timed out (30s)"}
         except Exception as exc:
             logger.warning("Image tag verification failed: %s", exc)
-            return False
+            return {**empty_result, "error": str(exc)}
 
     def get_status(self) -> dict[str, Any]:
         """Get current update status from memory."""
