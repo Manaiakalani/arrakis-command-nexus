@@ -294,25 +294,46 @@ class UpdateService:
             if not tarballs:
                 return {"success": False, "error": f"No Docker image tarballs found under {steam_dir} after steamcmd update"}
 
-            # Load images via Docker SDK
+            # Load images via `docker load` CLI to avoid reading large tarballs into memory
             loaded_tags: list[str] = []
-            from services.docker_service import DockerService
-            docker_svc = DockerService()
-            await asyncio.to_thread(docker_svc._connect)
-            if not docker_svc.client:
-                return {"success": False, "error": "Docker client unavailable — cannot load images"}
-
             for tarball in tarballs:
                 logger.info("Loading Docker image: %s", tarball)
                 try:
-                    with open(tarball, "rb") as fh:
-                        imgs = await asyncio.to_thread(docker_svc.client.images.load, fh.read())
-                    for img in imgs:
-                        tags = img.tags if img.tags else []
-                        loaded_tags.extend(tags)
-                        logger.info("Loaded image tags: %s", tags)
+                    load_proc = await asyncio.create_subprocess_exec(
+                        "docker", "load", "-i", tarball,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    load_out, load_err = await asyncio.wait_for(load_proc.communicate(), timeout=600)
+                    out_text = load_out.decode("utf-8", errors="replace") if load_out else ""
+                    if load_proc.returncode != 0:
+                        err_text = load_err.decode("utf-8", errors="replace") if load_err else "unknown"
+                        logger.warning("Failed to load %s (rc=%d): %s", tarball, load_proc.returncode, err_text[:200])
+                        continue
+                    # Parse "Loaded image: <tag>" lines
+                    for line in out_text.splitlines():
+                        if "Loaded image:" in line:
+                            tag = line.split("Loaded image:", 1)[1].strip()
+                            loaded_tags.append(tag)
+                            logger.info("Loaded image tags: %s", [tag])
                 except Exception as exc:
                     logger.warning("Failed to load %s: %s", tarball, exc)
+
+            # Retag registry-prefixed images to match docker-compose short names
+            # Steam packages use "registry.funcom.com/funcom/self-hosting/..." but
+            # compose references "funcom/self-hosting/..."
+            for full_tag in list(loaded_tags):
+                if full_tag.startswith("registry.funcom.com/"):
+                    short_tag = full_tag.replace("registry.funcom.com/", "", 1)
+                    retag_proc = await asyncio.create_subprocess_exec(
+                        "docker", "tag", full_tag, short_tag,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    await retag_proc.communicate()
+                    if retag_proc.returncode == 0:
+                        loaded_tags.append(short_tag)
+                        logger.info("Retagged %s -> %s", full_tag, short_tag)
 
             # Determine new image tag (prefer seabass-server / dune images)
             new_tag = ""
