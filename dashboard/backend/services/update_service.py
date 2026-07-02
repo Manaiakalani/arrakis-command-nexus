@@ -48,6 +48,27 @@ class UpdateService:
             except Exception as e:
                 logger.warning(f"Failed to load update state: {e}")
 
+    def _docker_environment(self) -> dict[str, str]:
+        """Return a subprocess environment that uses the configured Docker endpoint."""
+        env = os.environ.copy()
+        docker_host = os.getenv("DOCKER_HOST") or os.getenv("DUNE_DOCKER_BASE_URL")
+        if docker_host:
+            env["DOCKER_HOST"] = docker_host
+        return env
+
+    def _load_dotenv_values(self, env_file: Path) -> dict[str, str]:
+        """Parse a simple KEY=VALUE dotenv file."""
+        values: dict[str, str] = {}
+        if not env_file.exists():
+            return values
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'")
+        return values
+
     def _persist_state(self):
         """Persist check state to disk."""
         try:
@@ -308,6 +329,7 @@ class UpdateService:
                         "docker", "load", "-i", tarball,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
+                        env=self._docker_environment(),
                     )
                     load_out, load_err = await asyncio.wait_for(load_proc.communicate(), timeout=600)
                     out_text = load_out.decode("utf-8", errors="replace") if load_out else ""
@@ -334,6 +356,7 @@ class UpdateService:
                         "docker", "tag", full_tag, short_tag,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
+                        env=self._docker_environment(),
                     )
                     await retag_proc.communicate()
                     if retag_proc.returncode == 0:
@@ -348,6 +371,8 @@ class UpdateService:
                     break
             if not new_tag and loaded_tags:
                 new_tag = loaded_tags[-1].split(":")[-1]
+
+            old_tag = self.current_tag
 
             if new_tag:
                 # Update DUNE_IMAGE_TAG in .env
@@ -387,6 +412,27 @@ class UpdateService:
                 verify_error = str(exc)
                 logger.warning("Post-update verification error: %s", exc)
 
+            # Rollback if update failed or verification failed
+            if errors or not verify_ok:
+                logger.error("Update failed or verification failed, rolling back to tag %s", old_tag)
+                if old_tag and old_tag != "unknown" and old_tag != new_tag:
+                    if env_file.exists():
+                        lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
+                        for i, line in enumerate(lines):
+                            if line.startswith("DUNE_IMAGE_TAG="):
+                                lines[i] = f"DUNE_IMAGE_TAG={old_tag}\n"
+                                break
+                        env_file.write_text("".join(lines), encoding="utf-8")
+                        logger.info("Reverted DUNE_IMAGE_TAG=%s in .env", old_tag)
+                    self.current_tag = old_tag
+
+                    try:
+                        logger.info("Rolling back containers to %s", old_tag)
+                        await self._compose_recreate_tagged_services()
+                    except Exception as rb_exc:
+                        logger.error("Rollback recreate failed: %s", rb_exc)
+                        errors["_rollback"] = str(rb_exc)
+
             # Mark as current based on recreate + verification outcome
             if verify_ok and not errors:
                 if self._latest_steam_build:
@@ -415,6 +461,25 @@ class UpdateService:
                     "Update partially failed — NOT marking as current. "
                     "Errors: %s", errors
                 )
+
+            # Rollback .env to old tag if update failed and old tag is valid
+            if errors and old_tag and old_tag != "unknown" and old_tag != new_tag:
+                logger.warning("Rolling back DUNE_IMAGE_TAG to %s in .env", old_tag)
+                try:
+                    if env_file.exists():
+                        lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
+                        for i, line in enumerate(lines):
+                            if line.startswith("DUNE_IMAGE_TAG="):
+                                lines[i] = f"DUNE_IMAGE_TAG={old_tag}\n"
+                                break
+                        env_file.write_text("".join(lines), encoding="utf-8")
+                    self.current_tag = old_tag
+                    # Attempt to restore containers to old tag
+                    await self._compose_recreate_tagged_services()
+                    logger.info("Rollback to %s completed", old_tag)
+                except Exception as rb_exc:
+                    errors["_rollback"] = str(rb_exc)
+                    logger.error("Rollback failed: %s", rb_exc)
 
             await self._log_audit("update_triggered", {
                 "new_tag": new_tag,
@@ -454,6 +519,63 @@ class UpdateService:
         found = shutil.which("steamcmd")
         return found
 
+    def _resolve_compose_files(self, compose_dir: Path, env_file: Path) -> tuple[list[Path], list[str]]:
+        """Resolve the compose files that represent the active deployment."""
+        compose_file_env = os.getenv("COMPOSE_FILE", "").strip()
+        compose_files: list[Path] = []
+        errors: list[str] = []
+        dotenv_values = self._load_dotenv_values(env_file)
+
+        if not compose_file_env and dotenv_values.get("COMPOSE_FILE"):
+            compose_file_env = dotenv_values.get("COMPOSE_FILE", "").strip()
+
+        if compose_file_env:
+            logger.info("Resolving compose files from COMPOSE_FILE=%s", compose_file_env)
+            for cf in compose_file_env.split(":"):
+                cf = cf.strip()
+                if not cf:
+                    continue
+                path = Path(cf) if Path(cf).is_absolute() else compose_dir / cf
+                compose_files.append(path)
+        else:
+            profile = (
+                os.getenv("DEPLOYMENT_PROFILE")
+                or os.getenv("DUNE_COMPOSE_OVERLAY")
+                or dotenv_values.get("DEPLOYMENT_PROFILE")
+                or dotenv_values.get("DUNE_COMPOSE_OVERLAY")
+                or "basic"
+            )
+            logger.warning(
+                "COMPOSE_FILE is not set; falling back to DEPLOYMENT_PROFILE/DUNE_COMPOSE_OVERLAY=%s",
+                profile,
+            )
+            compose_files.extend([
+                compose_dir / "docker-compose.yml",
+                compose_dir / f"docker-compose.{profile}.yml",
+            ])
+
+        hostnet = os.getenv("DUNE_HOSTNET_OVERLAY") or dotenv_values.get("DUNE_HOSTNET_OVERLAY", "")
+        if hostnet:
+            compose_files.append(Path(hostnet) if Path(hostnet).is_absolute() else compose_dir / hostnet)
+
+        # Keep first occurrence only while preserving compose override order.
+        deduped: list[Path] = []
+        seen: set[str] = set()
+        for path in compose_files:
+            key = str(path)
+            if key not in seen:
+                deduped.append(path)
+                seen.add(key)
+
+        for path in deduped:
+            if not path.exists():
+                errors.append(f"Compose file not found: {path}")
+            elif not path.is_file():
+                errors.append(f"Compose path is not a file: {path}")
+
+        logger.info("Resolved compose files for update recreate: %s", [str(p) for p in deduped])
+        return deduped, errors
+
     async def _compose_recreate_tagged_services(self) -> tuple[list[str], dict[str, str]]:
         """Recreate all compose services that use DUNE_IMAGE_TAG.
 
@@ -466,62 +588,42 @@ class UpdateService:
         import shutil
 
         compose_dir = Path("/workspace/compose")
+        project_dir = Path("/workspace")
         env_file = Path("/workspace/.env")
         docker_bin = shutil.which("docker")
 
         if not docker_bin:
             return [], {"_compose": "docker binary not found"}
 
-        # Resolve active compose files from COMPOSE_FILE env or DEPLOYMENT_PROFILE
-        compose_file_env = os.getenv("COMPOSE_FILE", "")
-        compose_files: list[str] = []
-
-        if compose_file_env:
-            # COMPOSE_FILE uses ':' as separator
-            for cf in compose_file_env.split(":"):
-                cf = cf.strip()
-                if not cf:
-                    continue
-                # Resolve relative to compose_dir if not absolute
-                p = Path(cf) if Path(cf).is_absolute() else compose_dir / cf
-                if p.exists():
-                    compose_files.append(str(p))
-                else:
-                    logger.warning("Compose file from COMPOSE_FILE not found: %s", p)
-        else:
-            base = compose_dir / "docker-compose.yml"
-            profile = os.getenv("DEPLOYMENT_PROFILE", os.getenv("DUNE_COMPOSE_OVERLAY", "basic"))
-            profile_file = compose_dir / f"docker-compose.{profile}.yml"
-            if base.exists():
-                compose_files.append(str(base))
-            if profile_file.exists():
-                compose_files.append(str(profile_file))
-            elif (compose_dir / "docker-compose.basic.yml").exists():
-                compose_files.append(str(compose_dir / "docker-compose.basic.yml"))
-
-        # Include hostnet overlay if configured
-        hostnet = os.getenv("DUNE_HOSTNET_OVERLAY", "")
-        if hostnet:
-            hp = compose_dir / hostnet
-            if hp.exists():
-                compose_files.append(str(hp))
-
+        compose_files, compose_errors = self._resolve_compose_files(compose_dir, env_file)
         if not compose_files:
             return [], {"_compose": "No compose files found"}
+        if compose_errors:
+            error = "; ".join(compose_errors)
+            logger.error("Compose recreate pre-flight failed: %s", error)
+            return [], {"_compose_preflight": error}
+        if not env_file.exists():
+            error = f"Compose env file not found: {env_file}"
+            logger.error("Compose recreate pre-flight failed: %s", error)
+            return [], {"_compose_preflight": error}
 
-        # Build the command: recreate everything using DUNE_IMAGE_TAG, remove orphans
-        cmd = [docker_bin, "compose"]
+        cmd = [docker_bin, "compose", "--project-directory", str(project_dir)]
         for f in compose_files:
-            cmd.extend(["-f", f])
-        env_flag = str(env_file) if env_file.exists() else "/workspace/.env"
+            cmd.extend(["-f", str(f)])
+        env_flag = str(env_file)
         cmd.extend(["--env-file", env_flag, "up", "-d", "--force-recreate", "--remove-orphans"])
 
+        logger.info("Compose recreate env file: %s", env_flag)
+        logger.info("Compose recreate files: %s", [str(p) for p in compose_files])
         logger.info("Compose recreate: %s", " ".join(cmd))
         try:
+            proc_env = self._docker_environment()
+            proc_env["COMPOSE_FILE"] = ":".join(str(p) for p in compose_files)
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
+                env=proc_env,
             )
             stdout_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=300)
             output = stdout_bytes.decode(errors="replace").strip() if stdout_bytes else ""
@@ -557,6 +659,7 @@ class UpdateService:
                 docker_bin, "ps", "--format", "{{.Names}} {{.Image}}",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=self._docker_environment(),
             )
             stdout_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
             output = stdout_bytes.decode(errors="replace") if stdout_bytes else ""
