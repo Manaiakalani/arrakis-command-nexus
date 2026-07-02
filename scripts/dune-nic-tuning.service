@@ -1,0 +1,12 @@
+[Unit]
+Description=Pin Dune Awakening NIC TX/RX IRQs to CPUs 10 and 11
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dune-nic-irq-pin.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
