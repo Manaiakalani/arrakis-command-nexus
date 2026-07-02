@@ -366,32 +366,46 @@ class UpdateService:
 
                 self.current_tag = new_tag
 
-            # Restart game server containers (survival_1, overmap, etc.)
+            # Recreate ALL services that use DUNE_IMAGE_TAG via docker compose.
+            # A simple container restart does NOT pick up a new image tag —
+            # we must use `docker compose up -d --force-recreate` to pull the
+            # updated tag from .env and recreate with the new image.
             restarted = []
             errors = {}
             try:
-                containers = await docker_svc.list_containers()
-                game_containers = [
-                    c for c in containers
-                    if any(kw in (c.name or "").lower() for kw in ("survival", "overmap", "sietch"))
-                ]
-                for container in game_containers:
-                    try:
-                        await docker_svc.restart_container(container.name)
-                        restarted.append(container.name)
-                        logger.info("Restarted container: %s", container.name)
-                    except Exception as exc:
-                        errors[container.name] = str(exc)
-                        logger.warning("Failed to restart %s: %s", container.name, exc)
+                restarted, errors = await self._compose_recreate_tagged_services()
             except Exception as exc:
-                logger.warning("Container restart phase failed: %s", exc)
+                logger.warning("Container recreate phase failed: %s", exc)
+                errors["_compose"] = str(exc)
 
-            # Mark new build as current baseline
-            if self._latest_steam_build:
-                self._baseline_steam_build = self._latest_steam_build
-            self._update_available = False
-            self._last_check = datetime.now()
-            self._persist_state()
+            # Verify all tagged services are running the expected image
+            verify_ok = False
+            try:
+                verify_ok = await self._verify_image_tags(new_tag)
+            except Exception as exc:
+                logger.warning("Post-update verification failed: %s", exc)
+
+            # Only mark as current if recreate succeeded and verification passed
+            if verify_ok and not errors:
+                if self._latest_steam_build:
+                    self._baseline_steam_build = self._latest_steam_build
+                self._update_available = False
+                self._last_check = datetime.now()
+                self._persist_state()
+                logger.info("Update verified: all services running tag %s", new_tag)
+            elif not errors:
+                # Recreate succeeded but verification pending — still mark current
+                if self._latest_steam_build:
+                    self._baseline_steam_build = self._latest_steam_build
+                self._update_available = False
+                self._last_check = datetime.now()
+                self._persist_state()
+                logger.warning("Update applied but verification inconclusive for tag %s", new_tag)
+            else:
+                logger.error(
+                    "Update partially failed — NOT marking as current. "
+                    "Errors: %s", errors
+                )
 
             await self._log_audit("update_triggered", {
                 "new_tag": new_tag,
@@ -402,11 +416,12 @@ class UpdateService:
             })
 
             return {
-                "success": True,
+                "success": not bool(errors),
                 "new_tag": new_tag,
                 "loaded_tags": loaded_tags,
                 "restarted": restarted,
                 "errors": errors,
+                "verified": verify_ok,
             }
 
         except asyncio.TimeoutError:
@@ -429,6 +444,138 @@ class UpdateService:
                 return path
         found = shutil.which("steamcmd")
         return found
+
+    async def _compose_recreate_tagged_services(self) -> tuple[list[str], dict[str, str]]:
+        """Recreate all compose services that use DUNE_IMAGE_TAG.
+
+        Uses ``docker compose up -d --force-recreate --remove-orphans`` which:
+        - Picks up the new DUNE_IMAGE_TAG from .env
+        - Recreates containers with the new image (restart alone won't do this)
+        - Removes orphan containers (e.g. deep_desert_1 if not in active profile)
+        - Handles proper startup ordering via depends_on
+        """
+        import shutil
+
+        compose_dir = Path("/workspace/compose")
+        env_file = Path("/workspace/.env")
+        docker_bin = shutil.which("docker")
+
+        if not docker_bin:
+            return [], {"_compose": "docker binary not found"}
+
+        # Resolve active compose files from COMPOSE_FILE env or DEPLOYMENT_PROFILE
+        compose_file_env = os.getenv("COMPOSE_FILE", "")
+        compose_files: list[str] = []
+
+        if compose_file_env:
+            # COMPOSE_FILE uses ':' as separator
+            for cf in compose_file_env.split(":"):
+                cf = cf.strip()
+                if not cf:
+                    continue
+                # Resolve relative to compose_dir if not absolute
+                p = Path(cf) if Path(cf).is_absolute() else compose_dir / cf
+                if p.exists():
+                    compose_files.append(str(p))
+                else:
+                    logger.warning("Compose file from COMPOSE_FILE not found: %s", p)
+        else:
+            base = compose_dir / "docker-compose.yml"
+            profile = os.getenv("DEPLOYMENT_PROFILE", os.getenv("DUNE_COMPOSE_OVERLAY", "basic"))
+            profile_file = compose_dir / f"docker-compose.{profile}.yml"
+            if base.exists():
+                compose_files.append(str(base))
+            if profile_file.exists():
+                compose_files.append(str(profile_file))
+            elif (compose_dir / "docker-compose.basic.yml").exists():
+                compose_files.append(str(compose_dir / "docker-compose.basic.yml"))
+
+        # Include hostnet overlay if configured
+        hostnet = os.getenv("DUNE_HOSTNET_OVERLAY", "")
+        if hostnet:
+            hp = compose_dir / hostnet
+            if hp.exists():
+                compose_files.append(str(hp))
+
+        if not compose_files:
+            return [], {"_compose": "No compose files found"}
+
+        # Build the command: recreate everything using DUNE_IMAGE_TAG, remove orphans
+        cmd = [docker_bin, "compose"]
+        for f in compose_files:
+            cmd.extend(["-f", f])
+        env_flag = str(env_file) if env_file.exists() else "/workspace/.env"
+        cmd.extend(["--env-file", env_flag, "up", "-d", "--force-recreate", "--remove-orphans"])
+
+        logger.info("Compose recreate: %s", " ".join(cmd))
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            stdout_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=300)
+            output = stdout_bytes.decode(errors="replace").strip() if stdout_bytes else ""
+
+            if proc.returncode != 0:
+                logger.error("Compose recreate failed (rc=%d): %s", proc.returncode, output[:500])
+                return [], {"_compose": f"rc={proc.returncode}: {output[:200]}"}
+
+            logger.info("Compose recreate succeeded: %s", output[:500])
+
+            # Parse recreated services from output
+            recreated = []
+            for line in output.splitlines():
+                low = line.lower()
+                if "recreat" in low or "started" in low or "running" in low:
+                    recreated.append(line.strip())
+            return recreated, {}
+        except asyncio.TimeoutError:
+            return [], {"_compose": "docker compose up timed out (300s)"}
+        except Exception as exc:
+            return [], {"_compose": str(exc)}
+
+    async def _verify_image_tags(self, expected_tag: str) -> bool:
+        """Verify all running funcom containers use the expected image tag."""
+        import shutil
+
+        docker_bin = shutil.which("docker")
+        if not docker_bin:
+            return False
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                docker_bin, "ps", "--format", "{{.Names}} {{.Image}}",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+            output = stdout_bytes.decode(errors="replace") if stdout_bytes else ""
+
+            mismatched = []
+            for line in output.strip().splitlines():
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    continue
+                name, image = parts
+                # Only check funcom game/infra images
+                if "funcom/self-hosting/" not in image:
+                    continue
+                if expected_tag not in image:
+                    mismatched.append(f"{name}={image}")
+
+            if mismatched:
+                logger.error(
+                    "Image tag mismatch after update! Expected %s, found: %s",
+                    expected_tag, mismatched,
+                )
+                return False
+
+            logger.info("All funcom containers verified running tag %s", expected_tag)
+            return True
+        except Exception as exc:
+            logger.warning("Image tag verification failed: %s", exc)
+            return False
 
     def get_status(self) -> dict[str, Any]:
         """Get current update status from memory."""
