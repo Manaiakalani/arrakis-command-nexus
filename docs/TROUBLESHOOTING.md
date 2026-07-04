@@ -969,6 +969,30 @@ percentages mean the player will rubberband. One physical core is NOT enough for
 UE5 server (it has ~30 helper threads that preempt the game thread); always allocate at
 least two physical cores per player-facing map.
 
+**Rubberbanding coming back after an update, with no config changes:** CPU pinning is
+applied to a *running container instance*, not the service definition, so it is silently
+discarded whenever containers are recreated (`dune update`, `dune stop && dune start`, a
+dashboard-triggered recreate, etc.) — `docker inspect` will show an empty `CpusetCpus` for
+every game map after this happens. `dune start` is supposed to re-apply pinning
+automatically as its last step, so this should self-heal within ~30-60 seconds of any
+restart. If it doesn't:
+
+1. Confirm `scripts/cpu-pin.sh` is actually executable — `ls -l scripts/cpu-pin.sh` should
+   show `-rwxr-xr-x`. If it shows `-rw-r--r--` (no `x` bits), the `dune` wrapper's
+   `[[ -x scripts/cpu-pin.sh ]]` guard silently evaluates false and skips pinning with
+   **no warning at all** (this can happen if the file was checked out on a filesystem/tool
+   that doesn't preserve the executable bit). Fix with `chmod +x scripts/cpu-pin.sh`.
+2. If you have a hand-tuned `dune-cpu-pin.service` installed (`systemctl cat
+   dune-cpu-pin.service`), `dune start` prefers restarting that service over running
+   `scripts/cpu-pin.sh` directly, since a host-specific hand-tuned layout (individual
+   cores per map server) can outperform the script's generic P-core/E-core
+   auto-detection on hosts with many cores or unusual topology. Verify it actually ran
+   recently with `systemctl status dune-cpu-pin.service` (look at the "Active" timestamp)
+   and re-run it manually if needed: `sudo systemctl restart dune-cpu-pin.service`.
+3. Either way, re-verify with `docker inspect -f '{{.HostConfig.CpusetCpus}}'
+   dune-awakening-<service>-1` for each map server, and confirm with
+   `./scripts/cpu-pin.sh --measure` that scheduling delay is back down to ~1-2%.
+
 ### In-Game Rubberbanding - Host Networking Overlay
 
 If players still rubberband after CPU pinning, and every server-side diagnostic
