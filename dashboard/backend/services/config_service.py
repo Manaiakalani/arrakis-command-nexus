@@ -5,6 +5,7 @@ import configparser
 import hashlib
 import logging
 import os
+import re
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1008,10 +1009,6 @@ class ConfigService:
             raise ValueError("Filename in request body must match route filename.")
 
         path = self._resolve_file(filename)
-        parser = await asyncio.to_thread(self._load_parser, path)
-        if not parser.has_section(update.section):
-            parser.add_section(update.section)
-
         normalized_value = self._validate_value(filename, update.key, update.value)
         current = await self.read_config(filename)
         session.add(
@@ -1023,8 +1020,7 @@ class ConfigService:
         )
         await session.commit()
 
-        parser.set(update.section, update.key, normalized_value)
-        await asyncio.to_thread(self._write_parser, path, parser)
+        await asyncio.to_thread(self._write_single_value, path, update.section, update.key, normalized_value)
         logger.info("Updated config %s [%s] %s", filename, update.section, update.key)
         return await self.read_config(filename)
 
@@ -1048,12 +1044,66 @@ class ConfigService:
         return resolved_path
 
     def _load_parser(self, path: Path) -> configparser.ConfigParser:
-        parser = configparser.ConfigParser()
+        # strict=False: some UE5 ini files (e.g. UserGame.ini's
+        # MapFpsSettings) legitimately repeat the same option name multiple
+        # times within a section using the `-Key=`/`+Key=` array
+        # add/remove convention. A strict parser raises DuplicateOptionError
+        # on those files. Note this means the in-memory parser only keeps
+        # the last value for a repeated key -- fine for read-only display,
+        # but never write this parser back out wholesale (see
+        # _write_single_value).
+        parser = configparser.ConfigParser(strict=False)
         parser.optionxform = str
         parser.read(path, encoding="utf-8")
         return parser
 
-    def _write_parser(self, path: Path, parser: configparser.ConfigParser) -> None:
+    def _write_single_value(self, path: Path, section: str, key: str, value: str) -> None:
+        """Update exactly one `key=value` line in an ini file via a targeted
+        text replacement instead of a full configparser round-trip.
+
+        Some UE5 config files legitimately repeat the same option name
+        multiple times within a section (`-m_Maps=...` / `+m_Maps=...`, one
+        pair per map). configparser can't represent that and silently
+        collapses repeated options down to a single value on read, so
+        re-serializing the whole parsed file with `parser.write()` would
+        corrupt those lines. Editing only the single line we care about --
+        leaving every other line byte-for-byte untouched -- avoids that.
+        """
+        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        section_header = f"[{section}]"
+        key_pattern = re.compile(rf"^\s*{re.escape(key)}\s*=")
+
+        section_start: int | None = None
+        section_end = len(lines)
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                if section_start is None:
+                    if stripped == section_header:
+                        section_start = index
+                else:
+                    section_end = index
+                    break
+
+        new_line = f"{key}={value}\n"
+
+        if lines and not lines[-1].endswith("\n"):
+            lines[-1] += "\n"
+
+        if section_start is None:
+            # Section doesn't exist yet: append a new section at EOF.
+            if lines and lines[-1].strip() != "":
+                lines.append("\n")
+            lines.append(f"{section_header}\n")
+            lines.append(new_line)
+        else:
+            for index in range(section_start + 1, section_end):
+                if key_pattern.match(lines[index]):
+                    lines[index] = new_line
+                    break
+            else:
+                lines[section_end:section_end] = [new_line]
+
         with tempfile.NamedTemporaryFile(
             mode="w",
             dir=os.path.dirname(path),
@@ -1061,7 +1111,7 @@ class ConfigService:
             suffix=".tmp",
             encoding="utf-8",
         ) as tmp:
-            parser.write(tmp)
+            tmp.writelines(lines)
             tmp.flush()
             os.fsync(tmp.fileno())
         os.replace(tmp.name, path)
