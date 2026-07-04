@@ -406,6 +406,40 @@ with no further diagnostic output.
   docker compose exec -u root dashboard-api apt-get install -y lib32stdc++6
   ```
 
+### Same error, but *after* download progress starts (OOM kill)
+
+If `rc=8` happens only partway through an update (you see download progress in the
+logs first, e.g. `Update state (0x61) downloading, progress: ...`) rather than
+immediately, this is a **different cause**: the `dashboard-api` container's memory
+limit is too low for SteamCMD to download/validate the full depot in-process.
+
+**Symptoms:**
+
+- `docker compose logs dashboard-api` shows real download progress before the
+  failure, not just `Starting ...`.
+- `sudo dmesg -T | grep -i oom` shows a `Memory cgroup out of memory: Killed process
+  ... (steamcmd)` entry around the same timestamp.
+- `docker stats dashboard-api` shows memory usage pinned at the container's
+  `mem_limit` right before the crash.
+
+**Fix:** `docker-compose.yml` sets `mem_limit`/`memswap_limit: 2g` on `dashboard-api`
+(previously `512m`, which left too little headroom above the ~200MiB idle baseline
+once SteamCMD started downloading). Pull the latest changes and recreate the
+container:
+```bash
+docker compose up -d dashboard-api
+```
+If you've customized this file and are stuck on an older `512m` limit, raise it to at
+least `2g` (adjust based on available host RAM).
+
+- If the update was interrupted mid-download, SteamCMD's own manifest can get stuck
+  reporting `Error! App '<id>' state is 0x6 after update job` with 0 bytes planned to
+  download on every retry. Force a fresh update plan by removing the stale manifest
+  before retrying:
+  ```bash
+  docker compose exec dashboard-api rm -f /workspace/steam/steamapps/appmanifest_<STEAM_APP_ID>.acf
+  ```
+
 ## Image Loading Failures
 
 **Cause:** The Steam download path is wrong, the extracted files are incomplete, or the tarball layout is unexpected.

@@ -676,8 +676,12 @@ services:
       default:
         ipv4_address: 10.80.0.50
       backend: {}
-    mem_limit: 512m
-    memswap_limit: 512m
+    # 2g headroom: idle baseline is ~200MiB, but "Apply Update" runs steamcmd
+    # in-process to download/validate the game server depot (multi-GB). At
+    # 512m, steamcmd was getting OOM-killed by the cgroup mid-download
+    # (see docs/TROUBLESHOOTING.md).
+    mem_limit: 2g
+    memswap_limit: 2g
     pids_limit: 128
     cpus: 2
 
