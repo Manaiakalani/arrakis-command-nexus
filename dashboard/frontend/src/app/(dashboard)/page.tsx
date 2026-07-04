@@ -98,14 +98,22 @@ export default function OverviewPage() {
   }, [status, toast]);
 
   const handleDirectorNudge = useCallback(async () => {
+    // The backend only accepts real container names (e.g. "dune-awakening-director-1"),
+    // not the short role key "director", so resolve it from the loaded service list —
+    // the same way the per-service action buttons below do via `service.name`.
+    const directorService = serviceSummary.find((service) => service.name.toLowerCase().includes('director'));
+    if (!directorService) {
+      toast('Director nudge failed - director container not found', 'error');
+      return;
+    }
     try {
-      await apiClient.restartServiceDirect('director');
+      await apiClient.restartServiceDirect(directorService.name);
       await status.refetch();
       toast('Director restarted — FLS declarations will re-fire within 60 s', 'success');
     } catch (err) {
       toast(`Director nudge failed${err instanceof Error ? ` - ${err.message}` : ''}`, 'error');
     }
-  }, [status, toast]);
+  }, [serviceSummary, status, toast]);
 
   const handleRestartAll = useCallback(async () => {
     try {
