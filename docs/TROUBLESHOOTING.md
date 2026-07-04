@@ -367,6 +367,45 @@ If travel still fails identically on *every* overworld exit (not just one), the
 remaining cause is upstream Funcom destination/landing metadata rather than this
 routing layer.
 
+## "Apply Update" Fails with `steamcmd failed (rc=8)`
+
+**Symptoms:**
+
+- Clicking **Apply Update** on the dashboard's Updates page immediately fails with a
+  toast/error like:
+  ```
+  steamcmd failed (rc=8): steamcmd.sh[23390]: Starting /home/app/steamcmd/linux32/steamcmd
+  ```
+- The failure happens right away, before any download progress, and running steamcmd
+  manually on the host (outside Docker) works fine.
+
+**Cause:** The dashboard's **Apply Update** button runs SteamCMD *inside the
+`dashboard-api` container*, not on the host. SteamCMD's `linux32/steamcmd` binary is a
+32-bit executable that needs the 32-bit build of `libstdc++.so.6` to load. Images built
+before this fix only installed `lib32gcc-s1`, not `lib32stdc++6`, so the 32-bit binary's
+dynamic linker fails right after `steamcmd.sh` hands off to it, producing exit code 8
+with no further diagnostic output.
+
+**Fix:**
+
+- Pull the latest changes (`dashboard/backend/Dockerfile` now installs `lib32stdc++6`
+  alongside `lib32gcc-s1`) and rebuild the `dashboard-api` image:
+  ```bash
+  docker compose build dashboard-api
+  docker compose up -d dashboard-api
+  ```
+- If `rc=8` persists after rebuilding, exec into the container to see the full
+  dynamic-linker error directly:
+  ```bash
+  docker compose exec dashboard-api /home/app/steamcmd/steamcmd.sh +quit
+  ```
+- Quick workaround without a rebuild (lost the next time the container is recreated,
+  so rebuilding the image is still the real fix):
+  ```bash
+  docker compose exec -u root dashboard-api apt-get update
+  docker compose exec -u root dashboard-api apt-get install -y lib32stdc++6
+  ```
+
 ## Image Loading Failures
 
 **Cause:** The Steam download path is wrong, the extracted files are incomplete, or the tarball layout is unexpected.
