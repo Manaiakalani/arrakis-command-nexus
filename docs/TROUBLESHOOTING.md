@@ -760,7 +760,10 @@ If FLS rejects your world registration with `Invalid Authorization to manage Sel
 ### Director Nudge (Browser Shows Nothing / FLS Declaration Stale)
 
 When game servers are running correctly but FLS declarations are stale or missing (for
-example, after a partition swap recovery), restart only the Director -- do NOT restart game servers:
+example, after a partition swap recovery, or after fixing a stale image tag on a map
+server), restart only the Director -- do NOT restart game servers. The dashboard's
+**Director nudge** button (Overview page) does exactly this and is the preferred way to
+do it; use the CLI form below only if the dashboard is unreachable:
 
 ```bash
 docker compose -f docker-compose.yml restart director
@@ -774,8 +777,23 @@ A successful declaration looks like:
   "UpDeclarationsByPartitionId":{"19":{"ServerId":"...","GameAddress":"...","GamePort":7777,...}}
 ```
 
+Only the "starting map" partition (the entry-point server players first spawn into, e.g.
+`Survival_1`) needs to appear here -- the other partitions are internal travel
+destinations, not separate browser entries, so seeing only one partition ID is normal.
+
 The Director restarts in seconds and immediately re-reads `farm_state` + `world_partition`
-from PostgreSQL, rebuilding a clean FLS state.
+from PostgreSQL, rebuilding a clean FLS state. **After nudging, wait 5-10 minutes** before
+re-checking the in-game browser -- the FLS declaration needs time to propagate. It is
+normal to see a handful of one-time `WRN Failed to process travel queue for partition N` /
+`Error:Server does not have a valid last server state!` lines in the seconds right after
+the restart, while the Director is still re-reading state from Postgres; they should not
+recur once the first `DeclareBattlegroupUpdates` succeeds.
+
+If clicking **Director nudge** fails with "Service action failed" on a deployment older
+than this fix, the button was passing the literal string `"director"` to the restart API
+instead of the real container name (`dune-awakening-director-1`), which the backend
+rejects. Update to the latest `dashboard-frontend` build to fix it, or restart via the
+CLI command above in the meantime.
 
 ### Partition Swap Recovery (Overmap / Survival Partitions Swapped)
 
