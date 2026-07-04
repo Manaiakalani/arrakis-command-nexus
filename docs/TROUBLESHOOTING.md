@@ -440,6 +440,40 @@ least `2g` (adjust based on available host RAM).
   docker compose exec dashboard-api rm -f /workspace/steam/steamapps/appmanifest_<STEAM_APP_ID>.acf
   ```
 
+## Game Settings Page Shows "Unable to load game settings"
+
+**Symptoms:**
+
+- The dashboard's **Game Settings** page fails to load with "Unable to load game
+  settings" / "An unexpected error occurred."
+- `docker compose logs dashboard-api` shows a traceback ending in:
+  ```
+  configparser.DuplicateOptionError: While reading from '...UserGame.ini' [line NN]:
+  option '-m_Maps' in section '/Script/DuneSandbox.MapFpsSettings' already exists
+  ```
+
+**Cause:** UE5's ini format legitimately repeats the same option name multiple times
+within a section to add/remove array entries -- `config/UserGame.ini`'s
+`[/Script/DuneSandbox.MapFpsSettings]` section has one `-m_Maps=...`/`+m_Maps=...`
+pair per map (removing Funcom's default FPS cap and replacing it). Python's
+`configparser.ConfigParser()` defaults to `strict=True`, which rejects any repeated
+option name within a section and raises on the very first `GET
+/api/v1/config/UserGame.ini` call. This is a pre-existing config file, not something
+introduced by a recent change -- it only surfaces once someone opens the Game
+Settings page.
+
+**Fix:** `dashboard/backend/services/config_service.py` now reads config files with
+`configparser.ConfigParser(strict=False)` so repeated options no longer raise.
+Saving a setting no longer round-trips the whole file through `parser.write()`
+either (which would have silently collapsed every repeated `-m_Maps`/`+m_Maps` line
+down to just the last one on the very next save) -- `update_config` now rewrites
+only the single `key=value` line being changed via a targeted text replacement,
+leaving every other line -- including the repeated `MapFpsSettings` entries --
+byte-for-byte untouched. Rebuild/restart `dashboard-api` to pick up the fix:
+```bash
+docker compose up -d --build dashboard-api
+```
+
 ## Image Loading Failures
 
 **Cause:** The Steam download path is wrong, the extracted files are incomplete, or the tarball layout is unexpected.
@@ -654,6 +688,42 @@ is wrong."
 ### Spice-Infused Fuel Cell recipe cost changed in 1.4.0.0
 
 1.4.0.0 reduced the Spice-Infused Fuel Cell recipe from 65->48 Spice Residue and 3->2 Irradiated Slag per craft. If your players notice their crafting cost dropped, this is intentional Funcom-side rebalancing, not a server config drift.
+
+### One map server left on a stale image tag after an update ("not network compatible")
+
+**Symptoms:**
+
+- The server intermittently disappears from the browser, or only some maps are reachable.
+- One or more map server logs (`docker logs dune-awakening-<map>-1`) show:
+  ```
+  LogIGW: Error: Server not network compatible DuneS2sIpConnection_... (Local=..., Remote=...)
+  ```
+  on S2S connections to/from a specific sibling map.
+
+**Cause:** Docker does **not** automatically recreate running containers when
+`.env`'s `DUNE_IMAGE_TAG` changes -- each game-server service must be explicitly
+`docker compose up -d <service>`'d to pick up a new tag. If an earlier update only
+recreated *some* services (a partial/interrupted update run, or a container that
+was manually restarted rather than recreated), it can keep running the **old**
+image indefinitely, even though every other map has moved on. Game servers running
+different internal build/protocol versions can't establish S2S connections with
+each other, which is exactly what the "not network compatible" error means.
+
+**Diagnosis:** compare the image tag every game-server container is actually
+running against `.env`:
+```bash
+grep DUNE_IMAGE_TAG .env
+docker ps --format '{{.Names}}\t{{.Image}}' | grep seabass-server
+```
+Any container not on the `.env` tag is the culprit.
+
+**Fix:** recreate just the stale container(s) so they pick up the current tag:
+```bash
+docker compose up -d <service-name>   # e.g. deep_desert_1
+```
+No rebuild needed -- the image is already loaded, the container just needs to be
+recreated to reference it. Verify with `docker ps` again and confirm the S2S errors
+stop appearing in fresh logs.
 
 ## "Server not appearing in browser"
 
