@@ -104,8 +104,21 @@ cmd_start() {
     log_warn 'Post-start validation reported a non-ready stack. Check dune status and dune logs.'
   fi
 
-  # Apply CPU pinning if the script exists (survives container recreates)
-  if [[ -x "$PROJECT_ROOT/scripts/cpu-pin.sh" ]]; then
+  # Re-apply CPU pinning so container recreates never leave game maps
+  # unpinned (UE5's single-threaded game tick will stall for seconds under
+  # scheduler contention if maps share cores - see scripts/cpu-pin.sh).
+  #
+  # Prefer a host-installed dune-cpu-pin.service if one exists: it may
+  # encode hand-tuned, per-host core assignments (from `cpu-pin.sh
+  # --install` or manual tuning) that differ from - and supersede - the
+  # generic auto-detected layout the repo script computes on the fly. Only
+  # fall back to running the repo script directly when no such service is
+  # installed on this host.
+  if command -v systemctl >/dev/null 2>&1 && systemctl cat dune-cpu-pin.service >/dev/null 2>&1; then
+    log_info 'Re-applying CPU core affinity via dune-cpu-pin.service...'
+    sudo systemctl restart dune-cpu-pin.service 2>/dev/null || \
+      log_warn 'CPU pinning service restart failed (non-fatal). Run: sudo systemctl restart dune-cpu-pin.service'
+  elif [[ -x "$PROJECT_ROOT/scripts/cpu-pin.sh" ]]; then
     log_info 'Applying CPU core affinity...'
     bash "$PROJECT_ROOT/scripts/cpu-pin.sh" 2>/dev/null || \
       log_warn 'CPU pinning failed (non-fatal). Run: bash scripts/cpu-pin.sh'
