@@ -589,10 +589,10 @@ JOIN dune.actors a ON a.id = b.id;
 
 | ID Type | Example | Where to Find |
 |---|---|---|
-| FLS user ID (hex) | `35E6117067FC3FF3` | `encrypted_accounts."user"` column |
-| Account ID (int) | `14` | `encrypted_accounts.id` |
-| Steam platform ID | `76561198002238062` | `encrypted_accounts.platform_id` |
-| Player pawn ID | `160` | `encrypted_player_state.player_pawn_id` (FK to `actors.id`) |
+| FLS user ID (hex) | `DEADBEEFCAFEF00D` | `encrypted_accounts."user"` column |
+| Account ID (int) | `1` | `encrypted_accounts.id` |
+| Steam platform ID | `76561198012345678` | `encrypted_accounts.platform_id` |
+| Player pawn ID | `42` | `encrypted_player_state.player_pawn_id` (FK to `actors.id`) |
 
 **Transform format:** `("(x,y,z)","(rx,ry,rz,rw)")` where translation is a `vector` and rotation is a `quat`. The Z axis is vertical (higher = more above ground).
 
