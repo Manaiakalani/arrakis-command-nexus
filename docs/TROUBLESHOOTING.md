@@ -228,7 +228,7 @@ Any row with a count `> 1` is a player who has multiple running connections - th
 Or target a single player:
 
 ```bash
-./dune fix-p83 --apply --user 35E6117067FC3FF3
+./dune fix-p83 --apply --user DEADBEEFCAFEF00D
 ```
 
 `fix-p83 --apply` runs two passes:
@@ -440,6 +440,55 @@ least `2g` (adjust based on available host RAM).
   docker compose exec dashboard-api rm -f /workspace/steam/steamapps/appmanifest_<STEAM_APP_ID>.acf
   ```
 
+### "Apply Update" succeeds but the server keeps running the old build
+
+**Symptoms:**
+
+- The dashboard's **Apply Update** (or a manual `steamcmd ... app_update`) reports
+  success, but the server later disappears from the in-game browser or shows a
+  version mismatch to players.
+- `docker ps --format '{{.Names}}\t{{.Image}}'` shows game-server containers still on
+  the previous `DUNE_IMAGE_TAG`.
+
+**Cause:** Downloading is only step 3 of a 6-step pipeline (`backup, stop, download,
+load, tag, restart` -- see `scripts/update.sh`'s header). SteamCMD staging new files
+into `DUNE_STEAM_SERVER_DIR` does **not** automatically `docker load` the new image
+tarball, bump `DUNE_IMAGE_TAG` in `.env`, or recreate any containers. If only the
+download step ran (e.g. the dashboard's Updates page only triggers SteamCMD, or
+`./scripts/update.sh` was interrupted/resumed with `--skip-restart`), the stack keeps
+serving the old build indefinitely with no error -- FLS registration and heartbeats
+all still succeed on the old build, so nothing looks broken until a client checks the
+revision.
+
+**Diagnosis:** compare what's downloaded/published against what's actually running:
+
+```bash
+# What Steam currently publishes for the app (retail: 4754530, PTC: 3104830)
+steamcmd +login anonymous +app_info_print 4754530 +quit | grep -A2 branches
+
+# What's actually loaded and running right now
+grep DUNE_IMAGE_TAG .env
+docker ps --format '{{.Names}}\t{{.Image}}' | grep seabass-server
+```
+
+If the running image tag is older than the published build, the update was staged but
+never deployed.
+
+**Fix:** finish the remaining pipeline steps -- load the tarball, update the tag, and
+recreate the stack:
+
+```bash
+./scripts/update.sh --skip-backup --skip-download
+```
+
+If the script's own restart prompt hangs when run non-interactively (e.g. over a
+scripted SSH session), skip it and bring the stack up manually instead:
+
+```bash
+./scripts/update.sh --skip-backup --skip-download --skip-restart
+./dune start
+```
+
 ## Game Settings Page Shows "Unable to load game settings"
 
 **Symptoms:**
@@ -636,9 +685,10 @@ AppID 4754530 update canceled : Failed downloading 1 manifests (No connection)
 
 **Recommended workflow (Windows operator, Linux host):**
 
-Use `Update-DuneServer.ps1` (saved to operator's desktop in this repo's history)
-which wraps SteamCMD with your Steam account and rsyncs the result to the host.
-Two important details that aren't obvious:
+If you're downloading from a Windows machine and pushing the result to a separate Linux
+host, a local (not repo-tracked) PowerShell helper script that wraps SteamCMD with your
+Steam account and rsyncs the result over is a convenient pattern. Two important details
+that aren't obvious if you write your own:
 
 1. **Force Linux platform.** Without `+@sSteamCmdForcePlatformType linux`,
    SteamCMD running on Windows downloads the **Hyper-V edition** of the
@@ -728,7 +778,7 @@ stop appearing in fresh logs.
 ## "Server not appearing in browser"
 
 **Symptoms:** All containers are healthy, FLS heartbeats succeed, but the server does not
-appear under the **Private** tab in the game's server browser.
+appear under the **Experimental** tab in the game's server browser.
 
 ### Quick Diagnosis Checklist
 
@@ -749,9 +799,17 @@ Run through these in order before digging deeper:
    ```bash
    docker logs dune-awakening-gateway-1 2>&1 | grep -i "GameRmqHttpAddress\|GatewayDeclareFarmStatus"
    ```
-7. Verify your FLS token has not expired.
+7. Verify your FLS token has not expired. Note: **generating a new token at
+   account.duneawakening.com immediately revokes every previously issued token** for that
+   account, even ones that were still working -- if you rotate the token, you must update
+   `FLS_SECRET` everywhere it's configured and restart, or every server using an old token
+   will start failing auth at the same moment.
 8. If another host accidentally started with the same `WORLD_UNIQUE_NAME`, it can steal the
    FLS identity. Stop the duplicate stack and restart gateway on the live host.
+9. All FLS calls succeeding is **not proof the running build is current** -- the client
+   filters the browser list by build/revision, silently, with no error. If FLS looks
+   completely healthy and none of the above explains it, see **"Apply Update" succeeds but
+   the server keeps running the old build** above.
 
 ### FLS rejects world registration with Invalid Authorization
 
