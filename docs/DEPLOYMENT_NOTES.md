@@ -8,7 +8,7 @@ If you are running the server on a 12th-16th Gen Intel Core or Intel Core Ultra 
 
 **Solution**: Use a `cpupin` overlay to isolate game server containers to P-cores.
 1. Identify your P-core thread IDs (e.g., `0-15` on an i9-13900K, where `16-31` are E-cores).
-2. Run `./scripts/cpu-pin.sh --install` and follow the prompts.
+2. Run `./scripts/cpu-pin.sh --install` (non-interactive - no prompts).
 3. This installs a `dune-cpu-pin.service` + timer (via systemd) that applies `docker update
    --cpuset-cpus` to the running game containers on boot and every 5 minutes, so pinning
    survives container recreates without editing any compose file. See
