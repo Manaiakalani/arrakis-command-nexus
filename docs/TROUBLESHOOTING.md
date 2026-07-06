@@ -901,7 +901,8 @@ this swap automatically on every 3-second cycle.
    docker compose logs survival_1 2>&1 | grep "Database version mismatch"
    ```
 
-   **Fix:** Drop and recreate the database, then re-run db-init:
+   **Fix:** Drop and recreate the database, then re-run db-init (same procedure as
+   [Operations - After an Image Version Upgrade](./OPERATIONS.md#after-an-image-version-upgrade-db-re-init-required)):
 
    ```bash
    docker compose stop survival_1 director gateway text-router
@@ -1035,11 +1036,14 @@ every game map after this happens. `dune start` is supposed to re-apply pinning
 automatically as its last step, so this should self-heal within ~30-60 seconds of any
 restart. If it doesn't:
 
-1. Confirm `scripts/cpu-pin.sh` is actually executable — `ls -l scripts/cpu-pin.sh` should
-   show `-rwxr-xr-x`. If it shows `-rw-r--r--` (no `x` bits), the `dune` wrapper's
-   `[[ -x scripts/cpu-pin.sh ]]` guard silently evaluates false and skips pinning with
-   **no warning at all** (this can happen if the file was checked out on a filesystem/tool
-   that doesn't preserve the executable bit). Fix with `chmod +x scripts/cpu-pin.sh`.
+1. As of the fix in PR #13/#14, `dune start` invokes the fallback script explicitly via
+   `bash scripts/cpu-pin.sh` and only checks that the file exists (`[[ -f ... ]]`), so a
+   lost executable bit can no longer silently skip pinning the way it used to — you do
+   **not** need to `chmod +x scripts/cpu-pin.sh`. If pinning still isn't applied, run
+   `bash scripts/cpu-pin.sh` by hand and read the actual error output (common causes:
+   `docker update` permission issues, or `dune start` not reaching this step at all
+   because an earlier step in the script failed — check `dune start`'s full log for
+   errors before this point).
 2. If you have a hand-tuned `dune-cpu-pin.service` installed (`systemctl cat
    dune-cpu-pin.service`), `dune start` prefers restarting that service over running
    `scripts/cpu-pin.sh` directly, since a host-specific hand-tuned layout (individual
@@ -1450,7 +1454,9 @@ against the wrong app and produce false-positive "update available" notification
      funcom/self-hosting/seabass-server:1979201-0-shipping
    ```
 
-4. Update `.env` and reinitialize the database (the schema changes between major versions):
+4. Update `.env` and reinitialize the database (same procedure as
+   [Operations - After an Image Version Upgrade](./OPERATIONS.md#after-an-image-version-upgrade-db-re-init-required);
+   the schema changes between major versions):
    ```bash
    # Update image tag
    sed -i 's/DUNE_IMAGE_TAG=.*/DUNE_IMAGE_TAG=1979201-0-shipping/' .env
