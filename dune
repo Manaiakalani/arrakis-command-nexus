@@ -118,7 +118,11 @@ cmd_start() {
     log_info 'Re-applying CPU core affinity via dune-cpu-pin.service...'
     sudo systemctl restart dune-cpu-pin.service 2>/dev/null || \
       log_warn 'CPU pinning service restart failed (non-fatal). Run: sudo systemctl restart dune-cpu-pin.service'
-  elif [[ -x "$PROJECT_ROOT/scripts/cpu-pin.sh" ]]; then
+  elif [[ -f "$PROJECT_ROOT/scripts/cpu-pin.sh" ]]; then
+    # Checked for existence (-f), not executability (-x): this is invoked via
+    # `bash script.sh`, which doesn't need the executable bit, and a lost
+    # executable bit (e.g. from a checkout/transfer that doesn't preserve
+    # file modes) previously caused pinning to be silently skipped here.
     log_info 'Applying CPU core affinity...'
     bash "$PROJECT_ROOT/scripts/cpu-pin.sh" 2>/dev/null || \
       log_warn 'CPU pinning failed (non-fatal). Run: bash scripts/cpu-pin.sh'
