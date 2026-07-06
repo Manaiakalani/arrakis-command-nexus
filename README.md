@@ -99,8 +99,8 @@ See [docs/PROFILES.md](./docs/PROFILES.md) for the exact shard layouts.
 ## Quick Start
 
 ```bash
-# 1. Download Funcom's dedicated server files (requires game ownership)
-steamcmd +login <your-steam-username> +app_update 4754530 validate +quit
+# 1. Download Funcom's dedicated server files (anonymous login works, no game ownership needed)
+steamcmd +login anonymous +app_update 4754530 validate +quit
 
 # 2. Clone and configure
 git clone https://github.com/Manaiakalani/arrakis-command-nexus.git
