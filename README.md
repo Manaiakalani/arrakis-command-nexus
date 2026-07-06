@@ -11,7 +11,7 @@ Self-host a **Dune Awakening dedicated server** with **Docker Compose**, automat
 
 This project packages PostgreSQL, RabbitMQ, battlegroup services, helper scripts, and a browser-based control plane so you can launch a private or community server without manually wiring every dependency.
 
-In the in-game server browser, self-hosted worlds appear under the **Private** tab.
+In the in-game server browser, self-hosted worlds appear under the **Experimental** tab.
 
 ## Dashboard Preview
 

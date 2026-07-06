@@ -23,7 +23,7 @@
 # Usage:
 #   ./scripts/rmq-ghost-cleanup.sh             # dry-run, list candidates only
 #   ./scripts/rmq-ghost-cleanup.sh --apply     # close ghost dupes + reap orphans
-#   ./scripts/rmq-ghost-cleanup.sh --apply --user 35E6117067FC3FF3   # one user
+#   ./scripts/rmq-ghost-cleanup.sh --apply --user DEADBEEFCAFEF00D   # one user
 #
 set -euo pipefail
 
