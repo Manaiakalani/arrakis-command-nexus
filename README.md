@@ -177,6 +177,7 @@ flowchart TB
 | [Config Keys](./docs/CONFIG_KEYS.md) | Reference for gameplay, engine, and director tuning keys |
 | [Design System](./docs/DESIGN.md) | Dashboard design tokens, components, and patterns |
 | [Profiles](./docs/PROFILES.md) | Compare basic, standard, and full battlegroups |
+| [Map Management](./docs/MAP_MANAGEMENT.md) | Per-map RAM/port reference and start/stop commands |
 | [Networking](./docs/NETWORKING.md) | Ports, firewall planning, and NAT hairpin guidance |
 | [Troubleshooting](./docs/TROUBLESHOOTING.md) | Common startup, networking, dashboard, and WSL2 issues |
 | [Operations](./docs/OPERATIONS.md) | Day-to-day dashboard operations, announcements, backups, and restores |

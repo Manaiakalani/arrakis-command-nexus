@@ -9,9 +9,14 @@ This project packages Funcom's dedicated server stack, helper scripts, Docker Co
 - [Config Keys](./CONFIG_KEYS.md)
 - [Design System](./DESIGN.md)
 - [Deployment Profiles](./PROFILES.md)
+- [Map Management](./MAP_MANAGEMENT.md)
 - [Networking Guide](./NETWORKING.md)
+- [Cloudflare Tunnel](./CLOUDFLARE_TUNNEL.md)
 - [Operations Runbook](./OPERATIONS.md)
 - [Monitoring and Alerts](./MONITORING.md)
+- [Deployment Notes](./DEPLOYMENT_NOTES.md)
+- [Deep Desert Knobs](./DEEP_DESERT_KNOBS.md)
+- [Resource Respawn Knobs](./RESOURCE_RESPAWN_KNOBS.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)
 
 ## Project Overview
