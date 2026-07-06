@@ -1063,32 +1063,43 @@ clean, the Docker **bridge** network itself is the likely cause: the iptables /
 veth / NAT path adds per-packet processing jitter on the game UDP socket. An A/B
 test on this stack confirmed it - bridge mode rubberbands, host mode is smooth.
 
-**Recommended: Put ALL game servers on host networking** using
-`docker-compose.hostnet-all.yml`. This overlay moves all 5 main game servers
-(survival_1, overmap, deep_desert_1, arrakeen, harko_village) to
-`network_mode: host`, completely bypassing Docker's networking stack for game
-traffic.
+**Recommended: Put the survival map on host networking** using
+`docker-compose.hostnet.yml` (see
+[NETWORKING.md - Host Networking Overlay](./NETWORKING.md#host-networking-overlay-anti-rubberbanding)).
+This overlay moves `survival_1` - the map players actually experience rubberbanding
+on - to `network_mode: host`, bypassing Docker's networking stack for its game
+traffic. Other servers stay on bridge networking; their S2S traffic to `survival_1`
+is routed via `extra_hosts` entries pointing at the host LAN IP instead of Docker
+DNS, so it isn't affected by the bridge/NAT jitter either. **This is the
+configuration currently deployed in production and confirmed to resolve
+rubberbanding.**
 
-Enable it by setting `COMPOSE_FILE` in `.env`:
+Enable it by setting these in `.env`:
 
 ```bash
 # In .env
 HOST_LAN_IP=192.168.1.50                        # this host's real LAN IP
-COMPOSE_FILE=docker-compose.yml:docker-compose.standard.yml:docker-compose.hostnet-all.yml
+DUNE_HOSTNET_OVERLAY=docker-compose.hostnet.yml
 ```
 
 ```bash
-docker compose --profile standard down --remove-orphans
-docker compose --profile standard up -d
+./dune restart
 ```
 
-This ensures ALL `docker compose` commands automatically use the overlay - no
-`-f` flags needed, no risk of forgetting.
+The `./dune` CLI reads `DUNE_HOSTNET_OVERLAY` and includes the overlay
+automatically on every `docker compose` invocation - no `-f` flags needed, no
+risk of forgetting.
 
-**Alternative: Single-server overlay** (`docker-compose.hostnet.yml`) moves only
-`survival_1` to host networking. Use this if you want minimal changes, but note
-that mixed networking (some servers on host, others on bridge) can still cause
-S2S mesh latency.
+**Alternative: Put ALL game servers on host networking** using
+`docker-compose.hostnet-all.yml` instead (set
+`DUNE_HOSTNET_OVERLAY=docker-compose.hostnet-all.yml`). This moves every game
+server - not just `survival_1` - to `network_mode: host`. It exists because an
+earlier iteration of the mixed setup (before the `extra_hosts`-based S2S routing
+above) saw cross-container mesh latency from the asymmetric networking. Only
+reach for it if the single-server overlay doesn't fully resolve rubberbanding for
+you: it requires planning a unique host port range for every game server (see the
+file's header comments) and hasn't been necessary in production since `extra_hosts`
+routing was added.
 
 Requirements:
 
@@ -1096,14 +1107,16 @@ Requirements:
 - Router forwards UDP `7777` and `7888` to that LAN IP (other ports are S2S-internal)
 - Game ports are free on the host (no other process bound)
 
-Verify game servers landed on the host network:
+Verify which servers landed on the host network:
 
 ```bash
 for srv in survival_1 overmap deep_desert_1 arrakeen harko_village; do
   echo -n "$srv: "
   docker inspect -f '{{.HostConfig.NetworkMode}}' dune-awakening-${srv}-1
 done
-# All should show: host
+# With docker-compose.hostnet.yml (recommended): only survival_1 shows "host",
+# the rest show your bridge network name.
+# With docker-compose.hostnet-all.yml (alternative): all of them show "host".
 ```
 
 ### In-Game Rubberbanding - UDP Socket Receive-Buffer Overflow
@@ -1419,15 +1432,17 @@ players receive a version mismatch error when connecting.
 
 | Steam App ID | Build | Who can connect | Anonymous steamcmd? |
 |---|---|---|---|
-| `4754530` | Retail (Production) | Retail game clients | Login required (game ownership) |
+| `4754530` | Retail (Production) | Retail game clients | Yes (anonymous works) |
 | `3104830` | PTC (Public Test Client) | PTC game clients | Yes (anonymous works) |
 
 Running the PTC build when your players use the retail game (or vice versa) means the server
 is invisible on the correct FLS environment. **Both apps are valid choices**  -  pick whichever
-matches your players' clients. PTC is easier to download (anonymous steamcmd works); retail
-requires Steam credentials of an account that owns the game. **`STEAM_APP_ID` in `.env` MUST
-match the manifest in `steam/steamapps/appmanifest_*.acf`** or update checks will compare
-against the wrong app and produce false-positive "update available" notifications.
+matches your players' clients. Both dedicated server packages download anonymously - no Steam
+account or game ownership is required for either one; this repo's own update automation
+(`scripts/update.sh`, the dashboard's "Apply Update") relies on this and always uses
+`+login anonymous`. **`STEAM_APP_ID` in `.env` MUST match the manifest in
+`steam/steamapps/appmanifest_*.acf`** or update checks will compare against the wrong app and
+produce false-positive "update available" notifications.
 
 **Fix:**
 
