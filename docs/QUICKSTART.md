@@ -78,10 +78,13 @@ If you are running on Windows, use WSL2 with Docker Desktop:
 
 ## 2. Download the dedicated server files from Steam
 
-Install SteamCMD, then pull the Funcom package:
+Install SteamCMD, then pull the Funcom package. **App ID `4754530` is the retail
+build and requires the Steam credentials of an account that owns Dune: Awakening** —
+anonymous login only works for the PTC (playtest) app ID. Using `anonymous` against
+the retail App ID will fail:
 
 ```bash
-steamcmd +login anonymous +app_update 4754530 validate +quit
+steamcmd +login <your-steam-username> +app_update 4754530 validate +quit
 ```
 
 Keep note of the folder that contains the downloaded tarballs or extracted server files. The setup wizard will ask for it.

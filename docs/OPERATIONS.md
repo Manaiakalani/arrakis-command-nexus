@@ -408,6 +408,11 @@ docker compose ps
 
 #### After an Image Version Upgrade (DB Re-Init Required)
 
+> This is the canonical drop/recreate-database procedure. `docs/TROUBLESHOOTING.md`'s
+> "Database version mismatch" and "PTC vs Retail Steam App Mismatch" sections show the
+> same steps in their own diagnostic context — if this procedure ever changes, update it
+> here first and keep those sections in sync.
+
 When the Funcom server image changes to a **new major version** (e.g. `1973075` to `1979201`),
 the game schema changes and the existing database must be recreated. `bootstrap_db.py` has an
 early-exit guard that skips initialization if the schema already exists, so you must drop and
