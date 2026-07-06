@@ -726,8 +726,11 @@ load_images() {
     set_env_value DUNE_STEAM_SERVER_DIR "$steam_dir"
   fi
 
-  if [[ -x "$PROJECT_ROOT/scripts/load-images.sh" ]]; then
-    "$PROJECT_ROOT/scripts/load-images.sh" || {
+  if [[ -f "$PROJECT_ROOT/scripts/load-images.sh" ]]; then
+    # Invoked via `bash` (not direct exec) and checked for existence (-f) rather
+    # than executability (-x): a lost executable bit should not silently skip
+    # image loading the way it once silently skipped CPU pinning (see CHANGELOG).
+    bash "$PROJECT_ROOT/scripts/load-images.sh" || {
       print_check warn "Image loading had issues - containers may still work if images were previously loaded"
     }
     load_env_file
