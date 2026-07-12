@@ -30,7 +30,7 @@ Running containers with `network_mode: "host"` eliminates Docker's bridge overhe
 1. **Port Binding Races on Restart**: When a server restarts, the old process may take a few seconds to release its UDP port. If the new container starts too fast, it will fail to bind the port and crash.
    *Fix*: Set `PORT_AVAILABILITY_WAIT_SECONDS=30` in your `.env` file to force a deliberate delay before the new container claims the socket.
 2. **NAT Hairpinning for LAN Players**: If players are on the same local network as the server, but trying to connect via your public IP, they might fail to connect.
-   *Fix*: Ensure your router supports **NAT Loopback / Hairpinning**, or have local players connect directly to the server's local LAN IP (e.g., `192.168.1.50`).
+   *Fix*: Ensure your router supports **NAT Loopback / Hairpinning**, or have local players connect directly to the server's local LAN IP (e.g., `<YOUR_LAN_IP>`).
 
 ## Systemd Auto-Start Setup
 
