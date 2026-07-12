@@ -161,9 +161,9 @@ Port note: operators on the k3s/Funcom-operator stack, not this Docker Compose s
 
 | Key | Section | Type | Default | Description |
 |-----|---------|------|---------|-------------|
-| `NetServerMaxTickRate` | `/Script/Engine.Engine` | integer | `120` | Max server tick rate used by this repo. |
-| `MaxClientRate` | `/Script/OnlineSubsystemUtils.IpNetDriver` | integer | `0` | Max client bandwidth rate in bytes per second (0 = unlimited). |
-| `MaxInternetClientRate` | `/Script/OnlineSubsystemUtils.IpNetDriver` | integer | `0` | Max internet client bandwidth rate in bytes per second (0 = unlimited). |
+| `NetServerMaxTickRate` | `/Script/Engine.Engine` | integer | UE5 default | Network tick rate. **Not overridden** — previous value of `120` was reverted (caused tick debt at 30fps). |
+| `MaxClientRate` | `/Script/OnlineSubsystemUtils.IpNetDriver` | integer | UE5 default | Max client bandwidth (bytes/sec). **Not overridden** — `0` caused load timeouts, `2000000` still caused jitter. |
+| `MaxInternetClientRate` | `/Script/OnlineSubsystemUtils.IpNetDriver` | integer | UE5 default | Max internet client bandwidth (bytes/sec). **Not overridden** — see MaxClientRate. |
 | `ClientErrorUpdateRateLimit` | `/Script/Engine.GameNetworkManager` | float | `0.35` | Rate limit for client correction updates. |
 | `ClientNetSendMoveDeltaTime` | `/Script/Engine.GameNetworkManager` | float | `0.0333` | Move packet interval for active clients. |
 | `ClientNetSendMoveDeltaTimeThrottled` | `/Script/Engine.GameNetworkManager` | float | `0.0666` | Move packet interval for throttled clients. |
