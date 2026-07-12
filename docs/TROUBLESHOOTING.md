@@ -42,7 +42,7 @@ docker exec dune-awakening-director-1 grep AllowGroupTravel /etc/app/conf.d/dire
 > ```bash
 > docker compose -f docker-compose.yml -f docker-compose.basic.yml \
 >   -f docker-compose.dashboard.yml restart director survival_1 overmap
-> # Add deepdesert_1 if you run the full profile.
+> # Add deep_desert_1 if you run the standard or full profile.
 > ```
 >
 > Heads-up: this kicks any online players. Schedule the restart, or use the
@@ -673,7 +673,8 @@ for servers to register in `farm_state`, then ensures matching `world_partition`
 
 **Why (likely cause):**
 
-Funcom usually flips the depot's manifest ACL to "owners only" for the first few hours after a release, so anonymous SteamCMD fails with:
+On rare occasions, Funcom may delay depot manifest availability for a few minutes after
+publishing a new build. Anonymous SteamCMD can temporarily fail with:
 
 ```
 CDepotDownloadMgr::BYldRequestDepotManifest(App: 4754530, Depot: 4754532, ...):
@@ -683,11 +684,14 @@ AppID 4754530 update canceled : Failed downloading 1 manifests (No connection)
 
 (Logged inside `/root/.local/share/Steam/logs/content_log.txt` in the SteamCMD container.)
 
+This is transient — anonymous login works for both retail (`4754530`) and PTC (`3104830`)
+under normal conditions. Simply retry after a few minutes.
+
 **Recommended workflow (Windows operator, Linux host):**
 
 If you're downloading from a Windows machine and pushing the result to a separate Linux
-host, a local (not repo-tracked) PowerShell helper script that wraps SteamCMD with your
-Steam account and rsyncs the result over is a convenient pattern. Two important details
+host, a local (not repo-tracked) PowerShell helper script that wraps SteamCMD and rsyncs
+the result over is a convenient pattern. Two important details
 that aren't obvious if you write your own:
 
 1. **Force Linux platform.** Without `+@sSteamCmdForcePlatformType linux`,
@@ -1860,7 +1864,7 @@ If your backup is a gzipped SQL dump (`.sql.gz`), you can extract and restore sp
 
 - **Always back up before updates:** `scripts/update.sh` now creates an automatic pre-update backup
 - **Manual backup:** `bash scripts/backup.sh --scope full`
-- **Keep multiple backups:** Set `BACKUP_RETENTION_DAYS` in `.env` (default: 7 days)
+- **Keep multiple backups:** Set `BACKUP_RETENTION_DAYS` in `.env` (default: 30 days)
 - **Test restores periodically** to ensure backups are valid
 
 ## `docker restart` vs `docker compose up -d`

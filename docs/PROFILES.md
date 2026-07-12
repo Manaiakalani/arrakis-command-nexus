@@ -62,7 +62,7 @@ The stack is split into profile overlays so you can run a smaller battlegroup fo
 ## Switching Profiles
 
 1. Edit `.env`
-2. Change `DEPLOYMENT_PROFILE=basic|standard|full`
+2. Change `DEPLOYMENT_PROFILE=basic|standard-lean|standard|full`
 3. Re-run `./dune preflight`
 4. Restart the stack with `./dune restart`
 

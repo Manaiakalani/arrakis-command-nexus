@@ -42,9 +42,9 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DEPLOYMENT_PROFILE` | `basic` | Selects `basic`, `standard`, or `full` compose overlays. |
-| `DUNE_IMAGE_TAG` | `1979201-0-shipping` | Funcom retail server image tag. Use `4754530` (retail) not `3104830` (PTC). Updated by `dune update`. |
-| `STEAM_APP_ID` | `4754530` | Dedicated server Steam App ID. **Always use `4754530` (retail).** |
+| `DEPLOYMENT_PROFILE` | `basic` | Selects `basic`, `standard-lean`, `standard`, or `full` compose overlays. |
+| `DUNE_IMAGE_TAG` | `2007976-0-shipping` | Funcom server image tag. Updated by `dune update`. |
+| `STEAM_APP_ID` | `4754530` | Steam App ID for update checks. Use `4754530` (retail) or `3104830` (PTC). Must match your players' client. |
 | `DUNE_STEAM_SERVER_DIR` | `./steam` | Local directory containing extracted Steam payloads. |
 
 ### Database
@@ -53,7 +53,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | --- | --- | --- |
 | `POSTGRES_SUPER_PASSWORD` | `change-me-postgres-super` | Superuser password for the local PostgreSQL container. |
 | `POSTGRES_DUNE_PASSWORD` | `change-me-dune-db` | Application database password used by Dune services and dashboard API. |
-| `POSTGRES_PORT` | `5432` | Host port for PostgreSQL, intentionally bound to localhost in compose. |
+| `POSTGRES_PORT` | `15432` | Host port for PostgreSQL, intentionally bound to localhost in compose. |
 
 ### RabbitMQ
 
@@ -90,7 +90,7 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `BACKUP_DIR` | `./backups` | Backup target directory on the host. |
-| `BACKUP_RETENTION_DAYS` | `7` | Retention policy for backup cleanup. |
+| `BACKUP_RETENTION_DAYS` | `30` | Retention policy for backup cleanup. |
 | `BACKUP_SCHEDULE_ENABLED` | `false` | Turns scheduled backups on or off. |
 | `BACKUP_SCHEDULE_INTERVAL_HOURS` | `24` | Backup cadence when scheduling is enabled. |
 
@@ -98,10 +98,10 @@ Copy `.env.example` to `.env`, then edit values to match your host.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `MEM_LIMIT_SURVIVAL` | `12g` | Container memory limit for Survival shards. |
-| `MEM_LIMIT_OVERMAP` | `8g` | Container memory limit for Overmap. |
-| `MEM_LIMIT_DEEP_DESERT` | `10g` | Container memory limit for Deep Desert shards. |
-| `MEM_LIMIT_DEFAULT_MAP` | `8g` | Container memory limit for social hubs and story maps. |
+| `MEM_LIMIT_SURVIVAL` | `16g` | Container memory limit for Survival shards. |
+| `MEM_LIMIT_OVERMAP` | `3g` | Container memory limit for Overmap. |
+| `MEM_LIMIT_DEEP_DESERT` | `16g` | Container memory limit for Deep Desert shards. |
+| `MEM_LIMIT_DEFAULT_MAP` | `3g` | Container memory limit for social hubs and story maps. |
 | `MEM_LIMIT_POSTGRES` | `1g` | PostgreSQL container limit. |
 | `MEM_LIMIT_RMQ` | `1g` | RabbitMQ container limit. Must be >= 1g to avoid `system_memory_high_watermark` alarms during traffic spikes (player travel events) that block publishers and cause P83 on the client. |
 | `MEM_LIMIT_DIRECTOR` | `512m` | Director container limit. |
