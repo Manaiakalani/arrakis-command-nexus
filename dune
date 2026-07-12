@@ -96,6 +96,20 @@ cmd_start() {
   run_compose up -d
   log_success 'Stack started.'
 
+  # Stop any services the operator has paused (e.g. deep_desert_1 to save RAM).
+  # DUNE_DISABLED_SERVICES is a comma-separated list of compose service names.
+  if [[ -n "${DUNE_DISABLED_SERVICES:-}" ]]; then
+    local IFS=','
+    local -a disabled_svcs
+    read -ra disabled_svcs <<< "$DUNE_DISABLED_SERVICES"
+    for svc in "${disabled_svcs[@]}"; do
+      svc="$(echo "$svc" | xargs)"  # trim whitespace
+      [[ -z "$svc" ]] && continue
+      log_info "Stopping disabled service: $svc"
+      run_compose stop "$svc" 2>/dev/null || true
+    done
+  fi
+
   # Run a lightweight health validation after startup so obvious regressions
   # surface immediately without waiting for an operator to run doctor.
   log_info 'Running post-start validation (waiting for services to initialise)...'
