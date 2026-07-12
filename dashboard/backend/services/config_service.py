@@ -145,8 +145,8 @@ class ConfigService:
                 "NetServerMaxTickRate": ConfigField(
                     key="NetServerMaxTickRate",
                     type="int",
-                    description="Network tick rate for the game server. Higher values mean smoother gameplay but more CPU/bandwidth usage.",
-                    default_value="120",
+                    description="Network tick rate. Leave at UE5 default unless testing. Overriding to 120 was reverted (caused tick debt).",
+                    default_value="",
                 ),
                 # --- Sandworm Settings ---
                 "m_bGiantWormSystemEnabled": ConfigField(
@@ -557,21 +557,21 @@ class ConfigService:
                 "NetServerMaxTickRate": ConfigField(
                     key="NetServerMaxTickRate",
                     type="int",
-                    description="Network tick rate for the server engine. Higher values = smoother but more resource-intensive.",
-                    default_value="120",
+                    description="Network tick rate. Leave blank for UE5 default (tested: 120 caused tick debt at 30fps, reverted in PR #26).",
+                    default_value="",
                     options=[
+                        {"value": "", "label": "UE5 default (recommended)"},
                         {"value": "30", "label": "30 (low, saves CPU)"},
-                        {"value": "60", "label": "60 (legacy default)"},
-                        {"value": "120", "label": "120 (recommended)"},
+                        {"value": "60", "label": "60 (moderate)"},
                     ],
                 ),
                 "MaxClientRate": ConfigField(
                     key="MaxClientRate",
                     type="int",
-                    description="Maximum bytes per second the server will send to a single client. 0 = unlimited (recommended).",
-                    default_value="0",
+                    description="Max bytes/sec to a single client. Leave blank for UE5 default (tested: 0 caused load timeout, 2000000 caused jitter).",
+                    default_value="",
                     options=[
-                        {"value": "0", "label": "0 (unlimited, recommended)"},
+                        {"value": "", "label": "UE5 default (recommended)"},
                         {"value": "500000", "label": "500,000 (limited)"},
                         {"value": "1000000", "label": "1,000,000 (high)"},
                     ],
@@ -579,10 +579,10 @@ class ConfigService:
                 "MaxInternetClientRate": ConfigField(
                     key="MaxInternetClientRate",
                     type="int",
-                    description="Maximum bytes per second for internet-connected clients. 0 = unlimited (recommended).",
-                    default_value="0",
+                    description="Max bytes/sec for internet clients. Leave blank for UE5 default.",
+                    default_value="",
                     options=[
-                        {"value": "0", "label": "0 (unlimited, recommended)"},
+                        {"value": "", "label": "UE5 default (recommended)"},
                         {"value": "500000", "label": "500,000 (limited)"},
                         {"value": "1000000", "label": "1,000,000 (high)"},
                     ],
