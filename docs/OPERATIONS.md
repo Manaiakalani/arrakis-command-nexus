@@ -520,7 +520,7 @@ docker compose up -d
 
 ```bash
 # Edit .env
-DEPLOYMENT_PROFILE=standard  # Options: basic, standard, full
+DEPLOYMENT_PROFILE=standard  # Options: basic, standard-lean, standard, full
 
 # Redeploy
 ./dune deploy

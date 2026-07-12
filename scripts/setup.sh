@@ -48,17 +48,19 @@ EOF
 select_profile() {
   local selection=''
   printf 'Select deployment profile:\n'
-  printf '  1) basic    - %s\n' "$(profile_memory_label basic)"
-  printf '  2) standard - %s\n' "$(profile_memory_label standard)"
-  printf '  3) full     - %s\n' "$(profile_memory_label full)"
+  printf '  1) basic         - %s\n' "$(profile_memory_label basic)"
+  printf '  2) standard-lean - %s\n' "$(profile_memory_label standard-lean)"
+  printf '  3) standard      - %s\n' "$(profile_memory_label standard)"
+  printf '  4) full          - %s\n' "$(profile_memory_label full)"
 
   while :; do
-    read -r -p 'Profile [1-3]: ' selection
+    read -r -p 'Profile [1-4]: ' selection
     case "$selection" in
       1) printf 'basic\n'; return 0 ;;
-      2) printf 'standard\n'; return 0 ;;
-      3) printf 'full\n'; return 0 ;;
-      *) log_warn 'Please choose 1, 2, or 3.' ;;
+      2) printf 'standard-lean\n'; return 0 ;;
+      3) printf 'standard\n'; return 0 ;;
+      4) printf 'full\n'; return 0 ;;
+      *) log_warn 'Please choose 1, 2, 3, or 4.' ;;
     esac
   done
 }
@@ -105,7 +107,8 @@ else
     log_warn 'The Funcom token cannot be empty.'
   done
   write_secret_file "$SECRET_DIR/funcom-token.txt" "$funcom_token"
-  log_success 'Saved Funcom token to secrets/funcom-token.txt.'
+  set_env_value FLS_SECRET "$funcom_token"
+  log_success 'Saved Funcom token to secrets/funcom-token.txt and .env (FLS_SECRET).'
 fi
 
 server_name_default="$(strip_wrapping_quotes "${WORLD_NAME:-Dune Awakening Server}")"
