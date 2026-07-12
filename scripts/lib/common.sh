@@ -298,7 +298,8 @@ prompt_secret() {
 profile_memory_mib() {
   case "$1" in
     basic) printf '8192\n' ;;
-    standard) printf '16384\n' ;;
+    standard-lean) printf '16384\n' ;;
+    standard) printf '24576\n' ;;
     full) printf '32768\n' ;;
     *) printf '8192\n' ;;
   esac
@@ -307,7 +308,8 @@ profile_memory_mib() {
 profile_memory_label() {
   case "$1" in
     basic) printf '8 GiB minimum\n' ;;
-    standard) printf '16 GiB minimum\n' ;;
+    standard-lean) printf '16 GiB minimum\n' ;;
+    standard) printf '24 GiB minimum\n' ;;
     full) printf '32 GiB minimum\n' ;;
     *) printf '8 GiB minimum\n' ;;
   esac
