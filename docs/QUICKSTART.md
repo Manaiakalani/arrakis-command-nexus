@@ -10,6 +10,7 @@ This guide gets a fresh host from zero to a running Dune Awakening self-hosted s
 - SteamCMD or another way to run Steam's dedicated server download command
 - Recommended RAM:
   - basic: ~20 GB
+  - standard-lean: ~30 GB
   - standard: ~30-40 GB
   - full: ~40 GB+
 
@@ -106,7 +107,7 @@ cd dune-server-docker
 The `./dune init` script bootstraps your environment. The wizard walks through:
 
 - **World/Server Naming**: Setting the server name displayed in the browser
-- **Deployment Profile Selection**: Choosing `basic` (~20GB RAM), `standard` (~30-40GB RAM), or `full` (~40GB+ RAM)
+- **Deployment Profile Selection**: Choosing `basic` (~20GB), `standard-lean` (~30GB), `standard` (~30-40GB), or `full` (~40GB+)
 - **External IP / Host Settings**: Configuring how players connect to your server
 - **Admin Credentials and Tokens**: Securing your setup
 - **Steam Download Path**: Pointing to the files downloaded via SteamCMD
