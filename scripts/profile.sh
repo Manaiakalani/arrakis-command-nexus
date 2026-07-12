@@ -15,9 +15,10 @@ show_profiles() {
   [[ "$fls_env" == 'beta' ]] && env_label='PTC'
 
   printf 'Available deployment profiles:\n\n'
-  printf '  basic    - Survival + Overmap (~20 GB RAM)\n'
-  printf '  standard - + Deep Desert + Story (~30-40 GB RAM)\n'
-  printf '  full     - All maps (~40+ GB RAM)\n\n'
+  printf '  basic         - Survival + Overmap (~20 GB RAM)\n'
+  printf '  standard-lean - + Deep Desert + social hubs, no story shards (~30 GB RAM)\n'
+  printf '  standard      - + Deep Desert + Story (~30-40 GB RAM)\n'
+  printf '  full          - All maps (~40+ GB RAM)\n\n'
   printf 'Current profile: %s\n' "$current_profile"
   printf 'Environment: %s (%s)\n' "$env_label" "$fls_env"
 }
@@ -26,12 +27,12 @@ switch_profile() {
   local profile="${1:-}"
 
   if [[ -z "$profile" ]]; then
-    printf 'Usage: %s switch <basic|standard|full>\n' "$0"
+    printf 'Usage: %s switch <basic|standard-lean|standard|full>\n' "$0"
     return 1
   fi
 
   case "$profile" in
-    basic|standard|full)
+    basic|standard-lean|standard|full)
       set_env_value DEPLOYMENT_PROFILE "$profile"
       export DEPLOYMENT_PROFILE="$profile"
       printf 'Switched to profile: %s\n' "$profile"
@@ -39,7 +40,7 @@ switch_profile() {
       ;;
     *)
       printf 'Unknown profile: %s\n' "$profile"
-      printf 'Valid profiles: basic, standard, full\n'
+      printf 'Valid profiles: basic, standard-lean, standard, full\n'
       return 1
       ;;
   esac

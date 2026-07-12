@@ -113,7 +113,7 @@ check_api() {
   local label="${2:-$path}"
   local code
   code="$(curl -s -o /dev/null -w '%{http_code}' \
-    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "X-Admin-Token: ${DUNE_ADMIN_TOKEN:-}" \
     "${DASHBOARD_URL}${path}" 2>/dev/null)"
   if [[ "$code" == "200" ]]; then
     pass "$label (200)"
