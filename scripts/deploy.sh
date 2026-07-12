@@ -437,14 +437,16 @@ configure_profile() {
 
   # Determine recommended profile based on RAM
   local recommended="basic"
+  [[ "$mem_total_gib" -ge 20 ]] && recommended="standard-lean"
   [[ "$mem_total_gib" -ge 32 ]] && recommended="standard"
   [[ "$mem_total_gib" -ge 48 ]] && recommended="full"
 
-  local rec_basic="" rec_standard="" rec_full=""
+  local rec_basic="" rec_standardlean="" rec_standard="" rec_full=""
   case "$recommended" in
-    basic)    rec_basic="<-- recommended for ${mem_total_gib}GB RAM" ;;
-    standard) rec_standard="<-- recommended for ${mem_total_gib}GB RAM" ;;
-    full)     rec_full="<-- recommended for ${mem_total_gib}GB RAM" ;;
+    basic)         rec_basic="<-- recommended for ${mem_total_gib}GB RAM" ;;
+    standard-lean) rec_standardlean="<-- recommended for ${mem_total_gib}GB RAM" ;;
+    standard)      rec_standard="<-- recommended for ${mem_total_gib}GB RAM" ;;
+    full)          rec_full="<-- recommended for ${mem_total_gib}GB RAM" ;;
   esac
 
   cat <<EOF
@@ -452,25 +454,28 @@ configure_profile() {
     ${AMBER}|${RESET}  #  ${AMBER}|${RESET} Profile        ${AMBER}|${RESET}  RAM   ${AMBER}|${RESET} Maps                        ${AMBER}|${RESET}
     ${AMBER}+${GREY}-----${AMBER}+${GREY}----------------${AMBER}+${GREY}--------${AMBER}+${GREY}-----------------------------${AMBER}+${RESET}
     ${AMBER}|${RESET}  1  ${AMBER}|${WHITE} basic          ${AMBER}|${RESET} ~20 GB ${AMBER}|${RESET} Survival + Overmap          ${AMBER}|${RESET} ${SAGE}${rec_basic}${RESET}
-    ${AMBER}|${RESET}  2  ${AMBER}|${WHITE} standard       ${AMBER}|${RESET} ~35 GB ${AMBER}|${RESET} + Deep Desert + Story       ${AMBER}|${RESET} ${SAGE}${rec_standard}${RESET}
-    ${AMBER}|${RESET}  3  ${AMBER}|${WHITE} full           ${AMBER}|${RESET} ~48 GB ${AMBER}|${RESET} All maps (every zone)       ${AMBER}|${RESET} ${SAGE}${rec_full}${RESET}
+    ${AMBER}|${RESET}  2  ${AMBER}|${WHITE} standard-lean  ${AMBER}|${RESET} ~30 GB ${AMBER}|${RESET} + Deep Desert + social hubs ${AMBER}|${RESET} ${SAGE}${rec_standardlean}${RESET}
+    ${AMBER}|${RESET}  3  ${AMBER}|${WHITE} standard       ${AMBER}|${RESET} ~35 GB ${AMBER}|${RESET} + Deep Desert + Story       ${AMBER}|${RESET} ${SAGE}${rec_standard}${RESET}
+    ${AMBER}|${RESET}  4  ${AMBER}|${WHITE} full           ${AMBER}|${RESET} ~48 GB ${AMBER}|${RESET} All maps (every zone)       ${AMBER}|${RESET} ${SAGE}${rec_full}${RESET}
     ${AMBER}+${GREY}-----${AMBER}+${GREY}----------------${AMBER}+${GREY}--------${AMBER}+${GREY}-----------------------------${AMBER}+${RESET}
 EOF
 
   local default_num=1
   case "$recommended" in
-    standard) default_num=2 ;;
-    full)     default_num=3 ;;
+    standard-lean) default_num=2 ;;
+    standard) default_num=3 ;;
+    full)     default_num=4 ;;
   esac
 
   local profile_choice
-  profile_choice="$(choose 'Profile' "$default_num" 1 2 3)"
+  profile_choice="$(choose 'Profile' "$default_num" 1 2 3 4)"
 
   local profile
   case "$profile_choice" in
     1) profile="basic" ;;
-    2) profile="standard" ;;
-    3) profile="full" ;;
+    2) profile="standard-lean" ;;
+    3) profile="standard" ;;
+    4) profile="full" ;;
   esac
 
   set_env_value DEPLOYMENT_PROFILE "$profile"

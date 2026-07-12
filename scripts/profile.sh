@@ -34,6 +34,7 @@ switch_profile() {
   case "$profile" in
     basic|standard-lean|standard|full)
       set_env_value DEPLOYMENT_PROFILE "$profile"
+      set_env_value COMPOSE_FILE "docker-compose.yml:docker-compose.${profile}.yml"
       export DEPLOYMENT_PROFILE="$profile"
       printf 'Switched to profile: %s\n' "$profile"
       printf "Run './dune restart' to apply.\n"
