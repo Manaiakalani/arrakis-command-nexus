@@ -669,6 +669,25 @@ class UpdateService:
 
             logger.info("Compose recreate succeeded: %s", output[:500])
 
+            # Stop any disabled services that got recreated
+            disabled_raw = os.environ.get("DUNE_DISABLED_SERVICES", "")
+            disabled_set = {s.strip() for s in disabled_raw.split(",") if s.strip()}
+            if disabled_set:
+                stop_svcs = [s for s in disabled_set if not tagged_services or s in tagged_services]
+                if stop_svcs:
+                    stop_cmd = list(base_cmd) + ["stop"] + stop_svcs
+                    logger.info("Stopping disabled services post-recreate: %s", stop_svcs)
+                    try:
+                        stop_proc = await asyncio.create_subprocess_exec(
+                            *stop_cmd,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.STDOUT,
+                            env=proc_env,
+                        )
+                        await asyncio.wait_for(stop_proc.communicate(), timeout=30)
+                    except Exception as exc:
+                        logger.warning("Failed to stop disabled services: %s", exc)
+
             # Parse recreated services from output
             recreated = []
             for line in output.splitlines():
