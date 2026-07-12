@@ -1082,7 +1082,7 @@ Enable it by setting these in `.env`:
 
 ```bash
 # In .env
-HOST_LAN_IP=192.168.x.x                        # this host's real LAN IP
+HOST_LAN_IP=<YOUR_LAN_IP>                       # this host's real LAN IP
 DUNE_HOSTNET_OVERLAY=docker-compose.hostnet.yml
 ```
 
