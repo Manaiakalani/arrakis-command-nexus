@@ -371,11 +371,16 @@ async def _restart_game_servers(request: Request) -> list[str]:
         logger.warning("docker binary or compose files not found; falling back to SDK restart")
         return await _sdk_restart_game_servers(request)
 
+    # Exclude disabled services (e.g. deep_desert_1 paused to save RAM)
+    disabled_raw = os.getenv("DUNE_DISABLED_SERVICES", "")
+    disabled_set = {s.strip() for s in disabled_raw.split(",") if s.strip()}
+    active_containers = [c for c in _GAME_CONTAINERS if c not in disabled_set]
+
     cmd = [docker_bin, "compose"]
     for f in compose_files:
         cmd.extend(["-f", f])
     cmd.extend(["--env-file", _ENV_PATH, "up", "-d", "--force-recreate", "--no-deps"])
-    cmd.extend(list(_GAME_CONTAINERS))
+    cmd.extend(active_containers)
 
     logger.info("Recreating game servers: %s", " ".join(cmd))
     try:
