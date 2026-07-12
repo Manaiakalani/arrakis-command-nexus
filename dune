@@ -54,6 +54,8 @@ Commands:
   dashboard               Open the dashboard in a browser
   preflight               Run quick pre-start validation
   shutdown-host           Graceful 2-phase host shutdown (warn → backup → stop → power off)
+  fix-p83                 Clean RabbitMQ ghost queues (alias: rmq-ghost-cleanup)
+  fix-perms               Fix file permissions on volumes/mounts
   config edit             Open config files with \$EDITOR
   help                    Show this help message
   version                 Show CLI version
