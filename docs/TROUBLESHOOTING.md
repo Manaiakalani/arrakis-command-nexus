@@ -1063,23 +1063,24 @@ clean, the Docker **bridge** network itself is the likely cause: the iptables /
 veth / NAT path adds per-packet processing jitter on the game UDP socket. An A/B
 test on this stack confirmed it - bridge mode rubberbands, host mode is smooth.
 
-**Recommended: Put the survival map on host networking** using
-`docker-compose.hostnet.yml` (see
+**Recommended: Put ALL game servers on host networking** using
+`docker-compose.hostnet-lean.yml` (see
 [NETWORKING.md - Host Networking Overlay](./NETWORKING.md#host-networking-overlay-anti-rubberbanding)).
-This overlay moves `survival_1` - the map players actually experience rubberbanding
-on - to `network_mode: host`, bypassing Docker's networking stack for its game
-traffic. Other servers stay on bridge networking; their S2S traffic to `survival_1`
-is routed via `extra_hosts` entries pointing at the host LAN IP instead of Docker
-DNS, so it isn't affected by the bridge/NAT jitter either. **This is the
-configuration currently deployed in production and confirmed to resolve
-rubberbanding.**
+This overlay moves all 5 game servers to `network_mode: host`, bypassing Docker's
+bridge/iptables/veth stack entirely. Game UDP packets go directly from the NIC to
+each server process socket. **This is the configuration currently deployed in
+production and confirmed to resolve rubberbanding.**
+
+> **⚠️ Do NOT use the survival-only overlay (`docker-compose.hostnet.yml`).**
+> Mixed bridge/host networking was tested and still causes rubberbanding on the
+> bridge-networked servers. All game servers must be on host networking.
 
 Enable it by setting these in `.env`:
 
 ```bash
 # In .env
 HOST_LAN_IP=<YOUR_LAN_IP>                       # this host's real LAN IP
-DUNE_HOSTNET_OVERLAY=docker-compose.hostnet.yml
+DUNE_HOSTNET_OVERLAY=docker-compose.hostnet-lean.yml
 ```
 
 ```bash
@@ -1087,36 +1088,24 @@ DUNE_HOSTNET_OVERLAY=docker-compose.hostnet.yml
 ```
 
 The `./dune` CLI reads `DUNE_HOSTNET_OVERLAY` and includes the overlay
-automatically on every `docker compose` invocation - no `-f` flags needed, no
+automatically on every `docker compose` invocation — no `-f` flags needed, no
 risk of forgetting.
-
-**Alternative: Put ALL game servers on host networking** using
-`docker-compose.hostnet-all.yml` instead (set
-`DUNE_HOSTNET_OVERLAY=docker-compose.hostnet-all.yml`). This moves every game
-server - not just `survival_1` - to `network_mode: host`. It exists because an
-earlier iteration of the mixed setup (before the `extra_hosts`-based S2S routing
-above) saw cross-container mesh latency from the asymmetric networking. Only
-reach for it if the single-server overlay doesn't fully resolve rubberbanding for
-you: it requires planning a unique host port range for every game server (see the
-file's header comments) and hasn't been necessary in production since `extra_hosts`
-routing was added.
 
 Requirements:
 
 - `HOST_LAN_IP` set to the host's LAN address (used for `-MultiHome`)
 - Router forwards UDP `7777` and `7888` to that LAN IP (other ports are S2S-internal)
 - Game ports are free on the host (no other process bound)
+- Also disable THP: `echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled`
 
-Verify which servers landed on the host network:
+Verify all servers landed on the host network:
 
 ```bash
 for srv in survival_1 overmap deep_desert_1 arrakeen harko_village; do
   echo -n "$srv: "
   docker inspect -f '{{.HostConfig.NetworkMode}}' dune-awakening-${srv}-1
 done
-# With docker-compose.hostnet.yml (recommended): only survival_1 shows "host",
-# the rest show your bridge network name.
-# With docker-compose.hostnet-all.yml (alternative): all of them show "host".
+# All should show "host".
 ```
 
 ### In-Game Rubberbanding - UDP Socket Receive-Buffer Overflow

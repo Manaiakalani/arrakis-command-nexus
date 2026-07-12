@@ -100,24 +100,23 @@ forwarding, veth pairs) can add enough packet processing jitter to cause visible
 in-game rubberbanding, even when all server-side diagnostics appear clean. This
 was confirmed by A/B testing on a 9-server standard-profile deployment.
 
-The `docker-compose.hostnet.yml` overlay moves `survival_1` to `network_mode: host`,
-bypassing the Docker bridge entirely. Game UDP packets go directly from the NIC
-to the server process socket.
+The `docker-compose.hostnet-lean.yml` overlay moves **all 5 game servers** to
+`network_mode: host`, bypassing the Docker bridge entirely. Game UDP packets go
+directly from the NIC to each server process socket.
 
 To enable it, set these in `.env`:
 
 ```bash
-DUNE_HOSTNET_OVERLAY=docker-compose.hostnet.yml
+DUNE_HOSTNET_OVERLAY=docker-compose.hostnet-lean.yml
 HOST_LAN_IP=<your-server-LAN-IP>
 ```
 
-The `./dune` CLI will then include the overlay automatically. Port 7777 and 7888
-bind directly on the host (no Docker port mapping), so ensure your router
-forwards those UDP ports to the host LAN IP.
+The `./dune` CLI will then include the overlay automatically. Ports 7777–7781
+and 7888–7892 bind directly on the host (no Docker port mapping), so ensure
+your router forwards UDP 7777 and 7888 to the host LAN IP.
 
-Other game servers remain on bridge networking. The S2S mesh between bridge
-containers and the host-mode `survival_1` is handled via `extra_hosts` entries
-pointing to the bridge IPAM addresses.
+All game servers resolve backend services (`postgres`, `game-rmq`, `admin-rmq`)
+via `extra_hosts` entries pointing to the bridge IPAM addresses.
 
 ## Remote Dashboard Access with Cloudflare Tunnel
 

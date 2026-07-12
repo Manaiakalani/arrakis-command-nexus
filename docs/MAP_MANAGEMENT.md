@@ -49,11 +49,11 @@ docker stats --no-stream --format "{{.Name}}: {{.MemUsage}}" $(docker ps --forma
 ## Networking Notes
 
 By default, all game servers use Docker **bridge networking**. On hosts affected by
-bridge-networking jitter, the anti-rubberbanding fix moves **only `survival_1`** to
-`network_mode: host` via the `docker-compose.hostnet.yml` overlay, while every other map
-stays on bridge networking — this mixed setup is intentional and is the currently
-supported, working configuration, not a misconfiguration to "fix." The S2S mesh between
-the host-mode `survival_1` and the bridge-mode maps is handled via `extra_hosts` entries.
+bridge-networking jitter, the anti-rubberbanding fix moves **all game servers** to
+`network_mode: host` via the `docker-compose.hostnet-lean.yml` overlay. Mixed
+bridge/host setups (only `survival_1` on host) were tested and still caused
+rubberbanding on bridge-networked servers. All game servers resolve backend
+services via `extra_hosts` entries pointing to bridge IPAM addresses.
 See [Networking - Host Networking Overlay](./NETWORKING.md#host-networking-overlay-anti-rubberbanding)
 for the full explanation and enablement steps.
 
