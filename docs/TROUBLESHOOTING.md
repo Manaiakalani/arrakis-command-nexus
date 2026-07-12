@@ -145,25 +145,21 @@ docker logs dune-awakening-survival_1-1 2>&1 | grep -E 'NumOutRec|Marked.*dead'
 # LogIgwDatabaseInterface: Log: Marked server <SELF_ID> as dead
 ```
 
-**Fix:** Remove the default UE5 bandwidth caps on the `IgwNetDriver` and
-`IpNetDriver` so the 2048-slot reliable queue drains faster than it fills, and
-double the network tick rate. All profiles now include these flags on every game
-server:
+**Fix:** The working baseline uses only socket buffers and `ConnectionTimeout`:
 
 ```
--ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
--ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxInternetClientRate=0
--ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=0
--ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=0
--ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:NetServerMaxTickRate=120
--forcelogflush
+-ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+-ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+-ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
+-ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
+-ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
 ```
 
-`MaxClientRate=0` / `MaxInternetClientRate=0` remove the per-connection bandwidth
-ceiling so the server can push acknowledgments faster. `NetServerMaxTickRate=120`
-doubles the default network processing frequency (from 30-60 to 120 Hz).
-`-forcelogflush` ensures log buffers are flushed before any crash, so future
-issues always have full log context.
+> **⚠️ Do NOT add NetServerMaxTickRate, MaxClientRate, t.MaxFPS, or -forcelogflush.**
+> These were tested in PRs #21–#26 and REVERTED — they cause rubberbanding
+> (`NetServerMaxTickRate=120` at 30fps creates tick debt), client load timeouts
+> (`MaxClientRate=0` floods initial replication), and I/O stalls (`-forcelogflush`
+> blocks the game thread on every log write).
 
 ## Dashboard Is Not Accessible
 
