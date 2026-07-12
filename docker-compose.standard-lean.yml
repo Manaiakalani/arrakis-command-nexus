@@ -108,8 +108,8 @@ services:
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=120
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:NetServerMaxTickRate=120
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=2000000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=2000000
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxInternetClientRate=0
       - -ini:engine:[ConsoleVariables]:t.MaxFPS=30
@@ -166,8 +166,8 @@ services:
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=120
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:NetServerMaxTickRate=120
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=2000000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=2000000
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxInternetClientRate=0
       - -ini:engine:[ConsoleVariables]:t.MaxFPS=30
@@ -227,8 +227,8 @@ services:
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=120
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:NetServerMaxTickRate=120
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=2000000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=2000000
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxInternetClientRate=0
       - -ini:engine:[ConsoleVariables]:t.MaxFPS=30
@@ -285,8 +285,8 @@ services:
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=120
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:NetServerMaxTickRate=120
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=2000000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=2000000
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxInternetClientRate=0
       - -ini:engine:[ConsoleVariables]:t.MaxFPS=30
@@ -343,8 +343,8 @@ services:
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/Engine.Engine]:NetServerMaxTickRate=120
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:NetServerMaxTickRate=120
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=0
-      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=2000000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=2000000
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxInternetClientRate=0
       - -ini:engine:[ConsoleVariables]:t.MaxFPS=30
