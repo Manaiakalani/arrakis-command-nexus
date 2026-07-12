@@ -296,13 +296,13 @@ PostgreSQL uses normal auto-vacuum behavior. Routine manual vacuuming is not req
 #### Manual vacuum (if needed)
 
 ```bash
-docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "VACUUM ANALYZE;"
+docker compose exec -T postgres psql -U dune -d dune_sb_1_4_0_0 -c "VACUUM ANALYZE;"
 ```
 
 #### Check database size
 
 ```bash
-docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "SELECT pg_size_pretty(pg_database_size('dune_sb_1_4_0_0'));"
+docker compose exec -T postgres psql -U dune -d dune_sb_1_4_0_0 -c "SELECT pg_size_pretty(pg_database_size('dune_sb_1_4_0_0'));"
 ```
 
 #### Quick health check queries
@@ -361,7 +361,7 @@ NEW_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 
 # For POSTGRES_DUNE_PASSWORD:
 # 1. Change password in database:
-docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0 -c "ALTER USER dune PASSWORD '$NEW_PASSWORD';"
+docker compose exec -T postgres psql -U dune -d dune_sb_1_4_0_0 -c "ALTER USER dune PASSWORD '$NEW_PASSWORD';"
 # 2. Update .env
 # 3. Restart services: docker compose restart dashboard-api survival_1 overmap director partition-repair
 ```
@@ -657,7 +657,7 @@ bash scripts/restore.sh <backup-id>
 ./dune update
 
 # Database console
-docker compose exec -T postgres psql -U postgres -d dune_sb_1_4_0_0
+docker compose exec -T postgres psql -U dune -d dune_sb_1_4_0_0
 
 # Container shell
 docker compose exec <service-name> bash

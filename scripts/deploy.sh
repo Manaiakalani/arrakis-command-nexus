@@ -631,7 +631,7 @@ configure_environment() {
 
   local fls_env steam_app_id
   case "$env_choice" in
-    1) fls_env="retail"; steam_app_id="1192040" ;;
+    1) fls_env="retail"; steam_app_id="4754530" ;;
     2) fls_env="beta";   steam_app_id="3104830" ;;
   esac
 
