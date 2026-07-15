@@ -306,9 +306,11 @@ class UpdateService:
             stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=1800)
             stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
             if proc.returncode != 0:
-                err = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else "unknown"
-                logger.error("steamcmd failed (rc=%d): %s", proc.returncode, err[:500])
-                return {"success": False, "error": f"steamcmd failed (rc={proc.returncode}): {err[:200]}"}
+                err = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
+                # SteamCMD writes real errors (e.g. "state is 0x6") to stdout, not stderr
+                detail = stdout_text.strip().rsplit("\n", 1)[-1] if stdout_text.strip() else err[:200] or "unknown"
+                logger.error("steamcmd failed (rc=%d): %s | stderr: %s", proc.returncode, detail, err[:500])
+                return {"success": False, "error": f"steamcmd failed (rc={proc.returncode}): {detail[:200]}"}
             logger.info("steamcmd completed successfully")
 
             # Find Docker image tarballs
