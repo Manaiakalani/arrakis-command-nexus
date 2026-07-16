@@ -274,7 +274,7 @@ class RestartScheduler:
                 continue
 
             if datetime.now(timezone.utc) >= next_restart_at:
-                await self._execute_restart(trigger="scheduled")
+                await self._execute_restart(trigger="scheduled", expected_restart_at=next_restart_at)
                 continue
 
             delay_seconds = min(max((next_restart_at - datetime.now(timezone.utc)).total_seconds(), 1), 15)
@@ -326,8 +326,20 @@ class RestartScheduler:
             self._manual_task = None
             self._wake_event.set()
 
-    async def _execute_restart(self, *, trigger: str, warning_minutes: int = 0) -> dict[str, object]:
+    async def _execute_restart(self, *, trigger: str, warning_minutes: int = 0, expected_restart_at: datetime | None = None) -> dict[str, object]:
         async with self._restart_lock:
+            # Guard against double-fire: if a manual restart already advanced next_restart_at
+            # while we were waiting for the lock, skip this scheduled execution.
+            if trigger == "scheduled" and expected_restart_at is not None:
+                async with self._lock:
+                    if (
+                        not self.enabled
+                        or self.next_restart_at is None
+                        or self.next_restart_at != expected_restart_at
+                    ):
+                        logger.info("Scheduled restart skipped (state changed while waiting for lock)")
+                        return {"status": "skipped", "trigger": trigger}
+
             restart_started_at = datetime.now(timezone.utc)
             services = await self._list_restart_targets()
             backup_id: str | None = None
