@@ -684,6 +684,30 @@ export class ApiClient {
       body: JSON.stringify({ auto_update_enabled: enabled }),
     });
   }
+
+  // Steam account management
+  getSteamAccount() {
+    return this.request<{ username: string; has_password: boolean; auth_type: string }>('/settings/steam-account');
+  }
+
+  setSteamAccount(username: string, password: string) {
+    return this.request<{ username: string; has_password: boolean; auth_type: string }>('/settings/steam-account', {
+      method: 'PUT',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  testSteamAccount() {
+    return this.request<{ success: boolean; message: string; auth_type: string; error?: string }>('/settings/steam-account/test', {
+      method: 'POST',
+    });
+  }
+
+  clearSteamAccount() {
+    return this.request<{ username: string; has_password: boolean; auth_type: string }>('/settings/steam-account', {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
