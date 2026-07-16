@@ -935,6 +935,9 @@ class UpdateService:
 
             # Stop any disabled services that got recreated
             disabled_raw = os.environ.get("DUNE_DISABLED_SERVICES", "")
+            if not disabled_raw and env_file.exists():
+                dotenv = self._load_dotenv_values(env_file)
+                disabled_raw = dotenv.get("DUNE_DISABLED_SERVICES", "")
             disabled_set = {s.strip() for s in disabled_raw.split(",") if s.strip()}
             if disabled_set:
                 stop_svcs = [s for s in disabled_set if not tagged_services or s in tagged_services]
