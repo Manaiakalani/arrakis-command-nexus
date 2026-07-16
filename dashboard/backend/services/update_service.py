@@ -146,7 +146,7 @@ class UpdateService:
         await self._log_audit("steam_account_cleared", {})
         return {"username": "", "has_password": False, "auth_type": "anonymous"}
 
-    async def test_steam_login(self) -> dict[str, Any]:
+    async def test_steam_login(self, steam_guard_code: str = "") -> dict[str, Any]:
         """Test the configured Steam credentials by running steamcmd +login +quit."""
         settings = await self._load_steam_account_settings()
         if settings.get("auth_type") != "account":
@@ -156,7 +156,7 @@ class UpdateService:
         if not steamcmd_bin:
             return {"success": False, "message": "steamcmd not found", "auth_type": "account", "error": "steamcmd binary not found"}
 
-        login_args = self._build_login_args(settings)
+        login_args = self._build_login_args(settings, steam_guard_code=steam_guard_code)
         logger.info("Testing Steam login for account: %s", settings.get("username"))
 
         proc = await asyncio.create_subprocess_exec(
@@ -184,12 +184,15 @@ class UpdateService:
 
         return {"success": True, "message": "Steam login successful", "auth_type": "account"}
 
-    def _build_login_args(self, settings: dict[str, Any]) -> list[str]:
+    def _build_login_args(self, settings: dict[str, Any], steam_guard_code: str = "") -> list[str]:
         """Build steamcmd login args from settings."""
         username = str(settings.get("username", "") or "").strip()
         password = str(settings.get("_password", "") or "").strip()
         if username and password:
-            return ["+login", username, password]
+            args = ["+login", username, password]
+            if steam_guard_code.strip():
+                args.append(steam_guard_code.strip())
+            return args
         return ["+login", "anonymous"]
 
     @staticmethod
