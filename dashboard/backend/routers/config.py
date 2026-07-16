@@ -373,6 +373,15 @@ async def _restart_game_servers(request: Request) -> list[str]:
 
     # Exclude disabled services (e.g. deep_desert_1 paused to save RAM)
     disabled_raw = os.getenv("DUNE_DISABLED_SERVICES", "")
+    if not disabled_raw:
+        try:
+            with open(_ENV_PATH, encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("DUNE_DISABLED_SERVICES="):
+                        disabled_raw = line.strip().split("=", 1)[1].strip('"').strip("'")
+                        break
+        except OSError:
+            pass
     disabled_set = {s.strip() for s in disabled_raw.split(",") if s.strip()}
     active_containers = [c for c in _GAME_CONTAINERS if c not in disabled_set]
 
