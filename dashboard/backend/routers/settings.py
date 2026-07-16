@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from db.database import SessionLocal
 from db.models import AdminUser, DashboardSetting
+from services.update_service import get_update_service
 
 router = APIRouter(tags=["settings"])
 
