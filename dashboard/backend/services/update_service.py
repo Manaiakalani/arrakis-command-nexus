@@ -554,6 +554,10 @@ class UpdateService:
                 except Exception as exc:
                     logger.warning("Failed to load %s: %s", tarball, exc)
 
+            # Abort if no images were loaded (all failed/timed out)
+            if not loaded_tags:
+                return {"success": False, "error": f"All Docker image loads failed ({len(tarballs)} tarball(s) attempted)"}
+
             # Retag registry-prefixed images to match docker-compose short names
             # Steam packages use "registry.funcom.com/funcom/self-hosting/..." but
             # compose references "funcom/self-hosting/..."
