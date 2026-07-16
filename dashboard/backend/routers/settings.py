@@ -77,6 +77,9 @@ DEFAULTS: dict[str, dict] = {
     },
 }
 
+# Keys that must never be exposed via the generic settings catch-all or import
+_PROTECTED_KEYS = frozenset({"steam_account"})
+
 
 async def _get_setting(key: str) -> dict:
     async with SessionLocal() as session:
@@ -125,6 +128,8 @@ async def import_settings(payload: SettingsImportRequest) -> dict:
     settings = payload.settings
     imported = []
     for key, value in settings.items():
+        if key in _PROTECTED_KEYS:
+            continue
         if isinstance(value, dict):
             await _put_setting(key, value)
             imported.append(key)
@@ -221,7 +226,6 @@ async def test_steam_account_login(payload: SteamAccountTestRequest | None = Non
     service = get_update_service()
     code = payload.steam_guard_code.strip() if payload else ""
     return await service.test_steam_login(steam_guard_code=code)
-    return await service.test_steam_login()
 
 
 @router.delete("/settings/steam-account")
@@ -233,12 +237,17 @@ async def clear_steam_account_settings():
 
 # ── Section catch-all (must be last) ─────────────────────────────
 
+
 @router.get("/settings/{section}")
 async def get_setting_section(section: str) -> dict:
+    if section in _PROTECTED_KEYS:
+        raise HTTPException(status_code=404, detail="Not found")
     return await _get_setting(section)
 
 
 @router.put("/settings/{section}")
 async def update_setting_section(section: str, body: dict[str, Any]) -> dict:
+    if section in _PROTECTED_KEYS:
+        raise HTTPException(status_code=404, detail="Not found")
     saved = await _put_setting(section, body)
     return saved
