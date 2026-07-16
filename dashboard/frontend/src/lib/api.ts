@@ -697,9 +697,10 @@ export class ApiClient {
     });
   }
 
-  testSteamAccount() {
+  testSteamAccount(steamGuardCode?: string) {
     return this.request<{ success: boolean; message: string; auth_type: string; error?: string }>('/settings/steam-account/test', {
       method: 'POST',
+      body: JSON.stringify({ steam_guard_code: steamGuardCode || '' }),
     });
   }
 

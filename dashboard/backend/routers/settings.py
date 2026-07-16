@@ -209,10 +209,18 @@ async def set_steam_account_settings(payload: SteamAccountSettingsRequest):
     return await service.set_steam_account_settings(payload.username, payload.password)
 
 
+class SteamAccountTestRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    steam_guard_code: str = ""
+
+
 @router.post("/settings/steam-account/test")
-async def test_steam_account_login():
+async def test_steam_account_login(payload: SteamAccountTestRequest | None = None):
     """Test the configured Steam account by running steamcmd +login +quit."""
     service = get_update_service()
+    code = payload.steam_guard_code.strip() if payload else ""
+    return await service.test_steam_login(steam_guard_code=code)
     return await service.test_steam_login()
 
 
