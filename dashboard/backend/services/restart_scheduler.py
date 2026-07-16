@@ -49,6 +49,39 @@ def _normalize_warning_minutes(values: list[int] | None) -> list[int]:
     return sorted(normalized, reverse=True)
 
 
+def _normalize_restart_time_utc(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("restartTimeUtc must be a UTC time in HH:MM format.")
+
+    normalized = value.strip()
+    if not normalized:
+        return None
+    try:
+        parsed = datetime.strptime(normalized, "%H:%M")
+    except ValueError as exc:
+        raise ValueError("restartTimeUtc must be a UTC time in HH:MM format.") from exc
+    if parsed.strftime("%H:%M") != normalized:
+        raise ValueError("restartTimeUtc must be a UTC time in HH:MM format.")
+    return normalized
+
+
+def _read_restart_time_utc(value: str | None) -> str | None:
+    try:
+        return _normalize_restart_time_utc(value)
+    except ValueError:
+        logger.warning("Ignoring invalid restart schedule UTC time: %r", value)
+        return None
+
+
+class _Unset:
+    pass
+
+
+_UNSET = _Unset()
+
+
 class RestartScheduler:
     def __init__(
         self,
@@ -66,6 +99,7 @@ class RestartScheduler:
         self.config_path = Path(os.getenv("RESTART_SCHEDULE_PATH", "/workspace/data/restart_schedule.json"))
         self.enabled = _read_bool("RESTART_SCHEDULE_ENABLED", False)
         self.interval_hours = max(1, int(os.getenv("RESTART_SCHEDULE_INTERVAL_HOURS", "24")))
+        self.restart_time_utc: str | None = _read_restart_time_utc(os.getenv("RESTART_SCHEDULE_TIME_UTC"))
         self.warning_minutes = _normalize_warning_minutes(self._read_warning_minutes_from_env())
         self.next_restart_at = _parse_datetime(os.getenv("RESTART_SCHEDULE_NEXT_RESTART_AT")) if self.enabled else None
         self.last_restart_at = _parse_datetime(os.getenv("RESTART_SCHEDULE_LAST_RESTART_AT"))
@@ -119,6 +153,7 @@ class RestartScheduler:
         return {
             "enabled": self.enabled,
             "intervalHours": self.interval_hours,
+            "restartTimeUtc": self.restart_time_utc,
             "warningMinutes": list(self.warning_minutes),
             "lastRestartAt": _serialize_datetime(self.last_restart_at),
             "nextRestartAt": _serialize_datetime(self.next_restart_at),
@@ -129,6 +164,7 @@ class RestartScheduler:
         *,
         enabled: bool | None = None,
         interval_hours: int | None = None,
+        restart_time_utc: str | None | _Unset = _UNSET,
         warning_minutes: list[int] | None = None,
     ) -> dict[str, object]:
         async with self._lock:
@@ -141,6 +177,11 @@ class RestartScheduler:
                     raise ValueError("intervalHours must be at least 1.")
                 if interval_hours != self.interval_hours:
                     self.interval_hours = interval_hours
+                    schedule_changed = True
+            if not isinstance(restart_time_utc, _Unset):
+                normalized_restart_time_utc = _normalize_restart_time_utc(restart_time_utc)
+                if normalized_restart_time_utc != self.restart_time_utc:
+                    self.restart_time_utc = normalized_restart_time_utc
                     schedule_changed = True
             if warning_minutes is not None:
                 if any(minutes <= 0 for minutes in warning_minutes):
@@ -165,6 +206,7 @@ class RestartScheduler:
             {
                 "enabled": self.enabled,
                 "interval_hours": self.interval_hours,
+                "restart_time_utc": self.restart_time_utc,
                 "warning_minutes": self.warning_minutes,
             },
             performed_by="system",
@@ -333,7 +375,7 @@ class RestartScheduler:
             finished_at = datetime.now(timezone.utc)
             async with self._lock:
                 self.last_restart_at = finished_at
-                self.next_restart_at = finished_at + timedelta(hours=self.interval_hours) if self.enabled else None
+                self.next_restart_at = self._compute_next_restart(finished_at) if self.enabled else None
                 self._sent_warnings.clear()
                 self._refresh_warning_state_locked(now=finished_at)
                 self._persist_settings()
@@ -439,8 +481,16 @@ class RestartScheduler:
             return f"Error: `{details.get('error', 'unknown')}`"
         return f"Event: `{event}` — {details}"
 
-    def _compute_next_restart(self) -> datetime:
-        return datetime.now(timezone.utc) + timedelta(hours=self.interval_hours)
+    def _compute_next_restart(self, now: datetime | None = None) -> datetime:
+        current_time = now or datetime.now(timezone.utc)
+        if self.restart_time_utc is None:
+            return current_time + timedelta(hours=self.interval_hours)
+
+        hour, minute = (int(part) for part in self.restart_time_utc.split(":"))
+        next_restart = current_time.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if next_restart <= current_time:
+            next_restart += timedelta(days=1)
+        return next_restart
 
     def _load_settings_from_disk(self) -> None:
         if not self.config_path.exists():
@@ -453,6 +503,7 @@ class RestartScheduler:
 
         self.enabled = bool(payload.get("enabled", self.enabled))
         self.interval_hours = max(1, int(payload.get("interval_hours", self.interval_hours)))
+        self.restart_time_utc = _read_restart_time_utc(payload.get("restart_time_utc", self.restart_time_utc))
         self.warning_minutes = _normalize_warning_minutes(payload.get("warning_minutes", self.warning_minutes))
         self.next_restart_at = _parse_datetime(payload.get("next_restart_at")) if self.enabled else None
         self.last_restart_at = _parse_datetime(payload.get("last_restart_at"))
@@ -460,6 +511,10 @@ class RestartScheduler:
     def _persist_settings(self) -> None:
         os.environ["RESTART_SCHEDULE_ENABLED"] = "true" if self.enabled else "false"
         os.environ["RESTART_SCHEDULE_INTERVAL_HOURS"] = str(self.interval_hours)
+        if self.restart_time_utc is not None:
+            os.environ["RESTART_SCHEDULE_TIME_UTC"] = self.restart_time_utc
+        else:
+            os.environ.pop("RESTART_SCHEDULE_TIME_UTC", None)
         os.environ["RESTART_SCHEDULE_WARNING_MINUTES"] = ",".join(str(minutes) for minutes in self.warning_minutes)
         if self.next_restart_at is not None:
             os.environ["RESTART_SCHEDULE_NEXT_RESTART_AT"] = self.next_restart_at.isoformat()
@@ -473,6 +528,7 @@ class RestartScheduler:
         payload = {
             "enabled": self.enabled,
             "interval_hours": self.interval_hours,
+            "restart_time_utc": self.restart_time_utc,
             "next_restart_at": _serialize_datetime(self.next_restart_at),
             "last_restart_at": _serialize_datetime(self.last_restart_at),
             "warning_minutes": self.warning_minutes,
@@ -492,7 +548,7 @@ class RestartScheduler:
             self._sent_warnings.clear()
             return
         now = datetime.now(timezone.utc)
-        if self.next_restart_at is None or self.next_restart_at <= now:
+        if self.restart_time_utc is not None or self.next_restart_at is None or self.next_restart_at <= now:
             self.next_restart_at = self._compute_next_restart()
         self._refresh_warning_state_locked(now=now)
 

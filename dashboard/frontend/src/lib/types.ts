@@ -234,6 +234,7 @@ export interface BackupSchedule {
 export interface RestartSchedule {
   enabled: boolean;
   intervalHours: number;
+  restartTimeUtc: string | null;
   warningMinutes: number[];
   lastRestartAt?: string | null;
   nextRestartAt?: string | null;
