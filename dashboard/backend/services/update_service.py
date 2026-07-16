@@ -176,6 +176,8 @@ class UpdateService:
             return {"success": False, "message": "Login timed out (may need Steam Guard code)", "auth_type": "account", "error": "timeout"}
 
         stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
+        # Strip ANSI escape codes from steamcmd output
+        stdout_text = re.sub(r'\x1b\[[0-9;]*m', '', stdout_text)
         if proc.returncode != 0 or self._is_auth_failure(stdout_text):
             detail = stdout_text.strip().rsplit("\n", 1)[-1] if stdout_text.strip() else "unknown error"
             return {"success": False, "message": f"Login failed: {detail[:150]}", "auth_type": "account", "error": detail[:200]}
@@ -471,6 +473,8 @@ class UpdateService:
                 return {"success": False, "error": "steamcmd timed out (30 min limit)"}
 
             stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
+            # Strip ANSI escape codes from steamcmd output
+            stdout_text = re.sub(r'\x1b\[[0-9;]*m', '', stdout_text)
             if proc.returncode != 0:
                 err = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
                 # SteamCMD writes real errors (e.g. "state is 0x6") to stdout, not stderr
