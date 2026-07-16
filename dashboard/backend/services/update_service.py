@@ -31,6 +31,7 @@ class UpdateService:
         self._latest_steam_build: Optional[str] = None
         self._baseline_steam_build: Optional[str] = None  # what we consider "installed"
         self._update_available = False
+        self._update_lock = asyncio.Lock()
 
         # Load persisted state
         self._load_state()
@@ -57,9 +58,13 @@ class UpdateService:
         return env
 
     def _steamcmd_environment(self) -> dict[str, str]:
-        """Return a subprocess environment tailored for SteamCMD auth caching."""
+        """Return a subprocess environment tailored for SteamCMD auth caching.
+        
+        Uses /workspace/data/steam-home so tokens persist across container recreations
+        (the /workspace/data volume is already mounted by docker-compose).
+        """
         env = self._docker_environment()
-        steam_home = os.getenv("STEAM_HOME") or os.getenv("HOME") or "/home/app"
+        steam_home = os.getenv("STEAM_HOME") or "/workspace/data/steam-home"
         env["HOME"] = steam_home
         config_dir = Path(steam_home) / "Steam" / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
@@ -68,11 +73,18 @@ class UpdateService:
     # ── Steam account credential management ──────────────────────────
 
     async def _load_steam_account_settings(self) -> dict[str, Any]:
-        """Load Steam account settings from env vars or the dashboard settings DB."""
+        """Load Steam account settings from env vars or the dashboard settings DB.
+        
+        Env vars take precedence but only when BOTH username and password are set.
+        """
         username = (os.getenv("STEAM_USERNAME") or "").strip()
         password = (os.getenv("STEAM_PASSWORD") or "").strip()
 
-        if not username:
+        # Only use env vars when both are provided
+        if not (username and password):
+            if username or password:
+                logger.warning("Partial Steam env config: set BOTH STEAM_USERNAME and STEAM_PASSWORD (falling back to DB)")
+            username, password = "", ""
             try:
                 from db.database import SessionLocal
                 from db.models import DashboardSetting
@@ -408,6 +420,14 @@ class UpdateService:
           4. Restart game server containers.
           5. Mark the new Steam build as the installed baseline.
         """
+        if self._update_lock.locked():
+            return {"success": False, "error": "An update is already in progress"}
+
+        async with self._update_lock:
+            return await self._do_trigger_update()
+
+    async def _do_trigger_update(self) -> dict[str, Any]:
+        """Internal update logic (runs under _update_lock)."""
         steam_dir = self.steam_dir or "/workspace/steam"
         steam_app_id = self.steam_app_id
         env_file = Path("/workspace/.env")
