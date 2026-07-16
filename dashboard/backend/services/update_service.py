@@ -32,6 +32,7 @@ class UpdateService:
         self._baseline_steam_build: Optional[str] = None  # what we consider "installed"
         self._update_available = False
         self._update_lock = asyncio.Lock()
+        self._discord_service: Any = None  # Set by UpdateScheduler on startup
 
         # Load persisted state
         self._load_state()
@@ -380,6 +381,44 @@ class UpdateService:
         except Exception as e:
             logger.warning(f"Failed to log audit entry: {e}")
 
+    async def _notify_update_result(
+        self,
+        success: bool,
+        new_tag: str = "",
+        restarted: list | None = None,
+        errors: dict | None = None,
+        error: str = "",
+    ):
+        """Send a Discord notification about the update result."""
+        if not self._discord_service:
+            return
+        try:
+            if success:
+                svc_list = ", ".join(restarted) if restarted else "none"
+                await self._discord_service.enqueue(
+                    event_type="update_available",
+                    message=(
+                        f"✅ **Server Update Applied**\n\n"
+                        f"• Image tag: `{new_tag}`\n"
+                        f"• Restarted: {svc_list}\n\n"
+                        f"Servers are back online."
+                    ),
+                    title="✅ Update Complete",
+                )
+            else:
+                detail = error or (str(errors) if errors else "Unknown error")
+                await self._discord_service.enqueue(
+                    event_type="update_available",
+                    message=(
+                        f"❌ **Server Update Failed**\n\n"
+                        f"• Error: {detail[:300]}\n\n"
+                        f"Check the dashboard for details."
+                    ),
+                    title="❌ Update Failed",
+                )
+        except Exception as e:
+            logger.warning("Failed to send update Discord notification: %s", e)
+
     async def _get_latest_build_id(self) -> Optional[str]:
         """Query Steam for the latest public build ID using host's steamcmd."""
         try:
@@ -682,6 +721,14 @@ class UpdateService:
                 "steam_dir": steam_dir,
             })
 
+            # Send Discord notification for manual updates
+            await self._notify_update_result(
+                success=not bool(errors),
+                new_tag=new_tag,
+                restarted=restarted,
+                errors=errors,
+            )
+
             return {
                 "success": not bool(errors),
                 "new_tag": new_tag,
@@ -693,10 +740,12 @@ class UpdateService:
             }
 
         except asyncio.TimeoutError:
+            await self._notify_update_result(success=False, error="Update timed out (30 minute limit)")
             return {"success": False, "error": "Update timed out (30 minute limit exceeded)"}
         except Exception as exc:
             logger.error("trigger_update failed: %s", exc, exc_info=True)
             await self._log_audit("update_trigger_failed", {"error": str(exc)})
+            await self._notify_update_result(success=False, error=str(exc))
             return {"success": False, "error": str(exc)}
 
     def _find_steamcmd(self) -> str | None:
