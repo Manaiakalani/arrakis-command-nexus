@@ -179,7 +179,7 @@ class UpdateService:
         # Strip ANSI escape codes from steamcmd output
         stdout_text = re.sub(r'\x1b\[[0-9;]*m', '', stdout_text)
         if proc.returncode != 0 or self._is_auth_failure(stdout_text):
-            detail = stdout_text.strip().rsplit("\n", 1)[-1] if stdout_text.strip() else "unknown error"
+            detail = self._extract_steamcmd_error(stdout_text)
             return {"success": False, "message": f"Login failed: {detail[:150]}", "auth_type": "account", "error": detail[:200]}
 
         return {"success": True, "message": "Steam login successful", "auth_type": "account"}
@@ -199,6 +199,29 @@ class UpdateService:
         markers = ("invalid password", "login failure", "steam guard", "two-factor",
                    "account login denied", "login denied", "not logged in")
         return any(m in lower for m in markers)
+
+    @staticmethod
+    def _extract_steamcmd_error(output: str) -> str:
+        """Extract the meaningful error line from steamcmd output.
+        
+        SteamCMD buries errors mid-output (e.g. 'ERROR (Invalid Password)')
+        while the last line is often just 'Unloading Steam API...OK'.
+        """
+        if not output:
+            return "unknown error"
+        lines = [l.strip() for l in output.strip().splitlines() if l.strip()]
+        # Look for lines containing error keywords
+        for line in reversed(lines):
+            lower = line.lower()
+            if any(k in lower for k in ("error", "failed", "denied", "invalid", "state is 0x")):
+                # Skip generic "Unloading/Loading" lines
+                if "unloading" not in lower and "loading steam api" not in lower:
+                    return line
+        # Fallback: last non-trivial line (skip Unloading/OK lines)
+        for line in reversed(lines):
+            if "unloading" not in line.lower() and line.lower() != "ok":
+                return line
+        return lines[-1] if lines else "unknown error"
 
     def _load_dotenv_values(self, env_file: Path) -> dict[str, str]:
         """Parse a simple KEY=VALUE dotenv file."""
@@ -477,8 +500,7 @@ class UpdateService:
             stdout_text = re.sub(r'\x1b\[[0-9;]*m', '', stdout_text)
             if proc.returncode != 0:
                 err = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
-                # SteamCMD writes real errors (e.g. "state is 0x6") to stdout, not stderr
-                detail = stdout_text.strip().rsplit("\n", 1)[-1] if stdout_text.strip() else err[:200] or "unknown"
+                detail = self._extract_steamcmd_error(stdout_text) or err[:200] or "unknown"
                 if self._is_auth_failure(stdout_text):
                     logger.error("steamcmd auth failed for %s: %s", settings.get("username", "anonymous"), detail)
                     return {"success": False, "error": f"Steam authentication failed: {detail[:200]}"}
