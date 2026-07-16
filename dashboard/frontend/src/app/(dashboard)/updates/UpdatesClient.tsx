@@ -51,6 +51,15 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
   const [preUpdateBackupId, setPreUpdateBackupId] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
 
+  // Steam account settings state
+  const [steamSettingsOpen, setSteamSettingsOpen] = useState(false);
+  const [steamAccount, setSteamAccount] = useState<{ username: string; has_password: boolean; auth_type: string } | null>(null);
+  const [steamForm, setSteamForm] = useState({ username: '', password: '' });
+  const [steamSaving, setSteamSaving] = useState(false);
+  const [steamTesting, setSteamTesting] = useState(false);
+  const [steamError, setSteamError] = useState<string | null>(null);
+  const [steamSuccess, setSteamSuccess] = useState<string | null>(null);
+
   const loadStatus = useCallback(async () => {
     try {
       const data = await apiClient.getUpdateStatus();
@@ -61,6 +70,13 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
       } catch {
         // Non-fatal: if host-info fails we just render placeholders.
       }
+      try {
+        const sa = await apiClient.getSteamAccount();
+        setSteamAccount(sa);
+        if (sa.username) setSteamForm((f) => ({ ...f, username: sa.username }));
+      } catch {
+        // Non-fatal
+      }
     } catch (error) {
       toast('Failed to load update status', 'error');
       console.error(error);
@@ -68,6 +84,59 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
       setLoading(false);
     }
   }, [toast]);
+
+  const saveSteamAccount = async () => {
+    setSteamSaving(true);
+    setSteamError(null);
+    setSteamSuccess(null);
+    try {
+      const result = await apiClient.setSteamAccount(steamForm.username, steamForm.password);
+      setSteamAccount(result);
+      setSteamForm((f) => ({ ...f, password: '' }));
+      setSteamSuccess('Steam account saved');
+      toast('Steam account saved', 'success');
+    } catch (e) {
+      setSteamError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSteamSaving(false);
+    }
+  };
+
+  const testSteamLogin = async () => {
+    setSteamTesting(true);
+    setSteamError(null);
+    setSteamSuccess(null);
+    try {
+      const result = await apiClient.testSteamAccount();
+      if (result.success) {
+        setSteamSuccess(result.message);
+        toast('Steam login test passed', 'success');
+      } else {
+        setSteamError(result.error || result.message);
+      }
+    } catch (e) {
+      setSteamError(e instanceof Error ? e.message : 'Test failed');
+    } finally {
+      setSteamTesting(false);
+    }
+  };
+
+  const clearSteamAccount = async () => {
+    setSteamSaving(true);
+    setSteamError(null);
+    setSteamSuccess(null);
+    try {
+      const result = await apiClient.clearSteamAccount();
+      setSteamAccount(result);
+      setSteamForm({ username: '', password: '' });
+      setSteamSuccess('Reverted to anonymous login');
+      toast('Steam account cleared', 'success');
+    } catch (e) {
+      setSteamError(e instanceof Error ? e.message : 'Failed to clear');
+    } finally {
+      setSteamSaving(false);
+    }
+  };
 
   const checkForUpdates = async () => {
     setChecking(true);
@@ -402,6 +471,97 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
           </div>
         ) : (
           <p className="mt-4 text-sm text-th-text-m">Failed to load status</p>
+        )}
+      </div>
+
+      {/* Steam Account Settings */}
+      <div className="rounded-3xl border border-th-border-m bg-th-bg/30 p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-th-text">
+              <Settings2 aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Steam Account
+            </h2>
+            <p className="mt-1 text-sm text-th-text-m">
+              Configure a dedicated Steam account for server updates. When unset, SteamCMD uses anonymous login.
+            </p>
+          </div>
+          <button type="button" onClick={() => setSteamSettingsOpen((v) => !v)} className="dune-button-secondary">
+            {steamSettingsOpen ? 'Hide' : 'Configure'}
+          </button>
+        </div>
+
+        {/* Current mode indicator */}
+        <div className="mt-3">
+          <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
+            steamAccount?.auth_type === 'account'
+              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+              : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300'
+          )}>
+            {steamAccount?.auth_type === 'account' ? (
+              <><CheckCircle2 className="h-3 w-3" /> Authenticated as {steamAccount.username}</>
+            ) : (
+              <><Clock className="h-3 w-3" /> Anonymous login</>
+            )}
+          </span>
+        </div>
+
+        {steamSettingsOpen && (
+          <div className="mt-5 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-1.5 text-sm text-th-text">
+                <span className="font-medium">Username</span>
+                <input
+                  type="text"
+                  value={steamForm.username}
+                  onChange={(e) => setSteamForm((f) => ({ ...f, username: e.target.value }))}
+                  className="w-full rounded-xl border border-th-border bg-th-bg/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="my-server-account"
+                />
+              </label>
+              <label className="space-y-1.5 text-sm text-th-text">
+                <span className="font-medium">Password</span>
+                <input
+                  type="password"
+                  value={steamForm.password}
+                  onChange={(e) => setSteamForm((f) => ({ ...f, password: e.target.value }))}
+                  className="w-full rounded-xl border border-th-border bg-th-bg/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder={steamAccount?.has_password ? '••••••••' : 'Enter password'}
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void saveSteamAccount()} disabled={steamSaving || steamTesting} className="dune-button">
+                {steamSaving ? 'Saving…' : 'Save account'}
+              </button>
+              <button type="button" onClick={() => void testSteamLogin()} disabled={steamSaving || steamTesting} className="dune-button-secondary">
+                {steamTesting ? 'Testing…' : 'Test connection'}
+              </button>
+              {steamAccount?.auth_type === 'account' && (
+                <button type="button" onClick={() => void clearSteamAccount()} disabled={steamSaving || steamTesting} className="dune-button-muted">
+                  Use anonymous
+                </button>
+              )}
+            </div>
+
+            {steamError && (
+              <div className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300">
+                <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{steamError}</span>
+              </div>
+            )}
+            {steamSuccess && (
+              <div className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-600 dark:text-emerald-300">
+                <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{steamSuccess}</span>
+              </div>
+            )}
+
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300">
+              <p className="font-medium">Steam Guard note</p>
+              <p className="mt-1">After saving, click &quot;Test connection&quot; to cache the auth token. If Steam Guard is enabled on the account, you may need to approve the login via email/mobile first.</p>
+            </div>
+          </div>
         )}
       </div>
 

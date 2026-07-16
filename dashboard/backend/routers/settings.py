@@ -43,6 +43,13 @@ class UpdateAdminRequest(BaseModel):
     enabled: bool | None = None
 
 
+class SteamAccountSettingsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = ""
+    password: str = ""
+
+
 DEFAULTS: dict[str, dict] = {
     "general": {
         "serverName": _world_name,
@@ -179,6 +186,40 @@ async def update_admin(admin_id: int, payload: UpdateAdminRequest) -> dict:
             user.enabled = payload.enabled
         await session.commit()
         return {"id": user.id, "username": user.username, "role": user.role, "enabled": user.enabled}
+
+
+# ── Steam account settings (must come before {section} catch-all) ─
+
+@router.get("/settings/steam-account")
+async def get_steam_account_settings():
+    """Get current Steam account configuration (password never exposed)."""
+    service = get_update_service()
+    return await service.get_steam_account_settings()
+
+
+@router.put("/settings/steam-account")
+async def set_steam_account_settings(payload: SteamAccountSettingsRequest):
+    """Save Steam account credentials for authenticated SteamCMD login."""
+    if not payload.username.strip():
+        raise HTTPException(status_code=400, detail="Username is required")
+    if not payload.password.strip():
+        raise HTTPException(status_code=400, detail="Password is required")
+    service = get_update_service()
+    return await service.set_steam_account_settings(payload.username, payload.password)
+
+
+@router.post("/settings/steam-account/test")
+async def test_steam_account_login():
+    """Test the configured Steam account by running steamcmd +login +quit."""
+    service = get_update_service()
+    return await service.test_steam_login()
+
+
+@router.delete("/settings/steam-account")
+async def clear_steam_account_settings():
+    """Clear stored Steam credentials, revert to anonymous login."""
+    service = get_update_service()
+    return await service.clear_steam_account_settings()
 
 
 # ── Section catch-all (must be last) ─────────────────────────────
