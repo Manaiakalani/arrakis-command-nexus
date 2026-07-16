@@ -71,13 +71,19 @@ export class ApiClient {
     if (!response.ok) {
       let message = `Request failed with status ${response.status}`;
       try {
-        const body = await response.json();
-        if (body?.error?.message) {
-          message = body.error.message;
+        const text = await response.text();
+        try {
+          const body = JSON.parse(text);
+          if (body?.error?.message) {
+            message = body.error.message;
+          } else if (body?.detail) {
+            message = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+          }
+        } catch {
+          if (text) message = text;
         }
       } catch {
-        const text = await response.text();
-        if (text) message = text;
+        // body unreadable, keep default message
       }
       throw new Error(message);
     }
