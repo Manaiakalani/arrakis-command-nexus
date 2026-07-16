@@ -213,16 +213,19 @@ class UpdateService:
         if not output:
             return "unknown error"
         lines = [l.strip() for l in output.strip().splitlines() if l.strip()]
+        # Known-harmless warnings to skip
+        skip_patterns = ("setlocale", "unloading", "loading steam api",
+                         "redirecting stderr", "logging directory")
         # Look for lines containing error keywords
         for line in reversed(lines):
             lower = line.lower()
             if any(k in lower for k in ("error", "failed", "denied", "invalid", "state is 0x")):
-                # Skip generic "Unloading/Loading" lines
-                if "unloading" not in lower and "loading steam api" not in lower:
+                if not any(s in lower for s in skip_patterns):
                     return line
         # Fallback: last non-trivial line (skip Unloading/OK lines)
         for line in reversed(lines):
-            if "unloading" not in line.lower() and line.lower() != "ok":
+            lower = line.lower()
+            if not any(s in lower for s in skip_patterns) and lower != "ok":
                 return line
         return lines[-1] if lines else "unknown error"
 
