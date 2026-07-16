@@ -176,8 +176,8 @@ class UpdateService:
             return {"success": False, "message": "Login timed out (may need Steam Guard code)", "auth_type": "account", "error": "timeout"}
 
         stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
-        # Strip ANSI escape codes from steamcmd output
-        stdout_text = re.sub(r'\x1b\[[0-9;]*m', '', stdout_text)
+        # Strip ANSI escape codes from steamcmd output (SGR, cursor, erase, etc.)
+        stdout_text = re.sub(r'\x1b\[[0-9;?]*[ -/]*[@-~]', '', stdout_text)
         if proc.returncode != 0 or self._is_auth_failure(stdout_text):
             detail = self._extract_steamcmd_error(stdout_text)
             return {"success": False, "message": f"Login failed: {detail[:150]}", "auth_type": "account", "error": detail[:200]}
@@ -499,14 +499,18 @@ class UpdateService:
                 return {"success": False, "error": "steamcmd timed out (30 min limit)"}
 
             stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
-            # Strip ANSI escape codes from steamcmd output
-            stdout_text = re.sub(r'\x1b\[[0-9;]*m', '', stdout_text)
+            # Strip ANSI escape codes from steamcmd output (SGR, cursor, erase, etc.)
+            stdout_text = re.sub(r'\x1b\[[0-9;?]*[ -/]*[@-~]', '', stdout_text)
             if proc.returncode != 0:
                 err = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
                 detail = self._extract_steamcmd_error(stdout_text) or err[:200] or "unknown"
                 if self._is_auth_failure(stdout_text):
                     logger.error("steamcmd auth failed for %s: %s", settings.get("username", "anonymous"), detail)
-                    return {"success": False, "error": f"Steam authentication failed: {detail[:200]}"}
+                    return {
+                        "success": False,
+                        "error": f"Steam authentication failed: {detail[:200]}",
+                        "hint": "Auth token may have expired. Go to Steam Account settings and click 'Test connection' with your Steam Guard code to re-cache the token.",
+                    }
                 logger.error("steamcmd failed (rc=%d): %s | stderr: %s", proc.returncode, detail, err[:500])
                 return {"success": False, "error": f"steamcmd failed (rc={proc.returncode}): {detail[:200]}"}
             logger.info("steamcmd completed successfully")
@@ -543,6 +547,10 @@ class UpdateService:
                             tag = line.split("Loaded image:", 1)[1].strip()
                             loaded_tags.append(tag)
                             logger.info("Loaded image tags: %s", [tag])
+                except asyncio.TimeoutError:
+                    load_proc.kill()
+                    await load_proc.wait()
+                    logger.warning("docker load timed out for %s — killed", tarball)
                 except Exception as exc:
                     logger.warning("Failed to load %s: %s", tarball, exc)
 
