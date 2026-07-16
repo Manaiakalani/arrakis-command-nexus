@@ -18,6 +18,7 @@ class UpdateScheduler:
     def __init__(self, discord_service: DiscordService):
         self.discord_service = discord_service
         self.update_service = get_update_service()
+        self.update_service._discord_service = discord_service
         self._task: Optional[asyncio.Task] = None
         self._running = False
         self._last_notified_build: Optional[str] = None
