@@ -78,7 +78,7 @@ DEFAULTS: dict[str, dict] = {
 }
 
 # Keys that must never be exposed via the generic settings catch-all or import
-_PROTECTED_KEYS = frozenset({"steam_account"})
+_PROTECTED_KEYS = frozenset({"steam_account", "server_password_stored"})
 
 
 async def _get_setting(key: str) -> dict:
