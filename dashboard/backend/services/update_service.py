@@ -56,6 +56,136 @@ class UpdateService:
             env["DOCKER_HOST"] = docker_host
         return env
 
+    def _steamcmd_environment(self) -> dict[str, str]:
+        """Return a subprocess environment tailored for SteamCMD auth caching."""
+        env = self._docker_environment()
+        steam_home = os.getenv("STEAM_HOME") or os.getenv("HOME") or "/home/app"
+        env["HOME"] = steam_home
+        config_dir = Path(steam_home) / "Steam" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        return env
+
+    # ── Steam account credential management ──────────────────────────
+
+    async def _load_steam_account_settings(self) -> dict[str, Any]:
+        """Load Steam account settings from env vars or the dashboard settings DB."""
+        username = (os.getenv("STEAM_USERNAME") or "").strip()
+        password = (os.getenv("STEAM_PASSWORD") or "").strip()
+
+        if not username:
+            try:
+                from db.database import SessionLocal
+                from db.models import DashboardSetting
+                async with SessionLocal() as session:
+                    row = await session.get(DashboardSetting, "steam_account")
+                    if row and isinstance(row.value, dict):
+                        username = str(row.value.get("username", "") or "").strip()
+                        password = str(row.value.get("password", "") or "").strip()
+            except Exception as e:
+                logger.warning("Failed to load steam account settings: %s", e)
+
+        if username and password:
+            return {"username": username, "has_password": True, "auth_type": "account", "_password": password}
+        return {"username": "", "has_password": False, "auth_type": "anonymous", "_password": ""}
+
+    async def get_steam_account_settings(self) -> dict[str, Any]:
+        """Return sanitized Steam account info (never expose password)."""
+        data = await self._load_steam_account_settings()
+        return {
+            "username": data.get("username", ""),
+            "has_password": data.get("has_password", False),
+            "auth_type": data.get("auth_type", "anonymous"),
+        }
+
+    async def set_steam_account_settings(self, username: str, password: str) -> dict[str, Any]:
+        """Persist Steam account credentials."""
+        from db.database import SessionLocal
+        from db.models import DashboardSetting
+        from datetime import timezone
+
+        username = (username or "").strip()
+        password = (password or "").strip()
+
+        async with SessionLocal() as session:
+            row = await session.get(DashboardSetting, "steam_account")
+            payload = {"username": username, "password": password}
+            if row:
+                row.value = payload
+                row.updated_at = datetime.now(timezone.utc)
+            else:
+                row = DashboardSetting(key="steam_account", value=payload, updated_at=datetime.now(timezone.utc))
+                session.add(row)
+            await session.commit()
+
+        await self._log_audit("steam_account_updated", {"username": username})
+        return await self.get_steam_account_settings()
+
+    async def clear_steam_account_settings(self) -> dict[str, Any]:
+        """Clear stored credentials, revert to anonymous login."""
+        from db.database import SessionLocal
+        from db.models import DashboardSetting
+
+        async with SessionLocal() as session:
+            row = await session.get(DashboardSetting, "steam_account")
+            if row:
+                await session.delete(row)
+                await session.commit()
+
+        await self._log_audit("steam_account_cleared", {})
+        return {"username": "", "has_password": False, "auth_type": "anonymous"}
+
+    async def test_steam_login(self) -> dict[str, Any]:
+        """Test the configured Steam credentials by running steamcmd +login +quit."""
+        settings = await self._load_steam_account_settings()
+        if settings.get("auth_type") != "account":
+            return {"success": True, "message": "Using anonymous login (no account configured)", "auth_type": "anonymous"}
+
+        steamcmd_bin = self._find_steamcmd()
+        if not steamcmd_bin:
+            return {"success": False, "message": "steamcmd not found", "auth_type": "account", "error": "steamcmd binary not found"}
+
+        login_args = self._build_login_args(settings)
+        logger.info("Testing Steam login for account: %s", settings.get("username"))
+
+        proc = await asyncio.create_subprocess_exec(
+            steamcmd_bin,
+            "+@sSteamCmdForcePlatformType", "linux",
+            *login_args,
+            "+quit",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=self._steamcmd_environment(),
+        )
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=120)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return {"success": False, "message": "Login timed out (may need Steam Guard code)", "auth_type": "account", "error": "timeout"}
+
+        stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
+        if proc.returncode != 0 or self._is_auth_failure(stdout_text):
+            detail = stdout_text.strip().rsplit("\n", 1)[-1] if stdout_text.strip() else "unknown error"
+            return {"success": False, "message": f"Login failed: {detail[:150]}", "auth_type": "account", "error": detail[:200]}
+
+        return {"success": True, "message": "Steam login successful", "auth_type": "account"}
+
+    def _build_login_args(self, settings: dict[str, Any]) -> list[str]:
+        """Build steamcmd login args from settings."""
+        username = str(settings.get("username", "") or "").strip()
+        password = str(settings.get("_password", "") or "").strip()
+        if username and password:
+            return ["+login", username, password]
+        return ["+login", "anonymous"]
+
+    @staticmethod
+    def _is_auth_failure(output: str) -> bool:
+        """Detect authentication-specific failures in steamcmd output."""
+        lower = output.lower()
+        markers = ("invalid password", "login failure", "steam guard", "two-factor",
+                   "account login denied", "login denied", "not logged in")
+        return any(m in lower for m in markers)
+
     def _load_dotenv_values(self, env_file: Path) -> dict[str, str]:
         """Parse a simple KEY=VALUE dotenv file."""
         values: dict[str, str] = {}
@@ -293,22 +423,41 @@ class UpdateService:
             if not steamcmd_bin:
                 return {"success": False, "error": "steamcmd not found in container"}
 
+            # Use configured Steam account or fall back to anonymous
+            settings = await self._load_steam_account_settings()
+            login_args = self._build_login_args(settings)
+            auth_type = settings.get("auth_type", "anonymous")
+            if auth_type == "account":
+                logger.info("Using dedicated Steam account: %s", settings.get("username"))
+            else:
+                logger.info("Using anonymous Steam login")
+
             proc = await asyncio.create_subprocess_exec(
                 steamcmd_bin,
                 "+@sSteamCmdForcePlatformType", "linux",
                 "+force_install_dir", steam_dir,
-                "+login", "anonymous",
+                *login_args,
                 "+app_update", steam_app_id, "validate",
                 "+quit",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=self._steamcmd_environment(),
             )
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=1800)
+            try:
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=1800)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                return {"success": False, "error": "steamcmd timed out (30 min limit)"}
+
             stdout_text = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
             if proc.returncode != 0:
                 err = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
                 # SteamCMD writes real errors (e.g. "state is 0x6") to stdout, not stderr
                 detail = stdout_text.strip().rsplit("\n", 1)[-1] if stdout_text.strip() else err[:200] or "unknown"
+                if self._is_auth_failure(stdout_text):
+                    logger.error("steamcmd auth failed for %s: %s", settings.get("username", "anonymous"), detail)
+                    return {"success": False, "error": f"Steam authentication failed: {detail[:200]}"}
                 logger.error("steamcmd failed (rc=%d): %s | stderr: %s", proc.returncode, detail, err[:500])
                 return {"success": False, "error": f"steamcmd failed (rc={proc.returncode}): {detail[:200]}"}
             logger.info("steamcmd completed successfully")
