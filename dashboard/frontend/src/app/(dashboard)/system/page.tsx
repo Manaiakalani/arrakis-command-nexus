@@ -54,6 +54,7 @@ const manualWarningOptions = [0, 1, 5, 15] as const;
 const DEFAULT_RESTART_SCHEDULE: RestartSchedule = {
   enabled: false,
   intervalHours: 24,
+  restartTimeUtc: null,
   warningMinutes: [15, 5, 1],
   lastRestartAt: null,
   nextRestartAt: null,
@@ -94,6 +95,27 @@ function formatCountdown(target?: string | null, now = Date.now()) {
   return parts.join(' ');
 }
 
+function formatRestartTimeLocal(value: string) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  if (!match) {
+    return 'your local time';
+  }
+
+  const today = new Date();
+  const localDate = new Date(Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+    Number(match[1]),
+    Number(match[2]),
+  ));
+  return localDate.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+}
+
 function parseWarningMinutes(value: string) {
   const rawParts = value.split(',').map((part) => part.trim()).filter(Boolean);
   if (rawParts.length === 0) {
@@ -108,6 +130,18 @@ function parseWarningMinutes(value: string) {
   return Array.from(new Set(parsed)).sort((left, right) => right - left);
 }
 
+function parseRestartTimeUtc(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(trimmed);
+  if (!match) {
+    throw new Error('Restart time must be a valid HH:MM value in UTC.');
+  }
+  return `${match[1]}:${match[2]}`;
+}
+
 export default function SystemPage() {
   const { toast } = useToast();
   const [range, setRange] = useState('1h');
@@ -115,6 +149,7 @@ export default function SystemPage() {
   const [exportFormat, setExportFormat] = useState('csv');
   const [schedule, setSchedule] = useState<RestartSchedule>(DEFAULT_RESTART_SCHEDULE);
   const [warningInput, setWarningInput] = useState(DEFAULT_RESTART_SCHEDULE.warningMinutes.join(', '));
+  const [restartTimeInput, setRestartTimeInput] = useState(DEFAULT_RESTART_SCHEDULE.restartTimeUtc ?? '');
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
   const [manualWarningMinutes, setManualWarningMinutes] = useState(0);
@@ -136,6 +171,7 @@ export default function SystemPage() {
     }
     setSchedule(restartScheduleApi.data);
     setWarningInput((restartScheduleApi.data.warningMinutes ?? []).join(', '));
+    setRestartTimeInput(restartScheduleApi.data.restartTimeUtc ?? '');
   }, [restartScheduleApi.data]);
 
   useEffect(() => {
@@ -536,8 +572,10 @@ export default function SystemPage() {
             <p className="mt-2 text-lg font-semibold text-th-text">{schedule.enabled ? 'Enabled' : 'Disabled'}</p>
           </div>
           <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
-            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Interval</p>
-            <p className="mt-2 text-lg font-semibold text-th-text">Every {schedule.intervalHours}h</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">{schedule.restartTimeUtc ? 'Daily time' : 'Interval'}</p>
+            <p className="mt-2 text-lg font-semibold text-th-text">
+              {schedule.restartTimeUtc ? `${schedule.restartTimeUtc} UTC` : `Every ${schedule.intervalHours}h`}
+            </p>
           </div>
           <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
             <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Warnings</p>
@@ -551,7 +589,47 @@ export default function SystemPage() {
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
+            <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s">
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="daily-restart-time" className="mb-2 block text-th-text">Daily restart time</label>
+                <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-200">UTC</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="daily-restart-time"
+                  type="time"
+                  step="60"
+                  value={restartTimeInput}
+                  onChange={(event) => {
+                    setScheduleMessage(null);
+                    setRestartTimeInput(event.target.value);
+                  }}
+                  className="dune-input"
+                  aria-describedby="restart-schedule-mode"
+                />
+                {restartTimeInput && (
+                  <button
+                    type="button"
+                    className="dune-button-muted shrink-0 px-3"
+                    onClick={() => {
+                      setScheduleMessage(null);
+                      setRestartTimeInput('');
+                    }}
+                  >
+                    Use interval
+                  </button>
+                )}
+              </div>
+              <p id="restart-schedule-mode" className="mt-2 text-xs text-th-text-m">
+                {restartTimeInput
+                  ? `${restartTimeInput} UTC is ${formatRestartTimeLocal(restartTimeInput)} in your local time. Daily time takes priority over the interval.`
+                  : 'Leave this blank to use the interval schedule.'}
+              </p>
+            </div>
+            <label className={cn(
+              'rounded-2xl border border-th-border/70 bg-th-surface-s/60 px-4 py-3 text-sm text-th-text-s transition-opacity',
+              restartTimeInput && 'opacity-60',
+            )}>
               <span className="mb-2 block text-th-text">Interval (hours)</span>
               <select
                 value={schedule.intervalHours}
@@ -560,6 +638,8 @@ export default function SystemPage() {
                   setSchedule((current) => ({ ...current, intervalHours: Number(event.target.value) }));
                 }}
                 className="dune-input"
+                disabled={Boolean(restartTimeInput)}
+                aria-describedby={restartTimeInput ? 'restart-schedule-mode' : undefined}
               >
                 {restartIntervals.map((interval) => (
                   <option key={interval} value={interval}>{interval} hours</option>
@@ -660,14 +740,17 @@ export default function SystemPage() {
               setSavingSchedule(true);
               try {
                 const warningMinutes = parseWarningMinutes(warningInput);
+                const restartTimeUtc = parseRestartTimeUtc(restartTimeInput);
                 const updated = await apiClient.updateRestartSchedule({
                   enabled: schedule.enabled,
                   intervalHours: schedule.intervalHours,
+                  restartTimeUtc,
                   warningMinutes,
                 });
                 restartScheduleApi.setData(updated);
                 setSchedule(updated);
                 setWarningInput(updated.warningMinutes.join(', '));
+                setRestartTimeInput(updated.restartTimeUtc ?? '');
                 setScheduleMessage('Restart schedule saved.');
                 toast('Restart schedule saved.', 'success');
               } catch (error) {

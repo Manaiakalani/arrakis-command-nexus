@@ -11,6 +11,7 @@ class RestartScheduleUpdateRequest(BaseModel):
 
     enabled: bool | None = None
     intervalHours: int | None = Field(default=None, ge=1)
+    restartTimeUtc: str | None = None
     warningMinutes: list[int] | None = None
 
 
@@ -28,11 +29,14 @@ async def get_restart_schedule(request: Request) -> dict[str, object]:
 @router.put("/restart/schedule")
 async def update_restart_schedule(payload: RestartScheduleUpdateRequest, request: Request) -> dict[str, object]:
     try:
-        return await request.app.state.restart_scheduler.update_settings(
-            enabled=payload.enabled,
-            interval_hours=payload.intervalHours,
-            warning_minutes=payload.warningMinutes,
-        )
+        update_kwargs = {
+            "enabled": payload.enabled,
+            "interval_hours": payload.intervalHours,
+            "warning_minutes": payload.warningMinutes,
+        }
+        if "restartTimeUtc" in payload.model_fields_set:
+            update_kwargs["restart_time_utc"] = payload.restartTimeUtc
+        return await request.app.state.restart_scheduler.update_settings(**update_kwargs)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
