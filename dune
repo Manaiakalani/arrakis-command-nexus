@@ -75,6 +75,7 @@ redact_stream() {
     "${POSTGRES_SUPER_PASSWORD:-}" \
     "${POSTGRES_DUNE_PASSWORD:-}" \
     "${RABBITMQ_DEFAULT_PASS:-}" \
+    "${DUNE_RMQ_MANAGEMENT_PASSWORD:-}" \
     "${DUNE_ADMIN_TOKEN:-}"; do
     [[ -n "$secret" ]] && secrets+=("$secret")
   done

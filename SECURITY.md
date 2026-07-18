@@ -45,7 +45,7 @@ When rotating credentials, follow this sequence to avoid downtime:
 2. Update `.env` with the new password.
 3. Restart: `docker compose up -d dashboard-api`
 
-### RabbitMQ Credentials (`RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS`)
+### RabbitMQ Credentials (`DUNE_RMQ_MANAGEMENT_USER` / `DUNE_RMQ_MANAGEMENT_PASSWORD`)
 1. Update `.env` with new values.
 2. Recreate the RabbitMQ container: `docker compose up -d --force-recreate rabbitmq`
 3. Restart services that connect to RabbitMQ: `docker compose restart rmq-auth-shim text-router`
