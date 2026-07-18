@@ -84,8 +84,8 @@ fi
 
 if have_command docker && (service_exists admin-rmq 2>/dev/null || service_exists game-rmq 2>/dev/null); then
   rabbitmq_port="$(strip_wrapping_quotes "${RABBITMQ_MANAGEMENT_PORT:-15672}")"
-  rabbitmq_user="$(strip_wrapping_quotes "${RABBITMQ_DEFAULT_USER:-guest}")"
-  rabbitmq_pass="$(strip_wrapping_quotes "${RABBITMQ_DEFAULT_PASS:-guest}")"
+  rabbitmq_user="$(strip_wrapping_quotes "${DUNE_RMQ_MANAGEMENT_USER:-guest}")"
+  rabbitmq_pass="$(strip_wrapping_quotes "${DUNE_RMQ_MANAGEMENT_PASSWORD:-guest}")"
   if have_command curl && curl -fsS -u "$rabbitmq_user:$rabbitmq_pass" "http://127.0.0.1:${rabbitmq_port}/api/overview" >/dev/null 2>&1; then
     add_result pass 'RabbitMQ' 'Management API responded successfully.' ''
   elif run_compose exec -T admin-rmq rabbitmq-diagnostics -q ping >/dev/null 2>&1; then

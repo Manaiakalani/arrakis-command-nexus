@@ -55,7 +55,7 @@ class AnnounceService:
         # Dedicated announcer AMQP credentials: must be a valid 16-hex-char
         # "player" account so the auth-shim accepts it and user_id matches
         self.chat_user = os.getenv("DUNE_ANNOUNCE_CHAT_USER", "A000000000000001")
-        self.chat_password = os.getenv("DUNE_ANNOUNCE_CHAT_PASSWORD", "announce")
+        self.chat_password = os.getenv("DUNE_ANNOUNCE_CHAT_PASSWORD", "")
         self.history: list[dict] = []
 
     # ------------------------------------------------------------------
