@@ -53,30 +53,18 @@ _PENDING_MIGRATIONS: list[tuple[str, str, str]] = [
 ]
 
 
-# Data-only migrations (run after schema migrations). Each entry is
-# (sentinel_table, idempotency-check SQL returning a non-zero count when the
-# migration has already been applied, mutation SQL).
-_PENDING_DATA_MIGRATIONS: list[tuple[str, str, str]] = [
+_COLUMN_BACKFILLS: dict[tuple[str, str], str] = {
     (
         "discord_webhooks",
-        # If any per-category column disagrees with notify_system, treat the
-        # data migration as still-needed. Once they're aligned, this returns 0.
-        "SELECT count(*) FROM discord_webhooks WHERE "
-        "notify_backup <> notify_system OR "
-        "notify_scheduled_restart <> notify_system OR "
-        "notify_admin_action <> notify_system OR "
-        "notify_resource <> notify_system",
-        # Copy the legacy umbrella flag into all 4 new per-category flags so
-        # existing subscribers keep getting these alerts after the upgrade.
-        "UPDATE discord_webhooks SET "
-        "notify_backup = notify_system, "
-        "notify_scheduled_restart = notify_system, "
-        "notify_admin_action = notify_system, "
-        "notify_resource = notify_system "
-        "WHERE notify_backup <> notify_system OR notify_scheduled_restart <> notify_system "
-        "OR notify_admin_action <> notify_system OR notify_resource <> notify_system",
-    ),
-]
+        column,
+    ): f"UPDATE discord_webhooks SET {column} = notify_system"
+    for column in (
+        "notify_backup",
+        "notify_scheduled_restart",
+        "notify_admin_action",
+        "notify_resource",
+    )
+}
 
 
 async def _apply_pending_migrations() -> None:
@@ -96,21 +84,9 @@ async def _apply_pending_migrations() -> None:
                 continue
             logger.info("Adding missing column %s.%s via ALTER TABLE", table, column)
             await conn.execute(text(ddl))
-        # Data migrations after schema is in place.
-        for table, check_sql, mutate_sql in _PENDING_DATA_MIGRATIONS:
-            existing_table = await conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name=:t"),
-                {"t": table},
-            )
-            if existing_table.first() is None:
-                continue
-            pending = await conn.execute(text(check_sql))
-            row = pending.first()
-            count = int(row[0]) if row else 0
-            if count == 0:
-                continue
-            logger.info("Applying data migration on %s: %d rows need updating", table, count)
-            await conn.execute(text(mutate_sql))
+            backfill = _COLUMN_BACKFILLS.get((table, column))
+            if backfill is not None:
+                await conn.execute(text(backfill))
 
 
 async def init_db() -> None:

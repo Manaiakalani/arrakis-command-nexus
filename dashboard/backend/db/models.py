@@ -52,8 +52,8 @@ class DiscordWebhook(Base):
     notify_scheduled_restart: Mapped[bool] = mapped_column(default=True)
     notify_admin_action: Mapped[bool] = mapped_column(default=True)
     notify_resource: Mapped[bool] = mapped_column(default=True)
-    # Legacy umbrella flag kept for one-release back-compat. Migrations on
-    # startup copy its value to the four flags above; new code reads only
+    # Legacy umbrella flag kept for one-release back-compat. Its value is
+    # copied when each replacement column is first added; new code reads only
     # the per-category flags. Safe to drop in a future release.
     notify_system: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
