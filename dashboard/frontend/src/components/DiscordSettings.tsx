@@ -35,12 +35,33 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
   const [drafts, setDrafts] = useState<DiscordWebhook[]>(webhooks);
   const [announcement, setAnnouncement] = useState('');
   const [newWebhook, setNewWebhook] = useState({ name: 'Operations Feed', url: '', enabled: true, events: availableEvents });
+  const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setDrafts(webhooks);
+    // Prune dirty IDs for webhooks no longer present (deleted server-side)
+    const serverIds = new Set(webhooks.map((w) => w.id));
+    setDirtyIds((current) => {
+      const pruned = new Set([...current].filter((id) => serverIds.has(id)));
+      return pruned.size === current.size ? current : pruned;
+    });
+    // Merge server data while preserving locally-edited fields
+    setDrafts((current) => {
+      if (dirtyIds.size === 0) return webhooks;
+      return webhooks.map((incoming) => {
+        if (dirtyIds.has(incoming.id)) {
+          const local = current.find((d) => d.id === incoming.id);
+          if (!local) return incoming;
+          // Preserve only editable fields; let server-owned fields (health, recentEvents) update
+          return { ...incoming, name: local.name, enabled: local.enabled, events: local.events };
+        }
+        return incoming;
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webhooks]);
 
   const updateDraft = (id: string, patch: Partial<DiscordWebhook>) => {
+    setDirtyIds((current) => new Set(current).add(id));
     setDrafts((current) => current.map((webhook) => (webhook.id === id ? { ...webhook, ...patch } : webhook)));
   };
 
@@ -121,7 +142,7 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
                 })}
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
-                <button type="button" className="dune-button" onClick={() => void onUpdate(webhook.id, { name: webhook.name, enabled: webhook.enabled, events: webhook.events })}>
+                <button type="button" className="dune-button" onClick={async () => { await onUpdate(webhook.id, { name: webhook.name, enabled: webhook.enabled, events: webhook.events }); setDirtyIds((current) => { const next = new Set(current); next.delete(webhook.id); return next; }); }}>
                   Save webhook
                 </button>
                 <button type="button" className="dune-button-muted" onClick={() => void onTest()}>

@@ -17,7 +17,7 @@ class DiscordWebhookCreate(BaseModel):
     notify_scheduled_restart: bool = True
     notify_admin_action: bool = True
     notify_resource: bool = True
-    notify_system: bool = True  # legacy umbrella; mirrored by migration
+    notify_system: bool = True  # legacy umbrella and migration source
 
 
 class DiscordWebhookUpdate(BaseModel):
