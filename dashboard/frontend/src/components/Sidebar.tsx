@@ -95,9 +95,10 @@ interface SidebarProps {
   onClose: () => void;
   status?: HealthState;
   version?: SystemVersion;
+  closeRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
-export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'healthy', version }: SidebarProps) {
+export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'healthy', version, closeRef }: SidebarProps) {
   const pathname = usePathname();
   const environmentLabel = version?.environment === 'beta' ? 'PTC' : 'Live';
 
@@ -116,11 +117,14 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
 
       <aside
         data-testid="sidebar"
+        role={mobileOpen ? 'dialog' : undefined}
+        aria-modal={mobileOpen ? true : undefined}
+        aria-label={mobileOpen ? 'Navigation' : undefined}
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-th-border-m/70 bg-th-bg/95 backdrop-blur-2xl',
-          'transition-[width,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+          'transition-[width,transform,visibility] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
           collapsed ? 'lg:w-[4.5rem]' : 'w-80',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 max-lg:invisible',
         )}
       >
         {/* Header */}
@@ -137,7 +141,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             </div>
             {!collapsed && (
               <div className="overflow-hidden whitespace-nowrap">
-                <p className="text-xs uppercase tracking-[0.26em] text-amber-600/70 dark:text-amber-200/70">Arrakis</p>
+                <p className="text-xs uppercase tracking-[0.26em] text-amber-700 dark:text-amber-200">Arrakis</p>
                 <h2 className="text-lg font-semibold leading-tight text-th-text">Command Nexus</h2>
               </div>
             )}
@@ -160,6 +164,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
 
           {/* Mobile close button */}
           <button
+            ref={closeRef}
             type="button"
             onClick={onClose}
             data-testid="sidebar-close"
@@ -236,7 +241,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             </div>
           ) : (
             <>
-              <p className="text-xs uppercase tracking-[0.24em] text-amber-600/70 dark:text-amber-200/70">Spice forecast</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-amber-700 dark:text-amber-200">Spice forecast</p>
               <p className="mt-2 text-sm text-th-text-s">Live map, player, and service intelligence.</p>
               <div className="mt-3 space-y-2 border-t border-amber-500/10 pt-3 text-xs text-th-text-m">
                 <div className="flex items-center justify-between gap-3">

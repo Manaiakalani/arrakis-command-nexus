@@ -4,6 +4,7 @@ import { AlertTriangle, FileText, Info, RotateCcw, Save } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import type { ConfigFile, ConfigField } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -79,25 +80,23 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
     );
   }, [activeFile]);
 
-  const dirtyCount = useMemo(() => {
-    if (!activeFile) return 0;
-    const original = activeFile.fields.reduce<Record<string, string | number | boolean>>((acc, f) => {
-      acc[fieldKey(f)] = f.value;
-      return acc;
-    }, {});
-    const draft = drafts[activeFile.filename] ?? {};
-    return Object.keys(draft).filter((k) => String(draft[k]) !== String(original[k])).length;
-  }, [activeFile, drafts]);
+  // Global dirty count across ALL config files (not just active)
+  const globalDirtyCount = useMemo(() => {
+    return files.reduce((total, file) => {
+      const original = file.fields.reduce<Record<string, string | number | boolean>>((acc, f) => {
+        acc[fieldKey(f)] = f.value;
+        return acc;
+      }, {});
+      const draft = drafts[file.filename] ?? {};
+      const fileDirty = Object.keys(draft).filter((k) => String(draft[k]) !== String(original[k])).length;
+      return total + fileDirty;
+    }, 0);
+  }, [files, drafts]);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (dirtyCount > 0) {
-      const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-      window.addEventListener('beforeunload', handler);
-      return () => window.removeEventListener('beforeunload', handler);
-    }
-  }, [dirtyCount]);
+  // Warn on navigation when there are unsaved changes (any file)
+  useNavigationGuard(globalDirtyCount > 0, `You have ${globalDirtyCount} unsaved change(s) across config files. Leave without saving?`);
 
   const updateField = (field: ConfigField, value: string | number | boolean) => {
     if (!activeFile) {
@@ -141,7 +140,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
                 {modified ? <span className="ml-2 text-xs text-amber-600 dark:text-amber-300">modified</span> : null}
               </p>
               {field.description ? <p className="mt-1 text-sm text-th-text-m">{field.description}</p> : null}
-              {defaultHint ? <p className="mt-1 text-xs text-th-text-m/60">{defaultHint}</p> : null}
+              {defaultHint ? <p className="mt-1 text-xs text-th-text-m">{defaultHint}</p> : null}
             </div>
             <div className={cn(
                 'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors cursor-pointer',
@@ -186,7 +185,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
             ))}
           </select>
           {field.description ? <p className="mt-2 text-sm text-th-text-m">{field.description}</p> : null}
-          {defaultHint ? <p className="mt-1 text-xs text-th-text-m/60">{defaultHint}</p> : null}
+          {defaultHint ? <p className="mt-1 text-xs text-th-text-m">{defaultHint}</p> : null}
         </div>
       );
     }
@@ -208,7 +207,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
           onChange={(event) => updateField(field, field.type === 'number' ? Number(event.target.value) : event.target.value)}
         />
         {field.description ? <p className="mt-2 text-sm text-th-text-m">{field.description}</p> : null}
-        {defaultHint ? <p className="mt-1 text-xs text-th-text-m/60">{defaultHint}</p> : null}
+        {defaultHint ? <p className="mt-1 text-xs text-th-text-m">{defaultHint}</p> : null}
       </div>
     );
   };
@@ -280,7 +279,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
         {/* File description */}
         {activeFile?.description ? (
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-th-border/60 bg-th-surface-s/40 px-4 py-3 text-sm text-th-text-m">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-th-text-m/60" />
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-th-text-m" />
             <span>{activeFile.description}</span>
           </div>
         ) : null}
@@ -317,7 +316,7 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
             <div className="mb-5">
               <p className="section-title">Section</p>
               <h3 className="mt-1 text-lg font-semibold text-th-text">{friendlySection(section)}</h3>
-              <p className="mt-1 text-xs font-mono text-th-text-m/50">[{section}]</p>
+              <p className="mt-1 text-xs font-mono text-th-text-m">[{section}]</p>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               {fields.map((field) => (
@@ -335,9 +334,9 @@ export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps
         <button type="button" onClick={() => void handleSave()} disabled={saving} className="dune-button">
           <Save className="mr-2 h-4 w-4" /> {saving ? 'Saving…' : 'Save configuration'}
         </button>
-        {dirtyCount > 0 ? (
+        {globalDirtyCount > 0 ? (
           <span className="text-sm text-amber-600 dark:text-amber-300">
-            {dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}
+            {globalDirtyCount} unsaved change{globalDirtyCount === 1 ? '' : 's'}
           </span>
         ) : null}
       </div>

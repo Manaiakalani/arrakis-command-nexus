@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo } from 'react';
+import { memo, useId, useMemo } from 'react';
 import {
   Area,
   AreaChart,
@@ -70,7 +70,7 @@ function formatTooltipLabel(timestamp: string) {
   });
 }
 
-export function MetricsChart({
+export const MetricsChart = memo(function MetricsChart({
   title,
   description,
   history,
@@ -194,4 +194,4 @@ export function MetricsChart({
       </div>
     </div>
   );
-}
+});

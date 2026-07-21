@@ -1,7 +1,7 @@
 'use client';
 
 import { Menu, Signal } from 'lucide-react';
-import { ReactNode, useCallback, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Sidebar } from '@/components/Sidebar';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -14,18 +14,49 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: overview } = useApi(() => apiClient.getStatus(), { refreshInterval: 15000 });
   const { data: version } = useApi(() => apiClient.getVersion(), { refreshInterval: 60000 });
+  const mainRef = useRef<HTMLDivElement>(null);
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((current) => !current);
   }, []);
 
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarCloseRef = useRef<HTMLButtonElement>(null);
+
   const closeMobile = useCallback(() => {
+    // Remove inert BEFORE focusing menu button (effect runs async)
+    mainRef.current?.removeAttribute('inert');
     setMobileOpen(false);
+    // Return focus to the menu trigger
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
   }, []);
 
   const openMobile = useCallback(() => {
     setMobileOpen(true);
   }, []);
+
+  // Trap focus: set inert on main content when mobile drawer is open
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    if (mobileOpen) {
+      el.setAttribute('inert', '');
+      // Move focus into the sidebar close button
+      requestAnimationFrame(() => sidebarCloseRef.current?.focus());
+    } else {
+      el.removeAttribute('inert');
+    }
+  }, [mobileOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeMobile();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [mobileOpen, closeMobile]);
 
   return (
     <div className="relative min-h-screen bg-dune-radial">
@@ -38,12 +69,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           onToggle={toggleSidebar}
           status={overview?.status}
           version={version}
+          closeRef={sidebarCloseRef}
         />
-        <div className={cn('flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
+        <div ref={mainRef} className={cn('flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
           <header className="sticky top-0 z-30 border-b border-th-border-m/80 bg-th-bg/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <button
+                  ref={menuButtonRef}
                   type="button"
                   className="dune-button-muted shrink-0 lg:hidden"
                   onClick={openMobile}

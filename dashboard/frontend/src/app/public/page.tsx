@@ -82,7 +82,7 @@ export default function PublicStatusPage() {
       <div className="absolute inset-0 bg-dune-grid bg-[size:42px_42px] opacity-[0.08]" />
       <div className="relative mx-auto max-w-2xl px-4 py-16">
         <div className="text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-amber-600/70 dark:text-amber-200/70">Dune Awakening</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-amber-700 dark:text-amber-200">Dune Awakening</p>
           <h1 className="mt-2 text-3xl font-bold text-th-text">{data?.serverName ?? 'Server Status'}</h1>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-th-border/80 px-4 py-2">
             <span className={`h-3 w-3 rounded-full ${styles.bg} shadow-[0_0_12px_currentColor]`} />

@@ -18,7 +18,7 @@
   --th-border-m:  232 224 210;   /* lighter warm border */
   --th-text:      41 32 18;      /* deep warm brown-black */
   --th-text-s:    92 76 52;      /* warm brown secondary */
-  --th-text-m:    120 104 78;    /* warm muted text */
+  --th-text-m:    105 89 63;     /* warm muted text — AA-compliant on all light surfaces */
 
   /* Semantic accent tokens */
   --th-accent: 180 83 9;              /* amber-700 – WCAG AA on light bg */
@@ -37,7 +37,7 @@
   --tooltip-text: #292012;
   --tooltip-label: #5c4c34;
   --chart-grid: rgba(133,117,90,0.15);
-  --chart-axis: #85755a;
+  --chart-axis: #6e5f46;
   --gauge-track: rgba(133,117,90,0.15);
   --scrollbar-thumb: rgba(194, 120, 3, 0.5);
   --scrollbar-track: rgba(247, 243, 235, 0.6);

@@ -56,13 +56,8 @@ export default function OverviewPage() {
     [overviewMutate],
   );
 
-  const sseToken = typeof window !== 'undefined'
-    ? document.cookie.match(/admin[_-]?token=([^;]+)/)?.[1] ?? ''
-    : '';
-
   const { sseStatus } = useDashboardSSE({
     enabled: !!overviewData,
-    token: sseToken,
     onUpdate: handleSSEUpdate,
   });
 

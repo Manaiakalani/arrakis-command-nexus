@@ -19,8 +19,6 @@ type SSEEventType = (typeof SSE_EVENT_TYPES)[number];
 interface UseDashboardSSEOptions {
   /** Whether SSE should be active */
   enabled?: boolean;
-  /** Auth token for the SSE connection */
-  token?: string;
   /** Called with a partial DashboardOverview to merge into state */
   onUpdate: (patch: Partial<DashboardOverview>) => void;
 }
@@ -30,12 +28,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Connects to the SSE stream and patches DashboardOverview state
- * as events arrive. Falls back silently — the parent component
- * keeps the useApi polling as a baseline.
+ * Connects to the SSE proxy route (/api/events/stream) which injects
+ * the admin token server-side. No client-side token needed.
+ * Falls back silently — the parent component keeps SWR polling as baseline.
  */
 export function useDashboardSSE(options: UseDashboardSSEOptions) {
-  const { enabled = true, token, onUpdate } = options;
+  const { enabled = true, onUpdate } = options;
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
 
@@ -77,14 +75,9 @@ export function useDashboardSSE(options: UseDashboardSSEOptions) {
     [],
   );
 
-  const apiBase =
-    typeof window !== 'undefined'
-      ? (process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? '/api')
-      : '/api';
-
-  const { status, retryCount } = useSSE(`${apiBase}/events/stream`, {
-    enabled: enabled && !!token,
-    token,
+  // Use the Next.js SSE proxy route — token is injected server-side
+  const { status, retryCount } = useSSE('/api/events/stream', {
+    enabled,
     eventTypes: [...SSE_EVENT_TYPES],
     onEvent: handleEvent,
   });
