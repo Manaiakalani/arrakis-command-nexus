@@ -6,16 +6,17 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export function middleware(request: NextRequest) {
   const token = process.env.DUNE_ADMIN_TOKEN;
-  if (!token) {
-    return NextResponse.next();
-  }
 
   const requestHeaders = new Headers(request.headers);
-  // Strip client-supplied role header to prevent privilege escalation
+  // Always strip client-supplied privileged headers to prevent escalation
   requestHeaders.delete('X-Admin-Role');
-  if (!requestHeaders.has('X-Admin-Token')) {
-    requestHeaders.set('X-Admin-Token', token);
+  requestHeaders.delete('X-Admin-Token');
+
+  if (!token) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
+
+  requestHeaders.set('X-Admin-Token', token);
 
   return NextResponse.next({
     request: { headers: requestHeaders },

@@ -196,8 +196,8 @@ body {
   input:not(.dune-input),
   select,
   textarea,
-  [role= button],
-  [tabindex]:not([tabindex=-1]) {
+  [role="button"],
+  [tabindex]:not([tabindex="-1"]) {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
   }
 }
@@ -212,9 +212,5 @@ body {
 
   .sand-glow {
     box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1), 0 0 30px rgba(245, 158, 11, 0.15);
-  }
-
-  .tabular-nums {
-    font-variant-numeric: tabular-nums;
   }
 }

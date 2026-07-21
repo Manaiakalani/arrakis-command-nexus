@@ -101,8 +101,11 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     enabledRef.current = enabled;
   }, [enabled]);
 
-  useEffect(() => () => {
-    isMountedRef.current = false;
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const run = useCallback(async (rethrow = true) => {

@@ -57,9 +57,7 @@ export default function OverviewPage() {
   );
 
   const sseToken = typeof window !== 'undefined'
-    ? document.cookie.match(/admin[_-]?token=([^;]+)/)?.[1]
-      ?? (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_ADMIN_TOKEN : undefined)
-      ?? ''
+    ? document.cookie.match(/admin[_-]?token=([^;]+)/)?.[1] ?? ''
     : '';
 
   const { sseStatus } = useDashboardSSE({
