@@ -43,15 +43,15 @@ export default function DiscordPage() {
         webhooks={webhooks.data ?? []}
         onAdd={async (data) => {
           await apiClient.addWebhook(data);
-          await webhooks.refetch();
+          await webhooks.forceRefetch();
         }}
         onUpdate={async (id, data) => {
           await apiClient.updateWebhook(id, data);
-          await webhooks.refetch();
+          await webhooks.forceRefetch();
         }}
         onDelete={async (id) => {
           await apiClient.deleteWebhook(id);
-          await webhooks.refetch();
+          await webhooks.forceRefetch();
         }}
         onTest={async () => {
           await apiClient.testWebhook();
