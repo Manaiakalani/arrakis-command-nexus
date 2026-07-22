@@ -325,6 +325,9 @@ def _read_env_password() -> tuple[bool, str]:
 
 def _write_env_password(value: str) -> None:
     """Rewrite the DUNE_SERVER_LOGIN_PASSWORD line in .env."""
+    # Prevent .env injection via embedded newlines
+    if any(c in value for c in ('\n', '\r', '\x00')):
+        raise ValueError("Password contains invalid characters")
     try:
         with open(_ENV_PATH, encoding="utf-8") as f:
             content = f.read()
@@ -334,7 +337,8 @@ def _write_env_password(value: str) -> None:
     pattern = rf'^{re.escape(_PASSWORD_KEY)}=.*$'
     new_line = f'{_PASSWORD_KEY}={value}'
     if re.search(pattern, content, re.MULTILINE):
-        content = re.sub(pattern, new_line, content, flags=re.MULTILINE)
+        # Use lambda replacement to avoid backslash interpretation in value
+        content = re.sub(pattern, lambda _: new_line, content, flags=re.MULTILINE)
     else:
         content = content.rstrip("\n") + f"\n{new_line}\n"
 

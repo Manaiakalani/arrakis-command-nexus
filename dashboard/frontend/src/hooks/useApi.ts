@@ -20,7 +20,11 @@ function dedupedFetch<T>(key: string, fn: () => Promise<T>, force = false): Prom
   }
 
   const promise = fn().finally(() => {
-    inflight.delete(key);
+    // Only delete if this is still the active entry (force may have replaced it)
+    const current = inflight.get(key);
+    if (current && current.promise === promise) {
+      inflight.delete(key);
+    }
   });
 
   inflight.set(key, { promise, subscribers: 1 });

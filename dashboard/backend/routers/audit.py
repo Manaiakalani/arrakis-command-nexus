@@ -84,20 +84,28 @@ async def export_audit_logs(
     category: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
-    """Export the full audit trail as CSV or JSON."""
-    query = select(AuditLog).order_by(AuditLog.created_at.desc())
+    """Export audit trail as CSV or JSON (capped at 50,000 rows to prevent OOM)."""
+    _EXPORT_LIMIT = 50_000
+
+    query = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(_EXPORT_LIMIT)
     if category and category in ACTION_CATEGORIES:
         query = query.where(AuditLog.action.in_(ACTION_CATEGORIES[category]))
 
     result = await session.execute(query)
     entries = result.scalars().all()
 
+    def _sanitize_csv(val: str) -> str:
+        """Prefix cells that could be interpreted as formulas in spreadsheet apps."""
+        if val and val[0] in ('=', '+', '-', '@', '\t', '\r'):
+            return f"'{val}"
+        return val
+
     rows = [
         {
             "id": e.id,
-            "action": e.action,
-            "details": json.dumps(e.details) if e.details else "",
-            "performed_by": e.performed_by,
+            "action": _sanitize_csv(e.action or ""),
+            "details": _sanitize_csv(json.dumps(e.details) if e.details else ""),
+            "performed_by": _sanitize_csv(e.performed_by or ""),
             "created_at": e.created_at.isoformat() if e.created_at else "",
         }
         for e in entries

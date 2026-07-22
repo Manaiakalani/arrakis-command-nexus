@@ -102,6 +102,7 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
     # Cache steam_id -> (name, map) so disconnect messages show player names
     known_players: dict[str, tuple[str, str]] = {}
     first_poll = True
+    failures = 0
     while True:
         try:
             current_players = await postgres_service.get_online_players()
@@ -179,12 +180,17 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                         tracker_log.info("Discord leave notification queued to %d webhook(s)", count)
 
             previous_ids = current_ids
+            # Evict disconnected players from cache to prevent unbounded growth
+            for sid in left:
+                known_players.pop(sid, None)
+            failures = 0
         except Exception:  # noqa: BLE001
             logging.getLogger("player_tracker").warning(
                 "Failed to track player connections", exc_info=True
             )
+            failures += 1
             # Exponential backoff on repeated failures (cap at 120s)
-            await asyncio.sleep(min(60, 15 * 2))
+            await asyncio.sleep(min(120, 15 * (2 ** min(failures, 4))))
             continue
         await asyncio.sleep(15)
 

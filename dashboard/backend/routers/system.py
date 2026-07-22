@@ -463,6 +463,9 @@ def _read_env_file() -> dict[str, str]:
 
 def _write_env_value(key: str, value: str) -> None:
     """Update a single key in the .env file, preserving comments and order."""
+    # Prevent .env injection via embedded newlines/carriage returns
+    if any(c in value for c in ('\n', '\r', '\x00')):
+        raise ValueError(f"Invalid characters in value for {key}")
     if not _ENV_FILE.exists():
         _ENV_FILE.write_text(f"{key}={value}\n", encoding="utf-8")
         return
@@ -484,6 +487,11 @@ def _write_env_value(key: str, value: str) -> None:
 
 class ResourceUpdateRequest(BaseModel):
     values: dict[str, str]
+
+
+import threading as _threading  # noqa: E402
+
+_env_file_lock = _threading.Lock()
 
 
 @router.get("/system/resources")
@@ -509,13 +517,23 @@ async def get_resource_limits() -> dict[str, Any]:
 @router.put("/system/resources")
 async def update_resource_limits(payload: ResourceUpdateRequest) -> dict[str, Any]:
     """Update Docker resource limits in .env file. Requires container restart to apply."""
-    changed: list[str] = []
-    for key, value in payload.values.items():
-        if key not in _RESOURCE_VARS:
-            raise HTTPException(status_code=400, detail=f"Unknown resource variable: {key}")
-        _write_env_value(key, value)
-        changed.append(key)
-        logger.info("Resource limit updated: %s = %s", key, value)
+    import asyncio
+
+    def _apply():
+        with _env_file_lock:
+            changed: list[str] = []
+            for key, value in payload.values.items():
+                if key not in _RESOURCE_VARS:
+                    raise ValueError(f"Unknown resource variable: {key}")
+                _write_env_value(key, value)
+                changed.append(key)
+                logger.info("Resource limit updated: %s = %s", key, value)
+            return changed
+
+    try:
+        changed = await asyncio.to_thread(_apply)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
     return {
         "status": "ok",
         "changed": changed,
