@@ -7,10 +7,13 @@ Sits in front of RabbitMQ's HTTP auth backend and allows:
   - An optional management user for admin tooling
 All other requests are forwarded to the text-router for validation.
 """
+import collections
 import hmac
 import logging
 import os
 import re
+import time
+import threading
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,7 +28,34 @@ SERVICE_USER_RE = re.compile(
 )
 PLAYER_USER_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
 
+# Per-IP denial rate limiter: max denies before temporary block
+_RATE_LIMIT_WINDOW = 60  # seconds
+_RATE_LIMIT_MAX_DENIES = 20
+_deny_counts: dict[str, collections.deque] = {}
+_deny_lock = threading.Lock()
+
 logger = logging.getLogger("rmq-auth-shim")
+
+
+def _is_rate_limited(ip: str) -> bool:
+    """Return True if this IP has exceeded the denial rate limit."""
+    now = time.monotonic()
+    with _deny_lock:
+        dq = _deny_counts.get(ip)
+        if dq is None:
+            return False
+        while dq and dq[0] < now - _RATE_LIMIT_WINDOW:
+            dq.popleft()
+        return len(dq) >= _RATE_LIMIT_MAX_DENIES
+
+
+def _record_deny(ip: str) -> None:
+    """Record a deny event for rate limiting."""
+    now = time.monotonic()
+    with _deny_lock:
+        if ip not in _deny_counts:
+            _deny_counts[ip] = collections.deque()
+        _deny_counts[ip].append(now)
 
 
 def parse_form(body: bytes) -> dict:
@@ -46,6 +76,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "dune-rmq-auth-shim"
 
     def do_POST(self) -> None:
+        client_ip = self.client_address[0]
         length = int(self.headers.get("Content-Length", "0"))
         body = self.rfile.read(length)
         form = parse_form(body)
@@ -57,17 +88,23 @@ class Handler(BaseHTTPRequestHandler):
             "/v0/auth/resource",
             "/v0/auth/topic",
         }:
+            # Management user — password only sent on /auth/user per RabbitMQ HTTP auth protocol
             if MANAGEMENT_USER and hmac.compare_digest(username, MANAGEMENT_USER):
-                if (
-                    self.path == "/v0/auth/user"
-                    and hmac.compare_digest(form.get("password", ""), MANAGEMENT_PASSWORD)
-                ):
-                    self._respond(b"allow administrator")
+                if self.path == "/v0/auth/user":
+                    # Rate-limit management login attempts (keyed by username, not broker IP)
+                    if _is_rate_limited(MANAGEMENT_USER):
+                        logger.warning("Management login rate-limited")
+                        self._respond(b"deny")
+                        return
+                    if hmac.compare_digest(form.get("password", ""), MANAGEMENT_PASSWORD):
+                        self._respond(b"allow administrator")
+                        return
+                    logger.warning("Management user denied — bad password from %s", client_ip)
+                    _record_deny(MANAGEMENT_USER)
+                    self._respond(b"deny")
                     return
-                if self.path != "/v0/auth/user":
-                    self._respond(b"allow")
-                    return
-                self._respond(b"deny")
+                # vhost/resource/topic — no password in request; allow by username
+                self._respond(b"allow")
                 return
 
             if SERVICE_USER_RE.match(username) or PLAYER_USER_RE.match(username):
@@ -86,9 +123,11 @@ class Handler(BaseHTTPRequestHandler):
                     self._respond(b"allow")
                 return
 
+        # Unknown user — forward to text-router
         try:
             self._respond(post_upstream(self.path, body, self.headers.get("Content-Type")))
         except Exception:
+            logger.warning("Upstream auth failed for %s from %s", username, client_ip)
             self._respond(b"deny")
 
     def log_message(self, fmt: str, *args) -> None:

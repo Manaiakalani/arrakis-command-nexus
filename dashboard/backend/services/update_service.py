@@ -634,19 +634,10 @@ class UpdateService:
                 old_tag = dotenv.get("DUNE_IMAGE_TAG", old_tag)
 
             if new_tag:
-                # Update DUNE_IMAGE_TAG in .env
-                if env_file.exists():
-                    lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
-                    updated = False
-                    for i, line in enumerate(lines):
-                        if line.startswith("DUNE_IMAGE_TAG="):
-                            lines[i] = f"DUNE_IMAGE_TAG={new_tag}\n"
-                            updated = True
-                            break
-                    if not updated:
-                        lines.append(f"DUNE_IMAGE_TAG={new_tag}\n")
-                    env_file.write_text("".join(lines), encoding="utf-8")
-                    logger.info("Updated DUNE_IMAGE_TAG=%s in .env", new_tag)
+                # Update DUNE_IMAGE_TAG in .env via the centralized writer
+                from services.env_file import write_env_var
+                await asyncio.to_thread(write_env_var, "DUNE_IMAGE_TAG", new_tag)
+                logger.info("Updated DUNE_IMAGE_TAG=%s in .env", new_tag)
 
                 self.current_tag = new_tag
 
@@ -699,13 +690,8 @@ class UpdateService:
                     rolled_back = True
                     logger.warning("Rolling back DUNE_IMAGE_TAG to %s", old_tag)
                     try:
-                        if env_file.exists():
-                            lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
-                            for i, line in enumerate(lines):
-                                if line.startswith("DUNE_IMAGE_TAG="):
-                                    lines[i] = f"DUNE_IMAGE_TAG={old_tag}\n"
-                                    break
-                            env_file.write_text("".join(lines), encoding="utf-8")
+                        from services.env_file import write_env_var
+                        await asyncio.to_thread(write_env_var, "DUNE_IMAGE_TAG", old_tag)
                         self.current_tag = old_tag
                         await self._compose_recreate_tagged_services()
                         logger.info("Rollback to %s completed", old_tag)

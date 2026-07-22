@@ -300,7 +300,8 @@ async def update_config(
 _ENV_PATH = os.getenv("DUNE_ENV_FILE", "/workspace/.env")
 _PASSWORD_KEY = "DUNE_SERVER_LOGIN_PASSWORD"
 _STORED_PASSWORD_SETTING = "server_password_stored"
-_env_lock = asyncio.Lock()
+# Serializes compound DB+file password mutations to prevent race conditions
+_password_lock = asyncio.Lock()
 
 # Game-server container name patterns — matched with containslogic
 _GAME_CONTAINERS = (
@@ -324,26 +325,12 @@ def _read_env_password() -> tuple[bool, str]:
 
 
 def _write_env_password(value: str) -> None:
-    """Rewrite the DUNE_SERVER_LOGIN_PASSWORD line in .env."""
-    # Prevent .env injection via embedded newlines
-    if any(c in value for c in ('\n', '\r', '\x00')):
-        raise ValueError("Password contains invalid characters")
-    try:
-        with open(_ENV_PATH, encoding="utf-8") as f:
-            content = f.read()
-    except FileNotFoundError:
-        content = ""
+    """Rewrite the DUNE_SERVER_LOGIN_PASSWORD line in .env.
 
-    pattern = rf'^{re.escape(_PASSWORD_KEY)}=.*$'
-    new_line = f'{_PASSWORD_KEY}={value}'
-    if re.search(pattern, content, re.MULTILINE):
-        # Use lambda replacement to avoid backslash interpretation in value
-        content = re.sub(pattern, lambda _: new_line, content, flags=re.MULTILINE)
-    else:
-        content = content.rstrip("\n") + f"\n{new_line}\n"
-
-    with open(_ENV_PATH, "w", encoding="utf-8") as f:
-        f.write(content)
+    Delegates to the shared ``write_env_var`` which handles locking,
+    newline validation, and safe regex replacement internally.
+    """
+    write_env_var(_PASSWORD_KEY, value)
 
 
 async def _restart_game_servers(request: Request) -> list[str]:
@@ -397,10 +384,17 @@ async def _restart_game_servers(request: Request) -> list[str]:
 
     logger.info("Recreating game servers: %s", " ".join(cmd))
     try:
+        # Pass DOCKER_HOST so the CLI can reach the daemon via the socket proxy
+        child_env = os.environ.copy()
+        docker_host = os.getenv("DUNE_DOCKER_BASE_URL", "")
+        if docker_host:
+            child_env["DOCKER_HOST"] = docker_host
+
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            env=child_env,
         )
         stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=120)
         output = stdout.decode(errors="replace").strip() if stdout else ""
@@ -408,7 +402,7 @@ async def _restart_game_servers(request: Request) -> list[str]:
             logger.warning("docker compose up returned %s: %s", proc.returncode, output)
             return []
         logger.info("docker compose up output: %s", output)
-        return ["dune-awakening-survival_1-1", "dune-awakening-overmap-1"]
+        return active_containers
     except asyncio.TimeoutError:
         logger.error("docker compose up timed out")
         return []
@@ -482,7 +476,7 @@ async def set_server_password(
     enabled: bool = payload.enabled
     new_password: str | None = payload.password
 
-    async with _env_lock:
+    async with _password_lock:
         _, current = _read_env_password()
         stored = await _get_stored_password() or current
 
@@ -581,11 +575,10 @@ async def set_server_identity(
     if not changes:
         raise HTTPException(status_code=400, detail="No server identity changes provided.")
 
-    async with _env_lock:
-        if _WORLD_NAME_KEY in changes:
-            await asyncio.to_thread(write_env_var, _WORLD_NAME_KEY, changes[_WORLD_NAME_KEY], quote=True)
-        if _EXTERNAL_ADDRESS_KEY in changes:
-            await asyncio.to_thread(write_env_var, _EXTERNAL_ADDRESS_KEY, changes[_EXTERNAL_ADDRESS_KEY])
+    if _WORLD_NAME_KEY in changes:
+        await asyncio.to_thread(write_env_var, _WORLD_NAME_KEY, changes[_WORLD_NAME_KEY], quote=True)
+    if _EXTERNAL_ADDRESS_KEY in changes:
+        await asyncio.to_thread(write_env_var, _EXTERNAL_ADDRESS_KEY, changes[_EXTERNAL_ADDRESS_KEY])
 
     restarted = await _restart_game_servers(request)
 

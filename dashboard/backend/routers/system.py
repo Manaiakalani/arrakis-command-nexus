@@ -13,6 +13,7 @@ from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel
 
 from middleware.auth import verify_admin_token
+from services.env_file import write_env_var
 
 router = APIRouter(tags=["system"])
 logger = logging.getLogger(__name__)
@@ -461,37 +462,8 @@ def _read_env_file() -> dict[str, str]:
     return values
 
 
-def _write_env_value(key: str, value: str) -> None:
-    """Update a single key in the .env file, preserving comments and order."""
-    # Prevent .env injection via embedded newlines/carriage returns
-    if any(c in value for c in ('\n', '\r', '\x00')):
-        raise ValueError(f"Invalid characters in value for {key}")
-    if not _ENV_FILE.exists():
-        _ENV_FILE.write_text(f"{key}={value}\n", encoding="utf-8")
-        return
-    lines = _ENV_FILE.read_text(encoding="utf-8").splitlines()
-    found = False
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith("#") or "=" not in stripped:
-            continue
-        k, _, _ = stripped.partition("=")
-        if k.strip() == key:
-            lines[i] = f"{key}={value}"
-            found = True
-            break
-    if not found:
-        lines.append(f"{key}={value}")
-    _ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
 class ResourceUpdateRequest(BaseModel):
     values: dict[str, str]
-
-
-import threading as _threading  # noqa: E402
-
-_env_file_lock = _threading.Lock()
 
 
 @router.get("/system/resources")
@@ -520,15 +492,14 @@ async def update_resource_limits(payload: ResourceUpdateRequest) -> dict[str, An
     import asyncio
 
     def _apply():
-        with _env_file_lock:
-            changed: list[str] = []
-            for key, value in payload.values.items():
-                if key not in _RESOURCE_VARS:
-                    raise ValueError(f"Unknown resource variable: {key}")
-                _write_env_value(key, value)
-                changed.append(key)
-                logger.info("Resource limit updated: %s = %s", key, value)
-            return changed
+        changed: list[str] = []
+        for key, value in payload.values.items():
+            if key not in _RESOURCE_VARS:
+                raise ValueError(f"Unknown resource variable: {key}")
+            write_env_var(key, value)
+            changed.append(key)
+            logger.info("Resource limit updated: %s = %s", key, value)
+        return changed
 
     try:
         changed = await asyncio.to_thread(_apply)
