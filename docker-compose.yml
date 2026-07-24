@@ -571,6 +571,7 @@ services:
       VERSION: 1
       EXEC: 1
       NETWORKS: 1
+      VOLUMES: 1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     tmpfs:
