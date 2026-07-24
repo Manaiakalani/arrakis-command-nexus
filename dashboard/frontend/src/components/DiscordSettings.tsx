@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, Send, TestTube2, Trash2, Webhook } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { DiscordWebhook } from '@/lib/types';
@@ -36,6 +36,9 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
   const [announcement, setAnnouncement] = useState('');
   const [newWebhook, setNewWebhook] = useState({ name: 'Operations Feed', url: '', enabled: true, events: availableEvents });
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set());
+  // Ref mirrors dirtyIds so the webhooks effect always sees the latest value
+  const dirtyIdsRef = useRef(dirtyIds);
+  dirtyIdsRef.current = dirtyIds;
 
   useEffect(() => {
     // Prune dirty IDs for webhooks no longer present (deleted server-side)
@@ -45,10 +48,11 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
       return pruned.size === current.size ? current : pruned;
     });
     // Merge server data while preserving locally-edited fields
+    const currentDirty = dirtyIdsRef.current;
     setDrafts((current) => {
-      if (dirtyIds.size === 0) return webhooks;
+      if (currentDirty.size === 0) return webhooks;
       return webhooks.map((incoming) => {
-        if (dirtyIds.has(incoming.id)) {
+        if (currentDirty.has(incoming.id)) {
           const local = current.find((d) => d.id === incoming.id);
           if (!local) return incoming;
           // Preserve only editable fields; let server-owned fields (health, recentEvents) update
