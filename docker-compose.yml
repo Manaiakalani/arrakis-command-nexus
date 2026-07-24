@@ -679,6 +679,14 @@ services:
       default:
         ipv4_address: 10.80.0.50
       backend: {}
+    # Disable IPv6 in the container network namespace.  SteamCMD's CDN layer
+    # resolves Valve cache hostnames to IPv6 first when the kernel reports IPv6
+    # enabled, but Docker bridge networks lack IPv6 routing → connection timeout
+    # → "state is 0x2 after update job".  Disabling IPv6 forces IPv4-only CDN
+    # connections, which work reliably over the bridge NAT.
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+      - net.ipv6.conf.default.disable_ipv6=1
     # 2g headroom: idle baseline is ~200MiB, but "Apply Update" runs steamcmd
     # in-process to download/validate the game server depot (multi-GB). At
     # 512m, steamcmd was getting OOM-killed by the cgroup mid-download
