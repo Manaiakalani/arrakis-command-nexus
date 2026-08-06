@@ -330,11 +330,18 @@ async def get_uptime(request: Request, range: str = Query(default="24h", alias="
 @router.get("/system/version")
 async def get_version(request: Request) -> dict[str, str]:
     del request
-    # Look for VERSION file relative to the project root
+    # The release version lives in VERSION at the repository root, which is not
+    # part of this service's Docker build context (./dashboard/backend), so it
+    # is not baked into the image. Compose mounts the project root read-only at
+    # /workspace/compose, which is where it is found in a deployed stack; the
+    # source-tree path is the fallback for running the API outside a container.
+    # DUNE_IMAGE_TAG is the Funcom game build, not the release, so it is only a
+    # last resort.
     version = os.getenv("DUNE_IMAGE_TAG", "unknown")
     for candidate in [
         Path("/app/VERSION"),
-        Path(__file__).resolve().parent.parent.parent / "VERSION",
+        Path("/workspace/compose/VERSION"),
+        Path(__file__).resolve().parents[3] / "VERSION",
     ]:
         if candidate.exists():
             version = candidate.read_text(encoding="utf-8").strip() or version
