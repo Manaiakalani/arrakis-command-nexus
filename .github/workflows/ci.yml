@@ -39,6 +39,18 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
+      # The Next middleware and the SSE proxy both hold the shared admin token.
+      # If either stops checking whether the caller has a real session, browsing
+      # to the dashboard silently becomes full operator access again (#52).
+      - name: Assert the machine token stays behind a session check
+        run: |
+          for f in src/middleware.ts src/app/api/events/stream/route.ts; do
+            grep -q 'auth/session-check' "$f" \
+              || { echo "$f no longer validates the caller's session with the backend"; exit 1; }
+          done
+          grep -q 'if (!authEnabled)' src/middleware.ts \
+            || { echo 'src/middleware.ts must only inject DUNE_ADMIN_TOKEN while sign-in is unconfigured'; exit 1; }
+          echo 'frontend auth gating ok'
 
   lint-backend:
     runs-on: ubuntu-latest
@@ -67,6 +79,48 @@ jobs:
           cd /app
           python -c "import asyncio, pathlib; from routers.system import get_version; got = asyncio.run(get_version(None)); want = pathlib.Path('/workspace/compose/VERSION').read_text().strip(); assert got['version'] == want, f'expected {want!r}, got {got!r}'; print('version endpoint ->', got)"
           python -c "import main; h = main.app.exception_handlers; assert LookupError not in h and KeyError not in h, 'a blanket LookupError/KeyError handler is registered; it reports accidental bugs to clients as 404 and hides them from the logs'; print('exception handler config ok')"
+        env:
+          DUNE_ADMIN_TOKEN: ci-smoke-check
+
+      # Dashboard sign-in (#52/#53). Role enforcement used to be a substring
+      # test, which silently failed to cover routes such as /restart/now and
+      # /system/prepare-shutdown, letting the editor role restart the server.
+      # Pin the classification and the router wiring so that cannot regress.
+      - name: Assert dashboard auth wiring
+        run: |
+          cd /app
+          python - <<'PY'
+          from middleware.auth import PUBLIC_AUTH_SUFFIXES, is_operator_path
+          import main
+
+          operator_only = [
+              "/api/v1/backups", "/api/v1/backups/7/restore", "/api/v1/updates/trigger",
+              "/api/v1/watchdog/restart/dune-server", "/api/v1/system/prepare-shutdown",
+              "/api/v1/system/resources", "/api/v1/restart/now", "/api/v1/restart/schedule",
+              "/api/v1/settings/admins", "/api/v1/settings/admins/3/password",
+              "/api/v1/settings/security", "/api/v1/settings/integrations",
+              "/api/v1/settings/steam-account", "/api/v1/settings/import/all",
+              "/api/v1/services/dune-server/restart", "/api/v1/server/restart",
+              "/api/v1/maps/deep-desert/start", "/api/v1/maps/deep-desert/backup",
+          ]
+          editor_allowed = [
+              "/api/v1/announce", "/api/v1/players/kick", "/api/v1/config/ServerSettings.ini",
+              "/api/v1/characters/12/grant-item", "/api/v1/economy/alerts",
+              "/api/v1/settings/general", "/api/v1/maps/deep-desert/teleport-vehicle",
+          ]
+          for path in operator_only:
+              assert is_operator_path(path), f"{path} must require the operator role"
+          for path in editor_allowed:
+              assert not is_operator_path(path), f"{path} must stay available to editors"
+
+          assert not any("setup" in s for s in PUBLIC_AUTH_SUFFIXES), \
+              "/auth/setup must not be public: bootstrapping still requires the shared admin token"
+
+          routes = {r.path for r in main.app.routes}
+          for required in ("/api/v1/auth/login", "/api/auth/login", "/api/v1/auth/session-check"):
+              assert required in routes, f"{required} is not mounted"
+          print("auth wiring ok")
+          PY
         env:
           DUNE_ADMIN_TOKEN: ci-smoke-check
 

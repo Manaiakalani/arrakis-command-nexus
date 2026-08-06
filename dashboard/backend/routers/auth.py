@@ -35,8 +35,15 @@ MIN_PASSWORD_LENGTH = 12
 
 # Login throttle: a small in-memory sliding window. The dashboard is a
 # single-process container, so a shared store would be overkill.
+#
+# Two windows are kept per attempt. The IP-scoped one stops a single host
+# hammering many usernames; the username-scoped one still locks the account
+# even when the caller varies their apparent IP. The client IP is derived from
+# X-Forwarded-For and is therefore only as trustworthy as the proxy in front of
+# the dashboard, so the username window is the one that actually holds.
 _MAX_ATTEMPTS = 5
 _LOCKOUT_SECONDS = 300
+_MAX_TRACKED_KEYS = 2048
 _attempts: dict[str, list[float]] = {}
 
 
@@ -68,26 +75,47 @@ class MfaActivateRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6)
 
 
-def _throttle_key(request: Request, username: str) -> str:
-    return f"{get_client_ip(request) or 'unknown'}|{username.lower()}"
+def _throttle_keys(request: Request, username: str) -> tuple[str, ...]:
+    name = username.lower()
+    return (f"ip:{get_client_ip(request) or 'unknown'}|{name}", f"user:{name}")
 
 
-def _throttled(key: str) -> int:
+def _sweep(now: float) -> None:
+    """Drop windows that have fully aged out so the map cannot grow without
+    bound as an attacker cycles usernames or spoofed source addresses."""
+    stale = [key for key, hits in _attempts.items() if not hits or now - hits[-1] >= _LOCKOUT_SECONDS]
+    for key in stale:
+        _attempts.pop(key, None)
+
+
+def _throttled(keys: tuple[str, ...]) -> int:
     """Return the number of seconds the caller must wait, or 0 if allowed."""
     now = time.monotonic()
-    recent = [t for t in _attempts.get(key, []) if now - t < _LOCKOUT_SECONDS]
-    _attempts[key] = recent
-    if len(recent) < _MAX_ATTEMPTS:
-        return 0
-    return int(_LOCKOUT_SECONDS - (now - recent[0])) + 1
+    if len(_attempts) > _MAX_TRACKED_KEYS:
+        _sweep(now)
+    wait = 0
+    for key in keys:
+        recent = [t for t in _attempts.get(key, []) if now - t < _LOCKOUT_SECONDS]
+        if recent:
+            _attempts[key] = recent
+        else:
+            _attempts.pop(key, None)
+        if len(recent) >= _MAX_ATTEMPTS:
+            wait = max(wait, int(_LOCKOUT_SECONDS - (now - recent[0])) + 1)
+    return wait
 
 
-def _record_failure(key: str) -> None:
-    _attempts.setdefault(key, []).append(time.monotonic())
+def _record_failure(keys: tuple[str, ...]) -> None:
+    now = time.monotonic()
+    if len(_attempts) > _MAX_TRACKED_KEYS:
+        _sweep(now)
+    for key in keys:
+        _attempts.setdefault(key, []).append(now)
 
 
-def _clear_failures(key: str) -> None:
-    _attempts.pop(key, None)
+def _clear_failures(keys: tuple[str, ...]) -> None:
+    for key in keys:
+        _attempts.pop(key, None)
 
 
 async def _audit(action: str, details: dict, performed_by: str) -> None:
@@ -100,17 +128,7 @@ async def _audit(action: str, details: dict, performed_by: str) -> None:
 
 
 def _cookie_kwargs(max_age: int) -> dict:
-    # The default deployment binds to 127.0.0.1 over plain HTTP, so Secure
-    # cookies would simply never be sent. Operators terminating TLS in front of
-    # the dashboard can opt in with DUNE_DASHBOARD_SECURE_COOKIES=true.
-    secure = os.getenv("DUNE_DASHBOARD_SECURE_COOKIES", "false").strip().lower() in {"1", "true", "yes", "on"}
-    return {
-        "httponly": True,
-        "samesite": "lax",
-        "secure": secure,
-        "path": "/",
-        "max_age": max_age,
-    }
+    return auth_service.cookie_kwargs(max_age)
 
 
 def _public_user(user: AdminUser) -> dict:
@@ -129,6 +147,39 @@ async def _current_user(request: Request) -> AdminUser:
     if user is None:
         raise HTTPException(status_code=401, detail="Not signed in.")
     return user
+
+
+@router.get("/auth/session-check")
+async def auth_session_check(request: Request) -> dict:
+    """Public. Answers "is sign-in on, and is *this* caller signed in?" in a
+    single round trip.
+
+    The Next.js middleware calls this before rendering any dashboard page.
+    It cannot make that decision itself: a session cookie is opaque, so merely
+    seeing one present proves nothing, and Server Components go on to fetch
+    privileged data with the machine token. Only the backend can say whether
+    the cookie maps to a live session.
+    """
+    configured = await auth_service.has_password_users()
+    policy = await auth_service.get_security_policy()
+    timeout_minutes = auth_service.session_timeout_minutes(policy)
+
+    result: dict = {
+        "authEnabled": configured,
+        "authenticated": False,
+        "role": None,
+        "username": None,
+        "sessionTimeoutMinutes": timeout_minutes,
+    }
+
+    token = request.cookies.get(auth_service.SESSION_COOKIE)
+    if token:
+        user = await auth_service.resolve_session(token, timeout_minutes=timeout_minutes)
+        if user is not None:
+            result["authenticated"] = True
+            result["role"] = user.role
+            result["username"] = user.username
+    return result
 
 
 # ── Status and bootstrap ──────────────────────────────────────────
@@ -198,8 +249,8 @@ async def auth_setup(payload: SetupRequest, request: Request) -> dict:
 @router.post("/auth/login")
 async def auth_login(payload: LoginRequest, request: Request, response: Response) -> dict:
     username = payload.username.strip()
-    key = _throttle_key(request, username)
-    wait = _throttled(key)
+    keys = _throttle_keys(request, username)
+    wait = _throttled(keys)
     if wait:
         logger.warning(
             "SECURITY: login throttled username=%s client_ip=%s retry_after=%ss",
@@ -224,12 +275,12 @@ async def auth_login(payload: LoginRequest, request: Request, response: Response
         # Spend the same time as a real verification so a missing or
         # credential-less account is indistinguishable from a wrong password.
         auth_service.dummy_verify(payload.password)
-        _record_failure(key)
+        _record_failure(keys)
         logger.warning("SECURITY: login failed (unknown user) username=%s client_ip=%s", username, client_ip)
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
     if not auth_service.verify_password(payload.password, user.password_hash):
-        _record_failure(key)
+        _record_failure(keys)
         logger.warning("SECURITY: login failed (bad password) username=%s client_ip=%s", username, client_ip)
         await _audit("auth.login_failed", {"username": username, "clientIp": client_ip}, performed_by=username)
         raise HTTPException(status_code=401, detail="Invalid username or password.")
@@ -245,11 +296,11 @@ async def auth_login(payload: LoginRequest, request: Request, response: Response
                 detail="Multi-factor authentication is required but not yet set up for this account.",
             )
         if not auth_service.verify_totp(user.mfa_secret, payload.totp):
-            _record_failure(key)
+            _record_failure(keys)
             logger.warning("SECURITY: login failed (bad TOTP) username=%s client_ip=%s", username, client_ip)
             raise HTTPException(status_code=401, detail="Invalid authentication code.", headers={"X-MFA-Required": "1"})
 
-    _clear_failures(key)
+    _clear_failures(keys)
     timeout = auth_service.session_timeout_minutes(policy)
     token = await auth_service.create_session(
         user.id,

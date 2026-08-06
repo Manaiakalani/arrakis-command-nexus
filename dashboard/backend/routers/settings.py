@@ -86,6 +86,44 @@ DEFAULTS: dict[str, dict] = {
 # Keys that must never be exposed via the generic settings catch-all or import
 _PROTECTED_KEYS = frozenset({"steam_account", "server_password_stored"})
 
+# Values inside otherwise-readable sections that are credentials in their own
+# right. Viewers and editors get a placeholder instead; only operators see them.
+_SECRET_SETTING_FIELDS: dict[str, frozenset[str]] = {
+    "integrations": frozenset({"uptimeKumaPushToken"}),
+}
+_REDACTED = "__redacted__"
+
+
+def _is_operator(request: Request) -> bool:
+    return str(getattr(request.state, "admin_role", "operator")).lower() in {"operator", "admin"}
+
+
+def _redact_for_role(request: Request, key: str, value: dict) -> dict:
+    """Blank out credential fields unless the caller is an operator.
+
+    Read access is not role-gated (viewers are meant to be able to look at the
+    dashboard), but "look at the dashboard" should not include reading the
+    Uptime Kuma push token out of the settings API.
+    """
+    secrets_in_section = _SECRET_SETTING_FIELDS.get(key)
+    if not secrets_in_section or _is_operator(request):
+        return value
+    return {k: (_REDACTED if k in secrets_in_section and v else v) for k, v in value.items()}
+
+
+async def _restore_redacted(key: str, incoming: dict) -> dict:
+    """Undo :func:`_redact_for_role` on the way back in.
+
+    A client that only ever saw the placeholder must not be able to overwrite
+    the real credential with it — nor should a round-trip save silently wipe
+    the token for an operator whose form was populated from a redacted read.
+    """
+    secrets_in_section = _SECRET_SETTING_FIELDS.get(key)
+    if not secrets_in_section or not any(incoming.get(f) == _REDACTED for f in secrets_in_section):
+        return incoming
+    current = await _get_setting(key)
+    return {k: (current.get(k, "") if k in secrets_in_section and v == _REDACTED else v) for k, v in incoming.items()}
+
 
 async def _get_setting(key: str) -> dict:
     async with SessionLocal() as session:
@@ -117,20 +155,20 @@ async def _put_setting(key: str, value: dict) -> dict:
 # ── General settings ──────────────────────────────────────────────
 
 @router.get("/settings")
-async def get_all_settings() -> dict:
+async def get_all_settings(request: Request) -> dict:
     result = {}
     for key in DEFAULTS:
-        result[key] = await _get_setting(key)
+        result[key] = _redact_for_role(request, key, await _get_setting(key))
     return result
 
 
 # ── Import / Export (must come before {section} catch-all) ────────
 
 @router.get("/settings/export/all")
-async def export_settings() -> dict:
+async def export_settings(request: Request) -> dict:
     result = {}
     for key in DEFAULTS:
-        result[key] = await _get_setting(key)
+        result[key] = _redact_for_role(request, key, await _get_setting(key))
     return {"version": 1, "exportedAt": datetime.now(timezone.utc).isoformat(), "settings": result}
 
 
@@ -326,15 +364,16 @@ async def clear_steam_account_settings():
 
 
 @router.get("/settings/{section}")
-async def get_setting_section(section: str) -> dict:
+async def get_setting_section(section: str, request: Request) -> dict:
     if section in _PROTECTED_KEYS:
         raise HTTPException(status_code=404, detail="Not found")
-    return await _get_setting(section)
+    return _redact_for_role(request, section, await _get_setting(section))
 
 
 @router.put("/settings/{section}")
 async def update_setting_section(section: str, body: dict[str, Any]) -> dict:
     if section in _PROTECTED_KEYS:
         raise HTTPException(status_code=404, detail="Not found")
+    body = await _restore_redacted(section, body)
     saved = await _put_setting(section, body)
     return saved

@@ -13,6 +13,7 @@ import base64
 import hashlib
 import hmac
 import logging
+import os
 import secrets
 import struct
 import time
@@ -35,6 +36,24 @@ _SCRYPT_DKLEN = 32
 
 SESSION_COOKIE = "dune_session"
 _SESSION_TOKEN_BYTES = 32
+
+
+def cookie_kwargs(max_age: int) -> dict:
+    """Shared cookie settings for the session cookie.
+
+    The default deployment binds to 127.0.0.1 over plain HTTP, so ``Secure``
+    cookies would simply never be sent. Operators terminating TLS in front of
+    the dashboard opt in with ``DUNE_DASHBOARD_SECURE_COOKIES=true``.
+    """
+    secure = os.getenv("DUNE_DASHBOARD_SECURE_COOKIES", "false").strip().lower() in {"1", "true", "yes", "on"}
+    return {
+        "httponly": True,
+        "samesite": "lax",
+        "secure": secure,
+        "path": "/",
+        "max_age": max_age,
+    }
+
 
 # Canonical defaults for the "security" settings blob. Defined here rather than
 # in routers/settings.py so the middleware can read the policy without importing

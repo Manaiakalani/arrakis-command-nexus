@@ -12,50 +12,73 @@ import { NextRequest, NextResponse } from 'next/server';
  * as an operator creates the first account, browser traffic must carry a
  * session cookie instead and the backend enforces identity, role, session
  * timeout and IP allowlist (#53).
+ *
+ * Page routes are gated on a session the *backend* has confirmed. Checking only
+ * that a `dune_session` cookie exists would be worthless: the token is opaque,
+ * so any random value would pass, and Server Components then fetch privileged
+ * data with the machine token via `lib/server-api.ts`.
  */
 
-const SESSION_COOKIE = 'dune_session';
 const LOGIN_PATH = '/login';
 
 const API_ORIGIN = process.env.DUNE_DASHBOARD_API_URL || 'http://dashboard-api:8080';
 
 // Paths that must stay reachable without a session.
 const PUBLIC_PAGES = ['/login', '/public'];
-const PUBLIC_API = ['/api/v1/auth/status', '/api/auth/status', '/api/v1/auth/login', '/api/auth/login'];
+const PUBLIC_API = [
+  '/api/v1/auth/status',
+  '/api/auth/status',
+  '/api/v1/auth/login',
+  '/api/auth/login',
+  '/api/v1/auth/session-check',
+  '/api/auth/session-check',
+];
 
-const STATUS_TTL_MS = 30_000;
+interface SessionCheck {
+  authEnabled: boolean;
+  authenticated: boolean;
+}
 
-let cachedAuthEnabled: boolean | undefined;
-let cachedAt = 0;
+// Only the "sign-in is off" answer is cached, and only briefly. Caching it for
+// long enough to be useful is exactly what would leave a window after first-run
+// setup where the middleware still injects the machine token (#52 bootstrap).
+const NEGATIVE_TTL_MS = 3_000;
 
-/**
- * Ask the backend whether sign-in has been configured.
- *
- * Once we have seen sign-in enabled we never revert to the legacy token path,
- * even if a later probe fails. Otherwise anyone able to disrupt this call
- * could downgrade the dashboard back to unauthenticated access.
- */
-async function isAuthEnabled(): Promise<boolean> {
-  if (cachedAuthEnabled === true) return true;
-  if (cachedAuthEnabled !== undefined && Date.now() - cachedAt < STATUS_TTL_MS) {
-    return cachedAuthEnabled;
+let sawAuthEnabled = false;
+let cachedDisabledAt = 0;
+
+async function sessionCheck(request: NextRequest): Promise<SessionCheck> {
+  const cookie = request.headers.get('cookie');
+
+  // Fast path: sign-in is known to be off and nothing has changed recently.
+  // A caller with no cookie cannot be authenticated, so skip the round trip.
+  if (!sawAuthEnabled && !cookie && Date.now() - cachedDisabledAt < NEGATIVE_TTL_MS) {
+    return { authEnabled: false, authenticated: false };
   }
+
   try {
-    const res = await fetch(`${API_ORIGIN}/api/v1/auth/status`, {
-      headers: { accept: 'application/json' },
+    const res = await fetch(`${API_ORIGIN}/api/v1/auth/session-check`, {
+      headers: cookie ? { accept: 'application/json', cookie } : { accept: 'application/json' },
       cache: 'no-store',
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
-    const body = (await res.json()) as { authEnabled?: boolean };
-    cachedAuthEnabled = body.authEnabled === true;
-    cachedAt = Date.now();
+    const body = (await res.json()) as Partial<SessionCheck>;
+    const authEnabled = body.authEnabled === true;
+    if (authEnabled) {
+      // Never revert: otherwise anyone able to disrupt this call could
+      // downgrade the dashboard back to unauthenticated access.
+      sawAuthEnabled = true;
+    } else {
+      cachedDisabledAt = Date.now();
+    }
+    return { authEnabled: authEnabled || sawAuthEnabled, authenticated: body.authenticated === true };
   } catch {
-    // Unknown state: fall back to the legacy path only if we have never
-    // successfully observed sign-in being enabled.
-    if (cachedAuthEnabled === undefined) return false;
+    // Backend unreachable. Fail closed if we have ever seen sign-in enabled,
+    // otherwise fall back to the legacy token path so a fresh install with a
+    // slow-starting API is still usable.
+    return { authEnabled: sawAuthEnabled, authenticated: false };
   }
-  return cachedAuthEnabled === true;
 }
 
 export async function middleware(request: NextRequest) {
@@ -66,13 +89,16 @@ export async function middleware(request: NextRequest) {
   requestHeaders.delete('X-Admin-Role');
   requestHeaders.delete('X-Admin-Token');
 
-  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
-  const authEnabled = await isAuthEnabled();
+  const isPublicApi = pathname.startsWith('/api') && PUBLIC_API.includes(pathname);
+  const isPublicPage = !pathname.startsWith('/api') && PUBLIC_PAGES.some((p) => pathname.startsWith(p));
+
+  if (isPublicApi) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  const { authEnabled, authenticated } = await sessionCheck(request);
 
   if (pathname.startsWith('/api')) {
-    if (PUBLIC_API.includes(pathname)) {
-      return NextResponse.next({ request: { headers: requestHeaders } });
-    }
     // With sign-in configured the session cookie travels same-origin to the
     // backend on its own; injecting the token here would defeat the login.
     if (!authEnabled) {
@@ -82,7 +108,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  if (!authEnabled || hasSession || PUBLIC_PAGES.some((p) => pathname.startsWith(p))) {
+  if (!authEnabled || authenticated || isPublicPage) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import re
 
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
@@ -21,28 +22,47 @@ _REQUIRED_VALUES = _TRUE_VALUES | {"required"}
 # Endpoints that must work before a session exists. Matched as suffixes so the
 # /api and /api/v1 aliases are both covered. /auth/setup is deliberately absent:
 # bootstrapping the first account still requires the shared admin token.
-PUBLIC_AUTH_SUFFIXES = ("/auth/status", "/auth/login")
+PUBLIC_AUTH_SUFFIXES = ("/auth/status", "/auth/login", "/auth/session-check")
 
 # Role hierarchy: viewer < editor < operator (backward-compat: "admin" = operator)
 ROLE_HIERARCHY = {"viewer": 0, "editor": 1, "operator": 2, "admin": 2}
 
-# Mutations under these prefixes take the server up, down or sideways, so they
-# require the full operator role. Everything else a non-viewer may change
-# (settings, config, announcements, player moderation) needs only editor.
-OPERATOR_PATH_MARKERS = (
-    "/backups",
-    "/updates",
-    "/system/power",
-    "/system/restart",
-    "/system/shutdown",
-    "/restart-schedule",
-    "/watchdog",
-    "/settings/admins",
+# Mutations matching these patterns take the server up, down or sideways, or
+# touch credentials and security policy, so they require the full operator role.
+# Everything else a non-viewer may change (config files, announcements, player
+# moderation, characters, economy) needs only editor.
+#
+# These are anchored patterns rather than substrings: a bare `in path` test
+# silently missed real operator routes such as /restart/now and
+# /system/prepare-shutdown, which let editors restart the server.
+_OPERATOR_PATTERNS = tuple(
+    re.compile(pattern)
+    for pattern in (
+        r"/backups(/|$)",
+        r"/updates(/|$)",
+        r"/watchdog(/|$)",
+        r"/system/(power|restart|shutdown|prepare-shutdown|resources)(/|$)",
+        r"/restart/(schedule|now)(/|$)",
+        r"/restart-schedule(/|$)",
+        r"/settings/admins(/|$)",
+        r"/settings/(security|integrations|steam-account)(/|$)",
+        r"/settings/import(/|$)",
+        # Service and whole-server lifecycle actions, e.g. /services/x/restart
+        r"/services/[^/]+/[^/]+$",
+        r"/server/[^/]+$",
+        r"/maps/[^/]+/(start|stop|restart|backup)$",
+    )
 )
 
 _HTTP_CODE_MAP = {401: "AUTH_ERROR", 403: "FORBIDDEN", 429: "RATE_LIMITED", 503: "SERVICE_UNAVAILABLE"}
 
 logger = logging.getLogger(__name__)
+
+
+def is_operator_path(path: str) -> bool:
+    """True when the path is reserved for the operator role."""
+    return any(pattern.search(path) for pattern in _OPERATOR_PATTERNS)
+
 
 
 def resolve_role(role: str | None) -> str:
@@ -71,7 +91,7 @@ def check_role_access(role: str, method: str, path: str) -> tuple[int, str] | No
         return 403, "Viewer role cannot perform mutations."
 
     # Editors can change configuration but not run privileged operations
-    if level < 2 and any(marker in path for marker in OPERATOR_PATH_MARKERS):
+    if level < 2 and is_operator_path(path):
         return 403, "Operator role is required for this operation."
 
     return None
@@ -106,13 +126,16 @@ async def _auth_error(request: Request) -> tuple[int, str] | None:
     # ── Session cookie ────────────────────────────────────────────
     session_token = request.cookies.get(auth_service.SESSION_COOKIE)
     if session_token:
-        user = await auth_service.resolve_session(
-            session_token, timeout_minutes=auth_service.session_timeout_minutes(policy)
-        )
+        timeout_minutes = auth_service.session_timeout_minutes(policy)
+        user = await auth_service.resolve_session(session_token, timeout_minutes=timeout_minutes)
         if user is not None:
             role = resolve_role(user.role)
             request.state.admin_user = user
             request.state.admin_role = role
+            # The DB expiry slides on every request, so slide the browser's
+            # copy too. Without this the cookie still lapses at the max_age set
+            # at login and an active user is signed out mid-session.
+            request.state.session_refresh = (session_token, timeout_minutes * 60)
             return _post_auth_checks(request, role, path)
         if signin_configured:
             logger.info(
@@ -199,4 +222,13 @@ class AdminTokenMiddleware(BaseHTTPMiddleware):
                 status_code=status_code,
                 content={"error": {"code": _HTTP_CODE_MAP.get(status_code, "HTTP_ERROR"), "message": detail}},
             )
-        return await call_next(request)
+        response = await call_next(request)
+
+        # Keep the browser cookie's lifetime in step with the sliding server
+        # session, unless the handler already set the cookie itself (login,
+        # logout, password change).
+        refresh = getattr(request.state, "session_refresh", None)
+        if refresh is not None and "set-cookie" not in response.headers:
+            token, max_age = refresh
+            response.set_cookie(auth_service.SESSION_COOKIE, token, **auth_service.cookie_kwargs(max_age))
+        return response
