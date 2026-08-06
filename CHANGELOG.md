@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-08-06
+
 ### Added
 
 - Interactive sign-in for the dashboard. `Settings > Users & Roles` previously listed accounts that could not actually be used to log in: `AdminUser` had no password column, and the Next.js middleware attached the shared `DUNE_ADMIN_TOKEN` to every proxied request, so anyone who could load the page was already a full operator. Accounts now carry a scrypt password hash, optional TOTP multi-factor, and opaque `HttpOnly` session cookies stored as SHA-256 digests. A new `/login` page handles both first-run setup and normal sign-in (#52)
