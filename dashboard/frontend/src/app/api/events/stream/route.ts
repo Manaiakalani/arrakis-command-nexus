@@ -23,6 +23,12 @@ const BACKEND_URL = process.env.BACKEND_URL ?? process.env.DUNE_DASHBOARD_API_UR
  * anonymous caller, and this module's `sawAuthEnabled` latch is per-worker, so
  * a recycled worker would otherwise start out willing to do exactly that.
  */
+let sawAuthEnabled = false;
+
+// A stream can outlive the session that opened it, so re-check periodically:
+// signing out or revoking sessions should actually stop the event feed.
+const REVALIDATE_INTERVAL_MS = 60_000;
+
 async function isAllowed(request: Request): Promise<boolean> {
   const cookie = request.headers.get('cookie');
   try {
@@ -39,12 +45,6 @@ async function isAllowed(request: Request): Promise<boolean> {
     return false;
   }
 }
-
-let sawAuthEnabled = false;
-
-// A stream can outlive the session that opened it, so re-check periodically:
-// signing out or revoking sessions should actually stop the event feed.
-const REVALIDATE_INTERVAL_MS = 60_000;
 
 export async function GET(request: Request) {
   const token = process.env.DUNE_ADMIN_TOKEN;
@@ -79,16 +79,21 @@ export async function GET(request: Request) {
     // happens to disconnect.
     const revalidate = setInterval(() => {
       void isAllowed(request).then((ok) => {
-        if (!ok) {
-          clearInterval(revalidate);
-          abort.abort();
-        }
+        if (!ok) abort.abort();
       });
     }, REVALIDATE_INTERVAL_MS);
-    const stopRevalidating = () => clearInterval(revalidate);
-    request.signal.addEventListener('abort', stopRevalidating);
 
-    return new Response(response.body.pipeThrough(new TransformStream({ flush: stopRevalidating })), {
+    // pipeTo's promise settles on every termination path -- clean end, upstream
+    // error, and abort -- so the timer cannot outlive the connection. A
+    // TransformStream flush callback would only cover the clean case and leak
+    // an interval per failed stream.
+    const relay = new TransformStream();
+    void response.body
+      .pipeTo(relay.writable)
+      .catch(() => undefined)
+      .finally(() => clearInterval(revalidate));
+
+    return new Response(relay.readable, {
       status: 200,
       headers: {
         ...Object.fromEntries(sseHeaders().entries()),

@@ -203,7 +203,10 @@ async def import_settings(payload: SettingsImportRequest) -> dict:
         if key in _PROTECTED_KEYS:
             continue
         if isinstance(value, dict):
-            await _put_setting(key, value)
+            # An export taken by a non-operator carries placeholders where the
+            # credentials were. Importing it verbatim would overwrite the real
+            # values with the literal "__redacted__".
+            await _put_setting(key, await _restore_redacted(key, value))
             imported.append(key)
     return {"status": "ok", "imported": imported}
 

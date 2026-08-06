@@ -14,10 +14,11 @@ anyone out of their own server. See ``middleware/auth.py`` for enforcement.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
-from collections import deque
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -49,12 +50,41 @@ _attempts: dict[str, list[float]] = {}
 
 # Every login attempt costs one memory-hard scrypt hash, including attempts for
 # usernames that do not exist (which run a dummy verification so that a missing
-# account and a wrong password take the same time). Rotating usernames would
-# otherwise sidestep both per-key windows and turn sign-in into a cheap way to
-# burn the host's CPU, so cap the total rate as well.
-_GLOBAL_WINDOW_SECONDS = 60.0
-_GLOBAL_MAX_ATTEMPTS = 120
-_global_attempts: deque[float] = deque()
+# account and a wrong password take the same time). Rotating usernames sidesteps
+# both per-key windows, so the cost has to be bounded globally too.
+#
+# This is a concurrency gate rather than a fixed budget of attempts per minute.
+# A budget is itself a denial of service: 120 requests would exhaust the shared
+# allowance and every legitimate user would be turned away for the rest of the
+# window, including from networks that are on the allowlist. Bounding *parallel*
+# work instead caps CPU at a few cores, makes flooders queue behind each other,
+# and lets service resume the instant the flood stops. The queue is bounded in
+# turn so waiting requests cannot pile up in memory.
+_MAX_CONCURRENT_LOGINS = 4
+_MAX_QUEUED_LOGINS = 32
+_login_semaphore: asyncio.Semaphore | None = None
+_login_waiting = 0
+
+
+@asynccontextmanager
+async def _login_slot(client_ip: str | None):
+    """Bound the parallel password-hashing work the endpoint will do."""
+    global _login_semaphore, _login_waiting
+    if _login_waiting >= _MAX_QUEUED_LOGINS:
+        logger.warning("SECURITY: login queue saturated, shedding request client_ip=%s", client_ip)
+        raise HTTPException(
+            status_code=429,
+            detail="The server is busy verifying sign-ins. Try again shortly.",
+            headers={"Retry-After": "5"},
+        )
+    if _login_semaphore is None:
+        _login_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_LOGINS)
+    _login_waiting += 1
+    try:
+        async with _login_semaphore:
+            yield
+    finally:
+        _login_waiting -= 1
 
 
 class LoginRequest(BaseModel):
@@ -103,17 +133,6 @@ def _sweep(now: float) -> None:
         return
     for key, _ in sorted(_attempts.items(), key=lambda kv: kv[1][-1])[: len(_attempts) - _MAX_TRACKED_KEYS]:
         _attempts.pop(key, None)
-
-
-def _global_throttled() -> int:
-    """Return seconds to wait if the whole endpoint is over its rate ceiling."""
-    now = time.monotonic()
-    while _global_attempts and now - _global_attempts[0] >= _GLOBAL_WINDOW_SECONDS:
-        _global_attempts.popleft()
-    if len(_global_attempts) < _GLOBAL_MAX_ATTEMPTS:
-        _global_attempts.append(now)
-        return 0
-    return int(_GLOBAL_WINDOW_SECONDS - (now - _global_attempts[0])) + 1
 
 
 def _throttled(keys: tuple[str, ...]) -> int:
@@ -279,14 +298,6 @@ async def auth_login(payload: LoginRequest, request: Request, response: Response
     username = payload.username.strip()
     keys = _throttle_keys(request, username)
     wait = _throttled(keys)
-    if not wait:
-        wait = _global_throttled()
-        if wait:
-            logger.warning(
-                "SECURITY: login rate ceiling reached client_ip=%s retry_after=%ss",
-                get_client_ip(request),
-                wait,
-            )
     if wait:
         logger.warning(
             "SECURITY: login throttled username=%s client_ip=%s retry_after=%ss",
@@ -302,10 +313,25 @@ async def auth_login(payload: LoginRequest, request: Request, response: Response
 
     policy = await auth_service.get_security_policy()
     client_ip = get_client_ip(request)
+    # Checked before the concurrency gate so a blocked network cannot occupy
+    # capacity that legitimate users are queueing for.
     if not auth_service.ip_allowed(policy, client_ip):
         logger.warning("SECURITY: login blocked by IP allowlist client_ip=%s", client_ip)
         raise HTTPException(status_code=403, detail="Your network is not permitted to sign in.")
 
+    async with _login_slot(client_ip):
+        return await _authenticate(payload, request, response, username, keys, policy, client_ip)
+
+
+async def _authenticate(
+    payload: LoginRequest,
+    request: Request,
+    response: Response,
+    username: str,
+    keys: tuple[str, ...],
+    policy: dict,
+    client_ip: str | None,
+) -> dict:
     user = await auth_service.get_user_by_username(username)
     if user is None or not user.enabled or not user.password_hash:
         # Spend the same time as a real verification so a missing or

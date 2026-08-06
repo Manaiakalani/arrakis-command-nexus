@@ -15,6 +15,7 @@ import hmac
 import logging
 import os
 import secrets
+import string
 import struct
 import time
 from datetime import datetime, timedelta, timezone
@@ -186,6 +187,19 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+# A session token is `secrets.token_urlsafe(32)`: 43 characters of the URL-safe
+# base64 alphabet. Anything else cannot be one, so it is rejected before the
+# database is touched. /auth/session-check is reachable from outside the IP
+# allowlist by design, and this keeps a flood of junk cookies from turning into
+# a flood of primary-key lookups.
+_SESSION_TOKEN_CHARS = frozenset(string.ascii_letters + string.digits + "-_")
+_SESSION_TOKEN_LENGTH = len(secrets.token_urlsafe(_SESSION_TOKEN_BYTES))
+
+
+def _plausible_session_token(token: str | None) -> bool:
+    return bool(token) and len(token) == _SESSION_TOKEN_LENGTH and set(token) <= _SESSION_TOKEN_CHARS
+
+
 async def create_session(
     user_id: int,
     *,
@@ -216,7 +230,7 @@ async def create_session(
 async def resolve_session(token: str | None, *, timeout_minutes: int) -> AdminUser | None:
     """Look up the user behind a session token, sliding the expiry window
     forward on success. Returns None for unknown, expired or disabled users."""
-    if not token:
+    if not _plausible_session_token(token):
         return None
     now = datetime.now(timezone.utc)
     async with SessionLocal() as session:

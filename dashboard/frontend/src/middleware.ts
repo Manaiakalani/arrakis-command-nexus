@@ -39,22 +39,16 @@ interface SessionCheck {
   authenticated: boolean;
 }
 
-// Only the "sign-in is off" answer is cached, and only briefly. Caching it for
-// long enough to be useful is exactly what would leave a window after first-run
-// setup where the middleware still injects the machine token (#52 bootstrap).
-const NEGATIVE_TTL_MS = 3_000;
-
+// Sign-in state is deliberately not cached, not even briefly. The only requests
+// a cached "sign-in is off" answer would speed up are the cookieless ones — and
+// those are exactly the requests that get DUNE_ADMIN_TOKEN attached, so any
+// cache window is a window in which an anonymous caller is served as operator
+// after first-run setup has already completed. The check is one loopback
+// request to a container on the same host; correctness is worth more here.
 let sawAuthEnabled = false;
-let cachedDisabledAt = 0;
 
 async function sessionCheck(request: NextRequest): Promise<SessionCheck> {
   const cookie = request.headers.get('cookie');
-
-  // Fast path: sign-in is known to be off and nothing has changed recently.
-  // A caller with no cookie cannot be authenticated, so skip the round trip.
-  if (!sawAuthEnabled && !cookie && Date.now() - cachedDisabledAt < NEGATIVE_TTL_MS) {
-    return { authEnabled: false, authenticated: false };
-  }
 
   try {
     const res = await fetch(`${API_ORIGIN}/api/v1/auth/session-check`, {
@@ -69,8 +63,6 @@ async function sessionCheck(request: NextRequest): Promise<SessionCheck> {
       // Never revert within this worker: an attacker who can disrupt the check
       // should not be able to talk us back into unauthenticated access.
       sawAuthEnabled = true;
-    } else {
-      cachedDisabledAt = Date.now();
     }
     return { authEnabled: authEnabled || sawAuthEnabled, authenticated: body.authenticated === true };
   } catch {
