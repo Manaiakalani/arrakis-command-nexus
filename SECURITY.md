@@ -41,21 +41,21 @@ When rotating credentials, follow this sequence to avoid downtime:
 
 ### Postgres Password (`POSTGRES_DUNE_PASSWORD`)
 1. Connect to Postgres and change the role password:
-   `ALTER ROLE dune_admin WITH PASSWORD 'new-password';`
+   `ALTER ROLE dune WITH PASSWORD 'new-password';`
 2. Update `.env` with the new password.
 3. Restart: `docker compose up -d dashboard-api`
 
 ### RabbitMQ Credentials (`DUNE_RMQ_MANAGEMENT_USER` / `DUNE_RMQ_MANAGEMENT_PASSWORD`)
 1. Update `.env` with new values.
-2. Recreate the RabbitMQ container: `docker compose up -d --force-recreate rabbitmq`
+2. Recreate both RabbitMQ containers: `docker compose up -d --force-recreate admin-rmq game-rmq`
 3. Restart services that connect to RabbitMQ: `docker compose restart rmq-auth-shim text-router`
 
-### Discord Webhook URL (`DUNE_DISCORD_WEBHOOK_URL`)
+### Discord Webhook URL (`DISCORD_WEBHOOK_URL`)
 1. Generate a new webhook URL in Discord channel settings.
 2. Update the URL via the dashboard Discord settings page or in `.env`.
 3. Restart: `docker compose restart dashboard-api`
 
-### Funcom Account Token (`FUNCOM_LIVE_SERVICES_TOKEN`)
+### Funcom Account Token (`FLS_SECRET`)
 1. Obtain a new token from the Funcom account portal.
 2. Update `.env` with the new value.
 3. Restart all game server containers.

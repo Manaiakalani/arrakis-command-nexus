@@ -14,32 +14,47 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import FileResponse, JSONResponse
 
-from db.database import dispose_db, init_db
-from middleware.auth import AdminTokenMiddleware, verify_admin_token
-from middleware.rate_limit import RateLimitMiddleware
-from middleware.redaction import redact
-from middleware.request_logging import RequestLoggingMiddleware
-from middleware.security_headers import SecurityHeadersMiddleware
-from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, events, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog
-from services.announce_scheduler import AnnounceScheduler
-from services.announce_service import AnnounceService
-from services.backup_scheduler import BackupScheduler
-from services.backup_service import BackupService
-from services.character_service import CharacterService
-from services.chat_guard_service import ChatGuardService
-from services.config_service import ConfigService
-from services.discord_service import DiscordService
-from services.docker_service import DockerService
-from services.economy_service import EconomyService
-from services.log_service import LogService
-from services.metrics_service import MetricsService
-from services.postgres_service import PostgresService
-from services.restart_scheduler import RestartScheduler
-from services.update_scheduler import get_update_scheduler
-from services.watchdog_service import WatchdogService
-from services.event_bus import ChangeDetector, EventBus
+# Load the operator's .env *before* importing any local module. Several of them
+# read configuration at import time (services/watchdog_service.py defines its
+# WATCHDOG_* thresholds at module scope, db/database.py resolves DATABASE_URL,
+# routers/settings.py resolves the world name), so loading later would silently
+# ignore those keys.
+#
+# The deployment mounts the operator's .env at /workspace/.env, which is outside
+# this app's working directory (/app), so python-dotenv's default upward search
+# would never find it. Values already present in the environment - notably the
+# ones docker-compose passes explicitly - always take precedence, because
+# load_dotenv() does not override by default.
+_ENV_FILE = os.getenv("DUNE_ENV_FILE", "/workspace/.env")
+if os.path.isfile(_ENV_FILE):
+    load_dotenv(_ENV_FILE)
+else:
+    load_dotenv()
 
-load_dotenv()
+from db.database import dispose_db, init_db  # noqa: E402
+from middleware.auth import AdminTokenMiddleware, verify_admin_token  # noqa: E402
+from middleware.rate_limit import RateLimitMiddleware  # noqa: E402
+from middleware.redaction import redact  # noqa: E402
+from middleware.request_logging import RequestLoggingMiddleware  # noqa: E402
+from middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
+from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, events, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog  # noqa: E402
+from services.announce_scheduler import AnnounceScheduler  # noqa: E402
+from services.announce_service import AnnounceService  # noqa: E402
+from services.backup_scheduler import BackupScheduler  # noqa: E402
+from services.backup_service import BackupService  # noqa: E402
+from services.character_service import CharacterService  # noqa: E402
+from services.chat_guard_service import ChatGuardService  # noqa: E402
+from services.config_service import ConfigService  # noqa: E402
+from services.discord_service import DiscordService  # noqa: E402
+from services.docker_service import DockerService  # noqa: E402
+from services.economy_service import EconomyService  # noqa: E402
+from services.log_service import LogService  # noqa: E402
+from services.metrics_service import MetricsService  # noqa: E402
+from services.postgres_service import PostgresService  # noqa: E402
+from services.restart_scheduler import RestartScheduler  # noqa: E402
+from services.update_scheduler import get_update_scheduler  # noqa: E402
+from services.watchdog_service import WatchdogService  # noqa: E402
+from services.event_bus import ChangeDetector, EventBus  # noqa: E402
 
 
 class RedactingFilter(logging.Filter):

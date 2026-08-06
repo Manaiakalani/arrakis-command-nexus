@@ -116,7 +116,12 @@ async def create_webhook(
         flags = _events_to_flags(payload.events)
         # Validate Discord webhook URL to prevent SSRF
         _ = payload.validated_url
-        create_data = DiscordWebhookCreate(url=payload.url, **flags)
+        create_data = DiscordWebhookCreate(
+            url=payload.url,
+            name=(payload.name or "").strip() or "Operations Feed",
+            enabled=payload.enabled,
+            **flags,
+        )
         entry = await request.app.state.discord_service.create_webhook(session, create_data)
         return _webhook_to_frontend(entry)
     except ValueError as exc:
