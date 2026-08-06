@@ -82,6 +82,17 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      // A session that lapses while the tab is open would otherwise leave the
+      // dashboard silently broken: every request fails and nothing explains
+      // why. Send the user to sign in again, preserving where they were.
+      if (response.status === 401 && typeof window !== 'undefined') {
+        const { pathname, search } = window.location;
+        if (pathname !== '/login') {
+          const next = encodeURIComponent(`${pathname}${search}`);
+          window.location.assign(pathname === '/' ? '/login' : `/login?next=${next}`);
+        }
+      }
+
       let message = `Request failed with status ${response.status}`;
       try {
         const text = await response.text();
