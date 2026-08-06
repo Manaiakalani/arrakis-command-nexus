@@ -88,10 +88,29 @@ _PROTECTED_KEYS = frozenset({"steam_account", "server_password_stored"})
 
 # Values inside otherwise-readable sections that are credentials in their own
 # right. Viewers and editors get a placeholder instead; only operators see them.
+# Webhook URLs belong here because the endpoint path is routinely the secret —
+# Slack, Discord and Teams all embed the bearer material directly in the URL.
 _SECRET_SETTING_FIELDS: dict[str, frozenset[str]] = {
-    "integrations": frozenset({"uptimeKumaPushToken"}),
+    "integrations": frozenset({"uptimeKumaPushToken", "externalWebhooks"}),
 }
 _REDACTED = "__redacted__"
+
+
+def _redact_value(value):
+    """Placeholder that preserves the field's shape.
+
+    Lists become a same-length list of placeholders so a client can still tell
+    how many entries are configured without learning what they are.
+    """
+    if isinstance(value, list):
+        return [_REDACTED] * len(value)
+    return _REDACTED
+
+
+def _is_redacted(value) -> bool:
+    if isinstance(value, list):
+        return bool(value) and all(item == _REDACTED for item in value)
+    return value == _REDACTED
 
 
 def _is_operator(request: Request) -> bool:
@@ -103,12 +122,13 @@ def _redact_for_role(request: Request, key: str, value: dict) -> dict:
 
     Read access is not role-gated (viewers are meant to be able to look at the
     dashboard), but "look at the dashboard" should not include reading the
-    Uptime Kuma push token out of the settings API.
+    Uptime Kuma push token or the notification webhook URLs out of the settings
+    API.
     """
     secrets_in_section = _SECRET_SETTING_FIELDS.get(key)
     if not secrets_in_section or _is_operator(request):
         return value
-    return {k: (_REDACTED if k in secrets_in_section and v else v) for k, v in value.items()}
+    return {k: (_redact_value(v) if k in secrets_in_section and v else v) for k, v in value.items()}
 
 
 async def _restore_redacted(key: str, incoming: dict) -> dict:
@@ -119,10 +139,13 @@ async def _restore_redacted(key: str, incoming: dict) -> dict:
     the token for an operator whose form was populated from a redacted read.
     """
     secrets_in_section = _SECRET_SETTING_FIELDS.get(key)
-    if not secrets_in_section or not any(incoming.get(f) == _REDACTED for f in secrets_in_section):
+    if not secrets_in_section or not any(_is_redacted(incoming.get(f)) for f in secrets_in_section):
         return incoming
     current = await _get_setting(key)
-    return {k: (current.get(k, "") if k in secrets_in_section and v == _REDACTED else v) for k, v in incoming.items()}
+    return {
+        k: (current.get(k, DEFAULTS.get(key, {}).get(k, "")) if k in secrets_in_section and _is_redacted(v) else v)
+        for k, v in incoming.items()
+    }
 
 
 async def _get_setting(key: str) -> dict:

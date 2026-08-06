@@ -17,12 +17,12 @@ const BACKEND_URL = process.env.BACKEND_URL ?? process.env.DUNE_DASHBOARD_API_UR
 
 /**
  * Ask the backend whether sign-in is configured and whether this caller's
- * cookie maps to a live session. Mirrors the anti-downgrade behaviour in
- * src/middleware.ts: once sign-in has been observed as enabled we never fall
- * back to serving the stream unauthenticated.
+ * cookie maps to a live session.
+ *
+ * Fails closed: a transient failure must not hand the machine token to an
+ * anonymous caller, and this module's `sawAuthEnabled` latch is per-worker, so
+ * a recycled worker would otherwise start out willing to do exactly that.
  */
-let sawAuthEnabled = false;
-
 async function isAllowed(request: Request): Promise<boolean> {
   const cookie = request.headers.get('cookie');
   try {
@@ -36,10 +36,15 @@ async function isAllowed(request: Request): Promise<boolean> {
     if (body.authEnabled === true) sawAuthEnabled = true;
     return sawAuthEnabled ? body.authenticated === true : true;
   } catch {
-    // Unknown state: only allow through if sign-in has never been seen enabled.
-    return !sawAuthEnabled;
+    return false;
   }
 }
+
+let sawAuthEnabled = false;
+
+// A stream can outlive the session that opened it, so re-check periodically:
+// signing out or revoking sessions should actually stop the event feed.
+const REVALIDATE_INTERVAL_MS = 60_000;
 
 export async function GET(request: Request) {
   const token = process.env.DUNE_ADMIN_TOKEN;
@@ -69,7 +74,21 @@ export async function GET(request: Request) {
       return sseError('Upstream unavailable');
     }
 
-    return new Response(response.body, {
+    // Re-check the session while the stream is open. Without this, signing out
+    // or revoking sessions leaves the event feed running until the browser
+    // happens to disconnect.
+    const revalidate = setInterval(() => {
+      void isAllowed(request).then((ok) => {
+        if (!ok) {
+          clearInterval(revalidate);
+          abort.abort();
+        }
+      });
+    }, REVALIDATE_INTERVAL_MS);
+    const stopRevalidating = () => clearInterval(revalidate);
+    request.signal.addEventListener('abort', stopRevalidating);
+
+    return new Response(response.body.pipeThrough(new TransformStream({ flush: stopRevalidating })), {
       status: 200,
       headers: {
         ...Object.fromEntries(sseHeaders().entries()),

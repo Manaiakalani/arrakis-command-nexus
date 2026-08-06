@@ -66,18 +66,23 @@ async function sessionCheck(request: NextRequest): Promise<SessionCheck> {
     const body = (await res.json()) as Partial<SessionCheck>;
     const authEnabled = body.authEnabled === true;
     if (authEnabled) {
-      // Never revert: otherwise anyone able to disrupt this call could
-      // downgrade the dashboard back to unauthenticated access.
+      // Never revert within this worker: an attacker who can disrupt the check
+      // should not be able to talk us back into unauthenticated access.
       sawAuthEnabled = true;
     } else {
       cachedDisabledAt = Date.now();
     }
     return { authEnabled: authEnabled || sawAuthEnabled, authenticated: body.authenticated === true };
   } catch {
-    // Backend unreachable. Fail closed if we have ever seen sign-in enabled,
-    // otherwise fall back to the legacy token path so a fresh install with a
-    // slow-starting API is still usable.
-    return { authEnabled: sawAuthEnabled, authenticated: false };
+    // We could not find out. Fail closed.
+    //
+    // Falling back to the legacy token path here would be a silent privilege
+    // grant: `sawAuthEnabled` is per-worker module state, so a freshly spawned
+    // or recycled worker starts with no memory of sign-in being enabled, and
+    // any transient failure of this call would hand out DUNE_ADMIN_TOKEN as
+    // operator. Refusing instead degrades a broken backend into a login page,
+    // which is recoverable; the alternative is not.
+    return { authEnabled: true, authenticated: false };
   }
 }
 

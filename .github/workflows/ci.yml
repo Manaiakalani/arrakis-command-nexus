@@ -50,6 +50,13 @@ jobs:
           done
           grep -q 'if (!authEnabled)' src/middleware.ts \
             || { echo 'src/middleware.ts must only inject DUNE_ADMIN_TOKEN while sign-in is unconfigured'; exit 1; }
+          # A failed session check must never be read as "sign-in is off": that is
+          # a silent grant of DUNE_ADMIN_TOKEN to an anonymous caller, and the
+          # sawAuthEnabled latch is per-worker so a fresh worker has no memory.
+          grep -q 'return { authEnabled: true, authenticated: false };' src/middleware.ts \
+            || { echo 'src/middleware.ts must fail closed when the session check errors'; exit 1; }
+          grep -q 'return false;' src/app/api/events/stream/route.ts \
+            || { echo 'the SSE proxy must fail closed when the session check errors'; exit 1; }
           echo 'frontend auth gating ok'
 
   lint-backend:
@@ -90,8 +97,15 @@ jobs:
         run: |
           cd /app
           python - <<'PY'
-          from middleware.auth import PUBLIC_AUTH_SUFFIXES, is_operator_path
+          from middleware.auth import (
+              PUBLIC_AUTH_SUFFIXES,
+              _ALLOWLIST_EXEMPT_SUFFIXES,
+              _SELF_SERVICE_AUTH_SUFFIXES,
+              is_operator_path,
+          )
           import main
+          from routers import auth as auth_router
+          from routers.settings import _SECRET_SETTING_FIELDS
 
           operator_only = [
               "/api/v1/backups", "/api/v1/backups/7/restore", "/api/v1/updates/trigger",
@@ -115,6 +129,34 @@ jobs:
 
           assert not any("setup" in s for s in PUBLIC_AUTH_SUFFIXES), \
               "/auth/setup must not be public: bootstrapping still requires the shared admin token"
+
+          # The frontend calls session-check server-side. If the IP allowlist could
+          # block it, the frontend would lose its only way to tell "sign-in is off"
+          # from "the check failed" -- and fall back to injecting the admin token.
+          assert _ALLOWLIST_EXEMPT_SUFFIXES == ("/auth/session-check",), \
+              "only /auth/session-check may bypass the IP allowlist"
+
+          # A viewer must always be able to end their own session and rotate a
+          # compromised password, even though those are POSTs.
+          for required in ("/auth/logout", "/auth/password", "/auth/sessions/revoke-all"):
+              assert required in _SELF_SERVICE_AUTH_SUFFIXES, \
+                  f"{required} must stay usable by every signed-in role"
+          assert not any(
+              s.startswith("/auth/") and "mfa" not in s and s not in
+              ("/auth/logout", "/auth/password", "/auth/sessions/revoke-all")
+              for s in _SELF_SERVICE_AUTH_SUFFIXES
+          ), "self-service exemption must not cover privileged endpoints"
+
+          # Webhook URLs routinely embed the bearer secret in the path.
+          for field in ("uptimeKumaPushToken", "externalWebhooks"):
+              assert field in _SECRET_SETTING_FIELDS["integrations"], \
+                  f"integrations.{field} must be redacted for non-operators"
+
+          # Login runs a deliberate memory-hard hash per attempt, including for
+          # unknown usernames, so the endpoint needs a ceiling that per-username
+          # lockout cannot provide.
+          assert auth_router._GLOBAL_MAX_ATTEMPTS > 0 and auth_router._GLOBAL_WINDOW_SECONDS > 0, \
+              "login must keep a global rate ceiling"
 
           routes = {r.path for r in main.app.routes}
           for required in ("/api/v1/auth/login", "/api/auth/login", "/api/v1/auth/session-check"):

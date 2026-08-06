@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections import deque
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -45,6 +46,15 @@ _MAX_ATTEMPTS = 5
 _LOCKOUT_SECONDS = 300
 _MAX_TRACKED_KEYS = 2048
 _attempts: dict[str, list[float]] = {}
+
+# Every login attempt costs one memory-hard scrypt hash, including attempts for
+# usernames that do not exist (which run a dummy verification so that a missing
+# account and a wrong password take the same time). Rotating usernames would
+# otherwise sidestep both per-key windows and turn sign-in into a cheap way to
+# burn the host's CPU, so cap the total rate as well.
+_GLOBAL_WINDOW_SECONDS = 60.0
+_GLOBAL_MAX_ATTEMPTS = 120
+_global_attempts: deque[float] = deque()
 
 
 class LoginRequest(BaseModel):
@@ -81,11 +91,29 @@ def _throttle_keys(request: Request, username: str) -> tuple[str, ...]:
 
 
 def _sweep(now: float) -> None:
-    """Drop windows that have fully aged out so the map cannot grow without
-    bound as an attacker cycles usernames or spoofed source addresses."""
-    stale = [key for key, hits in _attempts.items() if not hits or now - hits[-1] >= _LOCKOUT_SECONDS]
-    for key in stale:
+    """Keep the attempt table bounded.
+
+    Expired windows go first. If everything is still fresh -- which is exactly
+    what an attacker cycling usernames produces -- drop the least recently used
+    entries as well, so the table is a genuine cap rather than a hint.
+    """
+    for key in [k for k, hits in _attempts.items() if not hits or now - hits[-1] >= _LOCKOUT_SECONDS]:
         _attempts.pop(key, None)
+    if len(_attempts) <= _MAX_TRACKED_KEYS:
+        return
+    for key, _ in sorted(_attempts.items(), key=lambda kv: kv[1][-1])[: len(_attempts) - _MAX_TRACKED_KEYS]:
+        _attempts.pop(key, None)
+
+
+def _global_throttled() -> int:
+    """Return seconds to wait if the whole endpoint is over its rate ceiling."""
+    now = time.monotonic()
+    while _global_attempts and now - _global_attempts[0] >= _GLOBAL_WINDOW_SECONDS:
+        _global_attempts.popleft()
+    if len(_global_attempts) < _GLOBAL_MAX_ATTEMPTS:
+        _global_attempts.append(now)
+        return 0
+    return int(_GLOBAL_WINDOW_SECONDS - (now - _global_attempts[0])) + 1
 
 
 def _throttled(keys: tuple[str, ...]) -> int:
@@ -251,6 +279,14 @@ async def auth_login(payload: LoginRequest, request: Request, response: Response
     username = payload.username.strip()
     keys = _throttle_keys(request, username)
     wait = _throttled(keys)
+    if not wait:
+        wait = _global_throttled()
+        if wait:
+            logger.warning(
+                "SECURITY: login rate ceiling reached client_ip=%s retry_after=%ss",
+                get_client_ip(request),
+                wait,
+            )
     if wait:
         logger.warning(
             "SECURITY: login throttled username=%s client_ip=%s retry_after=%ss",

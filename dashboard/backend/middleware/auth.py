@@ -24,6 +24,27 @@ _REQUIRED_VALUES = _TRUE_VALUES | {"required"}
 # bootstrapping the first account still requires the shared admin token.
 PUBLIC_AUTH_SUFFIXES = ("/auth/status", "/auth/login", "/auth/session-check")
 
+# The frontend container calls /auth/session-check server-side on every request
+# to decide whether a caller is signed in, so the backend sees the container's
+# address rather than the browser's. Subjecting it to the IP allowlist would
+# make it fail for every deployment whose allowlist does not happen to include
+# the Docker bridge address -- and a frontend that cannot reach it has no way to
+# tell "sign-in is off" from "the check is broken". It reveals only whether
+# sign-in is configured and whether a cookie the caller already holds is valid.
+_ALLOWLIST_EXEMPT_SUFFIXES = ("/auth/session-check",)
+
+# Signing out, changing your own password and managing your own MFA are not
+# privileged operations, even though they are POSTs. Without this a viewer could
+# not end their own session or rotate a compromised password.
+_SELF_SERVICE_AUTH_SUFFIXES = (
+    "/auth/logout",
+    "/auth/password",
+    "/auth/mfa/enroll",
+    "/auth/mfa/activate",
+    "/auth/mfa/disable",
+    "/auth/sessions/revoke-all",
+)
+
 # Role hierarchy: viewer < editor < operator (backward-compat: "admin" = operator)
 ROLE_HIERARCHY = {"viewer": 0, "editor": 1, "operator": 2, "admin": 2}
 
@@ -86,6 +107,10 @@ def check_role_access(role: str, method: str, path: str) -> tuple[int, str] | No
     if method not in MUTATING_METHODS:
         return None
 
+    # Managing your own credentials is never a privileged operation.
+    if any(path.endswith(suffix) for suffix in _SELF_SERVICE_AUTH_SUFFIXES):
+        return None
+
     # Viewers can only read
     if level < 1:
         return 403, "Viewer role cannot perform mutations."
@@ -107,7 +132,8 @@ async def _auth_error(request: Request) -> tuple[int, str] | None:
     # The IP allowlist gates everything under /api, session or token alike. It
     # is checked first so a blocked network learns nothing about credentials.
     client_ip = get_client_ip(request)
-    if not auth_service.ip_allowed(policy, client_ip):
+    allowlist_exempt = any(path.endswith(suffix) for suffix in _ALLOWLIST_EXEMPT_SUFFIXES)
+    if not allowlist_exempt and not auth_service.ip_allowed(policy, client_ip):
         logger.warning(
             "SECURITY: request blocked by IP allowlist method=%s path=%s client_ip=%s",
             request.method,
