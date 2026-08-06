@@ -41,18 +41,22 @@ const nextConfig = {
     ];
   },
   async rewrites() {
+    // Server-side only, so requests still pass through src/middleware.ts and get
+    // the admin token injected. Do not expose this as NEXT_PUBLIC_*: an absolute
+    // base URL used by the browser bypasses that middleware entirely.
+    const apiUrl = (process.env.DUNE_DASHBOARD_API_URL || 'http://dashboard-api:8080').replace(/\/$/, '');
     return [
       {
         source: '/api/:path*',
-        destination: 'http://dashboard-api:8080/api/:path*',
+        destination: `${apiUrl}/api/:path*`,
       },
       {
         source: '/ready',
-        destination: 'http://dashboard-api:8080/ready',
+        destination: `${apiUrl}/ready`,
       },
       {
         source: '/status',
-        destination: 'http://dashboard-api:8080/status',
+        destination: `${apiUrl}/status`,
       },
     ];
   },

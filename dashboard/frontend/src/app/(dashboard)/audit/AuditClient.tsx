@@ -12,10 +12,6 @@ import {
 
 import { useToast } from '@/components/ToastProvider';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? '';
-const TOKEN =
-  typeof window !== 'undefined' ? localStorage.getItem('admin_token') ?? '' : '';
-
 interface AuditEntry {
   id: number;
   action: string;
@@ -110,11 +106,11 @@ export default function AuditClient({
   const handleExport = (format: 'csv' | 'json') => {
     const params = new URLSearchParams({ fmt: format });
     if (category) params.set('category', category);
-    const url = `${API}/api/audit/export?${params}`;
+    const url = `/api/v1/audit/export?${params}`;
     const link = document.createElement('a');
     link.href = url;
     link.download = `audit-trail.${format}`;
-    fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } })
+    fetch(url)
       .then((r) => r.blob())
       .then((blob) => {
         link.href = URL.createObjectURL(blob);
@@ -133,9 +129,7 @@ export default function AuditClient({
       });
       if (category) params.set('category', category);
 
-      const res = await fetch(`${API}/api/audit?${params}`, {
-        headers: { Authorization: `Bearer ${TOKEN}` },
-      });
+      const res = await fetch(`/api/v1/audit?${params}`);
       if (res.ok) {
         const data = await res.json();
         setEntries(data.entries ?? []);
@@ -150,9 +144,7 @@ export default function AuditClient({
 
   const fetchSummary = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/audit/summary`, {
-        headers: { Authorization: `Bearer ${TOKEN}` },
-      });
+      const res = await fetch(`/api/v1/audit/summary`);
       if (res.ok) {
         const data = await res.json();
         setSummary(data.by_action ?? {});

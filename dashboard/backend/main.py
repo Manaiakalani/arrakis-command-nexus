@@ -401,34 +401,28 @@ app.include_router(_legacy_router)
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    # Routers convert their own deliberate ValueErrors into HTTPExceptions with
+    # accurate status codes, so anything reaching here is unhandled. Log it, or
+    # accidental ValueErrors are indistinguishable from validation failures.
+    logger.warning("Unhandled ValueError on %s %s: %s", request.method, request.url.path, exc)
     return JSONResponse(
         status_code=422,
         content={"error": {"code": "VALIDATION_ERROR", "message": str(exc)}},
     )
 
 
-@app.exception_handler(IndexError)
-async def index_error_handler(request: Request, exc: IndexError) -> JSONResponse:
-    # IndexError subclasses LookupError, so without this it would be answered by
-    # the handler below and reported to clients as a 404 -- with no log line at
-    # all. Nothing in this codebase raises IndexError deliberately (KeyError and
-    # LookupError are the intentional not-found signals), so it always indicates
-    # a bug and must surface as a logged 500. A crash in /api/system/version was
-    # previously masked as {"code": "NOT_FOUND", "message": "3"}.
-    logger.exception("Unhandled IndexError on %s %s", request.method, request.url.path)
-    return JSONResponse(
-        status_code=500,
-        content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
-    )
-
-
-@app.exception_handler(LookupError)
-async def lookup_error_handler(request: Request, exc: LookupError) -> JSONResponse:
-    logger.info("Not found on %s %s: %s", request.method, request.url.path, exc)
-    return JSONResponse(
-        status_code=404,
-        content={"error": {"code": "NOT_FOUND", "message": str(exc)}},
-    )
+# There is deliberately no LookupError handler. KeyError and LookupError are
+# raised as not-found signals inside the character, Discord, watchdog and
+# announcement services, but every one of those is already handled at its call
+# site -- the routers convert them to HTTPException(404) with a readable detail,
+# and character_service.list_characters swallows its own as internal control
+# flow. A blanket LookupError -> 404 handler therefore caught nothing
+# intentional and only masked genuine bugs: an accidental KeyError or IndexError
+# was reported to clients as a missing resource, with the raw exception text as
+# the message and no log line at all. That hid a crash in /api/system/version
+# (v1.6.0), which surfaced only as {"code": "NOT_FOUND", "message": "3"}.
+# Those now fall through to the generic handler below: a logged 500 with a
+# fixed, non-leaking message.
 
 
 @app.exception_handler(HTTPException)
