@@ -67,13 +67,39 @@ Funcom's official self-hosting flow involves several services, credentials, and 
 
 ### Security and Operations
 - **Local-only admin defaults** unless you intentionally expose the dashboard
-- **Token-based authentication** for admin API access
+- **Interactive sign-in** with per-account passwords, optional authenticator-app MFA, session timeouts and an IP allowlist  -  see [Dashboard sign-in](#dashboard-sign-in) below
+- **Three roles**  -  viewer (read only), editor (configuration, announcements, players, characters) and operator (service lifecycle, updates, backups, credentials, user management)
+- **Token-based authentication** for scripts, health checks and server-side rendering
 - **Secret file support** for sensitive credentials and tokens
 - **Container allowlisting and response redaction** for safer automation
 - **Scheduled backups** with configurable retention windows
 - **Inventory conflict detection** (`bash scripts/inventory-conflicts.sh [--repair]`)  -  finds duplicate `(inventory_id, position_index)` rows in `dune.items` (the silicon-style ghost bug) and relocates duplicates to free slots. Safe to run on a live server.
 - **Repo sanitization check** (`bash scripts/sanitize-check.sh`) blocks accidental commits of internal hostnames, SSH usernames, IPs, JWTs, RMQ secrets, and real Discord webhook URLs. Run with `--staged` as a pre-commit hook, or `--history` to audit past commits.
 - **No-hardcoded-host configuration**  -  SSH host hints in the dashboard are driven by `DUNE_SSH_USER`, `DUNE_SSH_HOST`, `DUNE_SERVER_DIR` env vars (placeholders by default), so a fresh public clone never leaks the operator's hostname or username.
+
+### Dashboard sign-in
+
+A fresh install runs in **token-only mode**: the dashboard attaches `DUNE_ADMIN_TOKEN` for you, and anyone who can reach the page has full operator access. That is fine on a private LAN, and upgrading never changes it, so an upgrade cannot lock you out of your own server.
+
+To turn on real sign-in, open the dashboard and go to `/login`. The first visit offers a one-time setup form; creating that first account switches the whole dashboard over:
+
+- Browsers must present a session cookie. Roles are read from the database, never from a request header.
+- The `Settings > Security` controls (session timeout, require MFA, IP allowlist) start being enforced.
+- `DUNE_ADMIN_READ_AUTH=false` is ignored, since honouring it would silently undo the login requirement.
+- `DUNE_ADMIN_TOKEN` keeps working for `smoke-test.sh`, `shutdown-host.sh`, `update.sh` and server-side rendering. Treat it as a machine credential: anything holding it is an operator.
+
+Two settings are worth knowing about:
+
+| Variable | Why it matters |
+| --- | --- |
+| `DUNE_DASHBOARD_SECURE_COOKIES` | Leave `false` for the default plain-HTTP deployment on `127.0.0.1` - a `Secure` cookie would never be sent and sign-in would silently fail. Set `true` when you terminate TLS in front of the dashboard. |
+| `TRUSTED_PROXY_CIDRS` | Client IPs come from `X-Forwarded-For`. With the default private ranges, anything that can reach the dashboard can also choose its own value, so treat the IP allowlist as a convenience rather than a boundary until you narrow this to a reverse proxy that *overwrites* the header. |
+
+**Locked out?** Stop the stack and clear the accounts to fall back to token-only mode:
+
+```bash
+sqlite3 data/dashboard.db "DELETE FROM admin_users;"
+```
 
 ## Deployment Profiles
 

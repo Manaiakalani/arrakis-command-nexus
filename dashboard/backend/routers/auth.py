@@ -1,0 +1,528 @@
+"""Interactive sign-in for the dashboard.
+
+Two authentication paths coexist deliberately:
+
+* **Session cookie** — humans sign in with a username, password and optional
+  TOTP code, and receive an opaque ``HttpOnly`` cookie.
+* **Shared admin token** — scripts (``smoke-test.sh``, ``shutdown-host.sh``,
+  ``update.sh``) and Next.js Server Components keep sending ``X-Admin-Token``.
+
+Until an operator creates the first password-enabled account the dashboard
+stays in legacy token-only mode, so upgrading to this version cannot lock
+anyone out of their own server. See ``middleware/auth.py`` for enforcement.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+import time
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
+
+from db.database import SessionLocal
+from db.models import AdminSession, AdminUser, AuditLog
+from middleware.request_utils import get_client_ip
+from services import auth_service
+
+router = APIRouter(tags=["auth"])
+logger = logging.getLogger(__name__)
+
+MIN_PASSWORD_LENGTH = 12
+
+# Login throttle: a small in-memory sliding window. The dashboard is a
+# single-process container, so a shared store would be overkill.
+#
+# Two windows are kept per attempt. The IP-scoped one stops a single host
+# hammering many usernames; the username-scoped one still locks the account
+# even when the caller varies their apparent IP. The client IP is derived from
+# X-Forwarded-For and is therefore only as trustworthy as the proxy in front of
+# the dashboard, so the username window is the one that actually holds.
+_MAX_ATTEMPTS = 5
+_LOCKOUT_SECONDS = 300
+_MAX_TRACKED_KEYS = 2048
+_attempts: dict[str, list[float]] = {}
+
+# Every login attempt costs one memory-hard scrypt hash, including attempts for
+# usernames that do not exist (which run a dummy verification so that a missing
+# account and a wrong password take the same time). Rotating usernames sidesteps
+# both per-key windows, so the cost has to be bounded globally too.
+#
+# This is a concurrency gate rather than a fixed budget of attempts per minute.
+# A budget is itself a denial of service: 120 requests would exhaust the shared
+# allowance and every legitimate user would be turned away for the rest of the
+# window, including from networks that are on the allowlist. Bounding *parallel*
+# work instead caps CPU at a few cores, makes flooders queue behind each other,
+# and lets service resume the instant the flood stops. The queue is bounded in
+# turn so waiting requests cannot pile up in memory.
+_MAX_CONCURRENT_LOGINS = 4
+_MAX_QUEUED_LOGINS = 32
+_login_semaphore: asyncio.Semaphore | None = None
+_login_waiting = 0
+
+
+@asynccontextmanager
+async def _login_slot(client_ip: str | None):
+    """Bound the parallel password-hashing work the endpoint will do."""
+    global _login_semaphore, _login_waiting
+    if _login_waiting >= _MAX_QUEUED_LOGINS:
+        logger.warning("SECURITY: login queue saturated, shedding request client_ip=%s", client_ip)
+        raise HTTPException(
+            status_code=429,
+            detail="The server is busy verifying sign-ins. Try again shortly.",
+            headers={"Retry-After": "5"},
+        )
+    if _login_semaphore is None:
+        _login_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_LOGINS)
+    _login_waiting += 1
+    try:
+        async with _login_semaphore:
+            yield
+    finally:
+        _login_waiting -= 1
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=1, max_length=1024)
+    totp: str | None = Field(default=None, max_length=16)
+
+
+class SetupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=1024)
+
+
+class PasswordChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    currentPassword: str = Field(min_length=1, max_length=1024)
+    newPassword: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=1024)
+
+
+class MfaActivateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=6, max_length=6)
+
+
+def _throttle_keys(request: Request, username: str) -> tuple[str, ...]:
+    name = username.lower()
+    return (f"ip:{get_client_ip(request) or 'unknown'}|{name}", f"user:{name}")
+
+
+def _sweep(now: float) -> None:
+    """Keep the attempt table bounded.
+
+    Expired windows go first. If everything is still fresh -- which is exactly
+    what an attacker cycling usernames produces -- drop the least recently used
+    entries as well, so the table is a genuine cap rather than a hint.
+    """
+    for key in [k for k, hits in _attempts.items() if not hits or now - hits[-1] >= _LOCKOUT_SECONDS]:
+        _attempts.pop(key, None)
+    if len(_attempts) <= _MAX_TRACKED_KEYS:
+        return
+    for key, _ in sorted(_attempts.items(), key=lambda kv: kv[1][-1])[: len(_attempts) - _MAX_TRACKED_KEYS]:
+        _attempts.pop(key, None)
+
+
+def _throttled(keys: tuple[str, ...]) -> int:
+    """Return the number of seconds the caller must wait, or 0 if allowed."""
+    now = time.monotonic()
+    if len(_attempts) > _MAX_TRACKED_KEYS:
+        _sweep(now)
+    wait = 0
+    for key in keys:
+        recent = [t for t in _attempts.get(key, []) if now - t < _LOCKOUT_SECONDS]
+        if recent:
+            _attempts[key] = recent
+        else:
+            _attempts.pop(key, None)
+        if len(recent) >= _MAX_ATTEMPTS:
+            wait = max(wait, int(_LOCKOUT_SECONDS - (now - recent[0])) + 1)
+    return wait
+
+
+def _record_failure(keys: tuple[str, ...]) -> None:
+    now = time.monotonic()
+    if len(_attempts) > _MAX_TRACKED_KEYS:
+        _sweep(now)
+    for key in keys:
+        _attempts.setdefault(key, []).append(now)
+
+
+def _clear_failures(keys: tuple[str, ...]) -> None:
+    for key in keys:
+        _attempts.pop(key, None)
+
+
+async def _audit(action: str, details: dict, performed_by: str) -> None:
+    try:
+        async with SessionLocal() as session:
+            session.add(AuditLog(action=action, details=details, performed_by=performed_by))
+            await session.commit()
+    except Exception:  # noqa: BLE001 - auditing must never break sign-in
+        logger.exception("Failed to write audit log for %s", action)
+
+
+def _cookie_kwargs(max_age: int) -> dict:
+    return auth_service.cookie_kwargs(max_age)
+
+
+def _public_user(user: AdminUser) -> dict:
+    return {
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "enabled": user.enabled,
+        "mfaEnabled": bool(user.mfa_enabled),
+        "lastLogin": user.last_login.isoformat() if user.last_login else None,
+    }
+
+
+async def _current_user(request: Request) -> AdminUser:
+    user = getattr(request.state, "admin_user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not signed in.")
+    return user
+
+
+@router.get("/auth/session-check")
+async def auth_session_check(request: Request) -> dict:
+    """Public. Answers "is sign-in on, and is *this* caller signed in?" in a
+    single round trip.
+
+    The Next.js middleware calls this before rendering any dashboard page.
+    It cannot make that decision itself: a session cookie is opaque, so merely
+    seeing one present proves nothing, and Server Components go on to fetch
+    privileged data with the machine token. Only the backend can say whether
+    the cookie maps to a live session.
+    """
+    configured = await auth_service.has_password_users()
+    policy = await auth_service.get_security_policy()
+    timeout_minutes = auth_service.session_timeout_minutes(policy)
+
+    result: dict = {
+        "authEnabled": configured,
+        "authenticated": False,
+        "role": None,
+        "username": None,
+        "sessionTimeoutMinutes": timeout_minutes,
+    }
+
+    token = request.cookies.get(auth_service.SESSION_COOKIE)
+    if token:
+        user = await auth_service.resolve_session(token, timeout_minutes=timeout_minutes)
+        if user is not None:
+            result["authenticated"] = True
+            result["role"] = user.role
+            result["username"] = user.username
+    return result
+
+
+# ── Status and bootstrap ──────────────────────────────────────────
+
+
+@router.get("/auth/status")
+async def auth_status() -> dict:
+    """Public. Tells the login page whether sign-in is live yet and whether the
+    first-run setup flow should be offered. Never leaks usernames."""
+    configured = await auth_service.has_password_users()
+    policy = await auth_service.get_security_policy()
+    return {
+        "authEnabled": configured,
+        "setupRequired": not configured,
+        "mfaRequired": bool(policy.get("mfaEnabled", False)),
+        "sessionTimeoutMinutes": auth_service.session_timeout_minutes(policy),
+    }
+
+
+@router.post("/auth/setup")
+async def auth_setup(payload: SetupRequest, request: Request) -> dict:
+    """Create the very first sign-in account.
+
+    Only callable while no password-enabled account exists, and the caller must
+    still present a valid ``X-Admin-Token`` — which the auth middleware has
+    already checked by the time we get here. That makes the bootstrap window
+    safe even if the dashboard is reachable from the LAN: whoever runs setup
+    already had full admin rights via the shared token.
+    """
+    if await auth_service.has_password_users():
+        raise HTTPException(status_code=409, detail="Sign-in is already configured.")
+
+    username = payload.username.strip()
+    if not username:
+        raise HTTPException(status_code=422, detail="Username must not be blank.")
+
+    async with SessionLocal() as session:
+        existing = (
+            await session.execute(select(AdminUser).where(AdminUser.username == username))
+        ).scalar_one_or_none()
+        if existing is not None:
+            existing.password_hash = auth_service.hash_password(payload.password)
+            existing.role = "operator"
+            existing.enabled = True
+            user_id = existing.id
+        else:
+            user = AdminUser(
+                username=username,
+                role="operator",
+                enabled=True,
+                password_hash=auth_service.hash_password(payload.password),
+            )
+            session.add(user)
+            await session.flush()
+            user_id = user.id
+        await session.commit()
+
+    logger.warning("SECURITY: initial dashboard sign-in account created username=%s", username)
+    auth_service.invalidate_signin_cache()
+    await _audit("auth.setup", {"username": username}, performed_by=username)
+    return {"status": "ok", "id": user_id, "username": username}
+
+
+# ── Sign in / out ─────────────────────────────────────────────────
+
+
+@router.post("/auth/login")
+async def auth_login(payload: LoginRequest, request: Request, response: Response) -> dict:
+    username = payload.username.strip()
+    keys = _throttle_keys(request, username)
+    wait = _throttled(keys)
+    if wait:
+        logger.warning(
+            "SECURITY: login throttled username=%s client_ip=%s retry_after=%ss",
+            username,
+            get_client_ip(request),
+            wait,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many failed attempts. Try again in {wait} seconds.",
+            headers={"Retry-After": str(wait)},
+        )
+
+    policy = await auth_service.get_security_policy()
+    client_ip = get_client_ip(request)
+    # Checked before the concurrency gate so a blocked network cannot occupy
+    # capacity that legitimate users are queueing for.
+    if not auth_service.ip_allowed(policy, client_ip):
+        logger.warning("SECURITY: login blocked by IP allowlist client_ip=%s", client_ip)
+        raise HTTPException(status_code=403, detail="Your network is not permitted to sign in.")
+
+    async with _login_slot(client_ip):
+        return await _authenticate(payload, request, response, username, keys, policy, client_ip)
+
+
+async def _authenticate(
+    payload: LoginRequest,
+    request: Request,
+    response: Response,
+    username: str,
+    keys: tuple[str, ...],
+    policy: dict,
+    client_ip: str | None,
+) -> dict:
+    user = await auth_service.get_user_by_username(username)
+    if user is None or not user.enabled or not user.password_hash:
+        # Spend the same time as a real verification so a missing or
+        # credential-less account is indistinguishable from a wrong password.
+        auth_service.dummy_verify(payload.password)
+        _record_failure(keys)
+        logger.warning("SECURITY: login failed (unknown user) username=%s client_ip=%s", username, client_ip)
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+
+    if not auth_service.verify_password(payload.password, user.password_hash):
+        _record_failure(keys)
+        logger.warning("SECURITY: login failed (bad password) username=%s client_ip=%s", username, client_ip)
+        await _audit("auth.login_failed", {"username": username, "clientIp": client_ip}, performed_by=username)
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+
+    mfa_required = bool(user.mfa_enabled) or bool(policy.get("mfaEnabled", False))
+    if mfa_required:
+        if not user.mfa_secret:
+            # Policy demands MFA but this account never enrolled. Refusing the
+            # login is the safe reading of "MFA required".
+            logger.warning("SECURITY: login blocked, MFA required but not enrolled username=%s", username)
+            raise HTTPException(
+                status_code=403,
+                detail="Multi-factor authentication is required but not yet set up for this account.",
+            )
+        if not auth_service.verify_totp(user.mfa_secret, payload.totp):
+            _record_failure(keys)
+            logger.warning("SECURITY: login failed (bad TOTP) username=%s client_ip=%s", username, client_ip)
+            raise HTTPException(status_code=401, detail="Invalid authentication code.", headers={"X-MFA-Required": "1"})
+
+    _clear_failures(keys)
+    timeout = auth_service.session_timeout_minutes(policy)
+    token = await auth_service.create_session(
+        user.id,
+        timeout_minutes=timeout,
+        ip_address=client_ip,
+        user_agent=request.headers.get("user-agent"),
+    )
+    response.set_cookie(auth_service.SESSION_COOKIE, token, **_cookie_kwargs(timeout * 60))
+
+    async with SessionLocal() as session:
+        row = await session.get(AdminUser, user.id)
+        if row is not None:
+            row.last_login = datetime.now(timezone.utc)
+            await session.commit()
+
+    logger.info("Dashboard sign-in succeeded username=%s client_ip=%s", username, client_ip)
+    await _audit("auth.login", {"username": username, "clientIp": client_ip}, performed_by=username)
+    return {"status": "ok", "user": _public_user(user), "sessionTimeoutMinutes": timeout}
+
+
+@router.post("/auth/logout")
+async def auth_logout(request: Request, response: Response) -> dict:
+    token = request.cookies.get(auth_service.SESSION_COOKIE)
+    await auth_service.revoke_session(token)
+    response.delete_cookie(auth_service.SESSION_COOKIE, path="/")
+    user = getattr(request.state, "admin_user", None)
+    if user is not None:
+        await _audit("auth.logout", {"username": user.username}, performed_by=user.username)
+    return {"status": "ok"}
+
+
+@router.get("/auth/me")
+async def auth_me(request: Request) -> dict:
+    """Who the current request is authenticated as. Machine-token callers get
+    a synthetic principal so scripts can probe this endpoint too."""
+    user = getattr(request.state, "admin_user", None)
+    if user is not None:
+        return {"authenticated": True, "method": "session", "user": _public_user(user)}
+    return {
+        "authenticated": True,
+        "method": "token",
+        "user": {
+            "id": None,
+            "username": "service-token",
+            "role": getattr(request.state, "admin_role", "operator"),
+            "enabled": True,
+            "mfaEnabled": False,
+            "lastLogin": None,
+        },
+    }
+
+
+# ── Self-service credential management ────────────────────────────
+
+
+@router.post("/auth/password")
+async def change_password(payload: PasswordChangeRequest, request: Request) -> dict:
+    user = await _current_user(request)
+    if not auth_service.verify_password(payload.currentPassword, user.password_hash):
+        logger.warning("SECURITY: password change rejected (bad current password) username=%s", user.username)
+        raise HTTPException(status_code=401, detail="Current password is incorrect.")
+    if payload.newPassword == payload.currentPassword:
+        raise HTTPException(status_code=422, detail="New password must differ from the current one.")
+
+    # set_password revokes every session for the user, including this one, so
+    # the caller is signed out everywhere and must authenticate again.
+    await auth_service.set_password(user.id, payload.newPassword)
+    await _audit("auth.password_changed", {"username": user.username}, performed_by=user.username)
+    return {"status": "ok", "reauthRequired": True}
+
+
+@router.post("/auth/mfa/enroll")
+async def mfa_enroll(request: Request) -> dict:
+    """Generate a TOTP secret. It is stored immediately but stays inactive
+    until confirmed with a valid code, so a half-finished enrolment cannot lock
+    the account."""
+    user = await _current_user(request)
+    secret = auth_service.generate_totp_secret()
+    async with SessionLocal() as session:
+        row = await session.get(AdminUser, user.id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Account no longer exists.")
+        row.mfa_secret = secret
+        row.mfa_enabled = False
+        await session.commit()
+    return {
+        "secret": secret,
+        "otpauthUrl": auth_service.totp_provisioning_uri(secret, user.username),
+    }
+
+
+@router.post("/auth/mfa/activate")
+async def mfa_activate(payload: MfaActivateRequest, request: Request) -> dict:
+    user = await _current_user(request)
+    if not user.mfa_secret:
+        raise HTTPException(status_code=409, detail="Start enrolment before activating.")
+    if not auth_service.verify_totp(user.mfa_secret, payload.code):
+        raise HTTPException(status_code=401, detail="That code did not match. Check your device clock and try again.")
+    async with SessionLocal() as session:
+        row = await session.get(AdminUser, user.id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Account no longer exists.")
+        row.mfa_enabled = True
+        await session.commit()
+    await _audit("auth.mfa_enabled", {"username": user.username}, performed_by=user.username)
+    return {"status": "ok", "mfaEnabled": True}
+
+
+@router.post("/auth/mfa/disable")
+async def mfa_disable(request: Request) -> dict:
+    user = await _current_user(request)
+    policy = await auth_service.get_security_policy()
+    if policy.get("mfaEnabled", False):
+        raise HTTPException(
+            status_code=403,
+            detail="MFA is required by policy and cannot be disabled per account.",
+        )
+    async with SessionLocal() as session:
+        row = await session.get(AdminUser, user.id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Account no longer exists.")
+        row.mfa_enabled = False
+        row.mfa_secret = None
+        await session.commit()
+    await _audit("auth.mfa_disabled", {"username": user.username}, performed_by=user.username)
+    return {"status": "ok", "mfaEnabled": False}
+
+
+@router.get("/auth/sessions")
+async def list_sessions(request: Request) -> list[dict]:
+    """Active sessions for the signed-in account, so a user can spot a session
+    they do not recognise."""
+    user = await _current_user(request)
+    async with SessionLocal() as session:
+        rows = (
+            await session.execute(
+                select(AdminSession)
+                .where(AdminSession.user_id == user.id)
+                .order_by(AdminSession.last_seen_at.desc())
+            )
+        ).scalars().all()
+        current = request.cookies.get(auth_service.SESSION_COOKIE)
+        current_hash = auth_service._hash_token(current) if current else None
+        return [
+            {
+                "id": row.token_hash[:12],
+                "current": row.token_hash == current_hash,
+                "createdAt": row.created_at.isoformat() if row.created_at else None,
+                "lastSeenAt": row.last_seen_at.isoformat() if row.last_seen_at else None,
+                "expiresAt": row.expires_at.isoformat() if row.expires_at else None,
+                "ipAddress": row.ip_address,
+                "userAgent": row.user_agent,
+            }
+            for row in rows
+        ]
+
+
+@router.post("/auth/sessions/revoke-all")
+async def revoke_all_sessions(request: Request) -> dict:
+    user = await _current_user(request)
+    await auth_service.revoke_sessions_for_user(user.id)
+    await _audit("auth.sessions_revoked", {"username": user.username}, performed_by=user.username)
+    return {"status": "ok", "reauthRequired": True}

@@ -37,7 +37,7 @@ from middleware.rate_limit import RateLimitMiddleware  # noqa: E402
 from middleware.redaction import redact  # noqa: E402
 from middleware.request_logging import RequestLoggingMiddleware  # noqa: E402
 from middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
-from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, events, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog  # noqa: E402
+from routers import announce, audit, auth, backups, characters, chat_guard, config, dashboard, discord, economy, events, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog  # noqa: E402
 from services.announce_scheduler import AnnounceScheduler  # noqa: E402
 from services.announce_service import AnnounceService  # noqa: E402
 from services.backup_scheduler import BackupScheduler  # noqa: E402
@@ -346,6 +346,7 @@ _SECURE_API_DEPENDENCIES = [Depends(verify_admin_token)]
 
 # --- API v1 routes (canonical) ---
 _v1_router = APIRouter(prefix="/api/v1", dependencies=_SECURE_API_DEPENDENCIES)
+_v1_router.include_router(auth.router)
 _v1_router.include_router(status.router)
 _v1_router.include_router(dashboard.router)
 _v1_router.include_router(announce.router)
@@ -374,6 +375,7 @@ app.include_router(events.router, prefix="/api/v1")
 # --- Backward-compatible /api alias (mirrors v1) ---
 _legacy_router = APIRouter(prefix="/api", dependencies=_SECURE_API_DEPENDENCIES)
 for r in [
+    auth.router,
     status.router,
     dashboard.router,
     announce.router,

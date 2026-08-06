@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { MfaPanel } from '@/components/MfaPanel';
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
@@ -29,7 +30,7 @@ type SettingsData = Record<string, Record<string, unknown>>;
 
 interface SettingsClientProps {
   initialSettings: SettingsData;
-  initialAdmins: Array<{ id: number; username: string; role: string; enabled: boolean; createdAt: string | null; lastLogin: string | null }>;
+  initialAdmins: Array<{ id: number; username: string; role: string; enabled: boolean; hasPassword: boolean; mfaEnabled: boolean; createdAt: string | null; lastLogin: string | null }>;
 }
 
 export default function SettingsClient({ initialSettings, initialAdmins }: SettingsClientProps) {
@@ -39,6 +40,7 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
   const admins = useApi(() => apiClient.getAdmins(), { initialData: initialAdmins });
   const [saving, setSaving] = useState<string | null>(null);
   const [newAdmin, setNewAdmin] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
   const [newAdminRole, setNewAdminRole] = useState('operator');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,9 +113,14 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
   const handleAddAdmin = useCallback(async () => {
     const username = newAdmin.trim();
     if (!username) return;
+    if (newAdminPassword && newAdminPassword.length < 12) {
+      toast('Password must be at least 12 characters.', 'error');
+      return;
+    }
     try {
-      await apiClient.addAdmin(username, newAdminRole);
+      await apiClient.addAdmin(username, newAdminRole, newAdminPassword || undefined);
       setNewAdmin('');
+      setNewAdminPassword('');
       setNewAdminRole('operator');
       await admins.refetch();
       toast('Administrator added.', 'success');
@@ -121,7 +128,24 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
       const message = error instanceof Error ? error.message : 'Failed to add administrator.';
       toast(`Failed to add administrator: ${message}`, 'error');
     }
-  }, [newAdmin, newAdminRole, admins, toast]);
+  }, [newAdmin, newAdminPassword, newAdminRole, admins, toast]);
+
+  const handleSetAdminPassword = useCallback(async (adminId: number, username: string) => {
+    const password = window.prompt(`Set a new password for ${username} (at least 12 characters):`);
+    if (password === null) return;
+    if (password.length < 12) {
+      toast('Password must be at least 12 characters.', 'error');
+      return;
+    }
+    try {
+      await apiClient.setAdminPassword(adminId, password);
+      await admins.refetch();
+      toast(`Password set for ${username}. Their existing sessions were signed out.`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to set password.';
+      toast(`Failed to set password: ${message}`, 'error');
+    }
+  }, [admins, toast]);
 
   const confirmRemoveAdmin = useCallback((id: number) => {
     setPendingRemoveAdminId(id);
@@ -432,6 +456,7 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
               <Save className="mr-2 h-4 w-4" aria-hidden="true" /> {saving === 'security' ? 'Saving\u2026' : 'Save security'}
             </button>
           </form>
+          <MfaPanel />
         </section>
 
         {/* Integrations */}
@@ -562,8 +587,14 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
                     <p className="text-xs text-th-text-m">
                       <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${roleBadge}`}>{admin.role}</span>
                       {' '}&middot; {admin.enabled ? 'Active' : 'Disabled'}
+                      {admin.mfaEnabled ? ' \u00b7 MFA on' : ''}
                       {admin.lastLogin ? ` \u00b7 Last seen ${new Date(admin.lastLogin).toLocaleDateString()}` : ''}
                     </p>
+                    {!admin.hasPassword ? (
+                      <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                        No password set — this account cannot sign in yet.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -577,6 +608,13 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
                     <option value="editor">Editor</option>
                     <option value="operator">Operator</option>
                   </select>
+                  <button
+                    type="button"
+                    className="dune-button-muted text-xs"
+                    onClick={() => void handleSetAdminPassword(admin.id, admin.username)}
+                  >
+                    {admin.hasPassword ? 'Reset password' : 'Set password'}
+                  </button>
                   <button
                     type="button"
                     className="dune-button-muted text-xs"
@@ -619,6 +657,18 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
                 placeholder="Username"
                 value={newAdmin}
                 onChange={(e) => setNewAdmin(e.target.value)}
+              />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="newAdminPassword" className="block text-sm font-medium text-th-text-s">Password (optional)</label>
+              <input
+                id="newAdminPassword"
+                type="password"
+                autoComplete="new-password"
+                className="dune-input mt-1 w-full"
+                placeholder="Leave blank to create without sign-in"
+                value={newAdminPassword}
+                onChange={(e) => setNewAdminPassword(e.target.value)}
               />
             </div>
             <div>

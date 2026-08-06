@@ -50,6 +50,21 @@ _PENDING_MIGRATIONS: list[tuple[str, str, str]] = [
         "notify_resource",
         "ALTER TABLE discord_webhooks ADD COLUMN notify_resource BOOLEAN NOT NULL DEFAULT 1",
     ),
+    (
+        "admin_users",
+        "password_hash",
+        "ALTER TABLE admin_users ADD COLUMN password_hash VARCHAR(255)",
+    ),
+    (
+        "admin_users",
+        "mfa_secret",
+        "ALTER TABLE admin_users ADD COLUMN mfa_secret VARCHAR(64)",
+    ),
+    (
+        "admin_users",
+        "mfa_enabled",
+        "ALTER TABLE admin_users ADD COLUMN mfa_enabled BOOLEAN NOT NULL DEFAULT 0",
+    ),
 ]
 
 

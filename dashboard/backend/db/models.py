@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Float, Index, String, Text
+from sqlalchemy import JSON, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -128,6 +128,28 @@ class AdminUser(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     enabled: Mapped[bool] = mapped_column(default=True)
+    # Nullable: rows created before sign-in existed have no credentials, and an
+    # account without a password simply cannot log in (it is a directory entry
+    # only). See services/auth_service.has_password_users.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    mfa_enabled: Mapped[bool] = mapped_column(default=False)
+
+
+class AdminSession(Base):
+    """A signed-in browser session. The primary key is the SHA-256 of the
+    opaque cookie token, never the token itself, so a database disclosure does
+    not hand an attacker live sessions."""
+
+    __tablename__ = "admin_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer(), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class WatchdogCrash(Base):

@@ -82,6 +82,17 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      // A session that lapses while the tab is open would otherwise leave the
+      // dashboard silently broken: every request fails and nothing explains
+      // why. Send the user to sign in again, preserving where they were.
+      if (response.status === 401 && typeof window !== 'undefined') {
+        const { pathname, search } = window.location;
+        if (pathname !== '/login') {
+          const next = encodeURIComponent(`${pathname}${search}`);
+          window.location.assign(pathname === '/' ? '/login' : `/login?next=${next}`);
+        }
+      }
+
       let message = `Request failed with status ${response.status}`;
       try {
         const text = await response.text();
@@ -577,13 +588,42 @@ export class ApiClient {
   }
 
   getAdmins() {
-    return this.request<Array<{ id: number; username: string; role: string; enabled: boolean; createdAt: string | null; lastLogin: string | null }>>('/settings/admins');
+    return this.request<Array<{ id: number; username: string; role: string; enabled: boolean; hasPassword: boolean; mfaEnabled: boolean; createdAt: string | null; lastLogin: string | null }>>('/settings/admins');
   }
 
-  addAdmin(username: string, role?: string) {
-    return this.request<{ id: number; username: string; role: string; enabled: boolean } | { error: string }>('/settings/admins', {
+  addAdmin(username: string, role?: string, password?: string) {
+    return this.request<{ id: number; username: string; role: string; enabled: boolean; hasPassword: boolean } | { error: string }>('/settings/admins', {
       method: 'POST',
-      body: JSON.stringify({ username, role }),
+      body: JSON.stringify({ username, role, password: password || undefined }),
+    });
+  }
+
+  setAdminPassword(adminId: number, password: string) {
+    return this.request<{ status: string; id: number; username: string }>(`/settings/admins/${adminId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    });
+  }
+
+  enrollMfa() {
+    return this.request<{ secret: string; otpauthUrl: string }>('/auth/mfa/enroll', { method: 'POST' });
+  }
+
+  activateMfa(code: string) {
+    return this.request<{ status: string; mfaEnabled: boolean }>('/auth/mfa/activate', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  disableMfa() {
+    return this.request<{ status: string; mfaEnabled: boolean }>('/auth/mfa/disable', { method: 'POST' });
+  }
+
+  changeOwnPassword(currentPassword: string, newPassword: string) {
+    return this.request<{ status: string; reauthRequired: boolean }>('/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
     });
   }
 

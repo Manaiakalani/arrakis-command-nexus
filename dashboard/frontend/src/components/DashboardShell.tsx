@@ -4,6 +4,7 @@ import { Menu, Signal } from 'lucide-react';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Sidebar } from '@/components/Sidebar';
+import { SessionMenu } from '@/components/SessionMenu';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -96,6 +97,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-3">
+                <SessionMenu />
                 <ThemeToggle />
                 <div className="glass-panel hidden min-w-[220px] items-center justify-between px-4 py-3 sm:flex">
                   <div>

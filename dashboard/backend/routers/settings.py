@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from db.database import SessionLocal
 from db.models import AdminUser, DashboardSetting
+from services import auth_service
 from services.update_service import get_update_service
 
 router = APIRouter(tags=["settings"])
@@ -35,6 +36,15 @@ class AddAdminRequest(BaseModel):
 
     username: str = Field(min_length=1)
     role: str = "admin"
+    # Optional: an account without a password is a directory entry that cannot
+    # sign in, which is how every pre-existing row behaves.
+    password: str | None = Field(default=None, min_length=12, max_length=1024)
+
+
+class SetAdminPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(min_length=12, max_length=1024)
 
 
 class UpdateAdminRequest(BaseModel):
@@ -58,11 +68,7 @@ DEFAULTS: dict[str, dict] = {
         "motd": "",
         "timezone": "UTC",
     },
-    "security": {
-        "sessionTimeoutMinutes": 60,
-        "mfaEnabled": False,
-        "ipAllowlist": [],
-    },
+    "security": dict(auth_service.SECURITY_DEFAULTS),
     "integrations": {
         "grafanaUrl": "",
         "prometheusUrl": "",
@@ -79,6 +85,67 @@ DEFAULTS: dict[str, dict] = {
 
 # Keys that must never be exposed via the generic settings catch-all or import
 _PROTECTED_KEYS = frozenset({"steam_account", "server_password_stored"})
+
+# Values inside otherwise-readable sections that are credentials in their own
+# right. Viewers and editors get a placeholder instead; only operators see them.
+# Webhook URLs belong here because the endpoint path is routinely the secret —
+# Slack, Discord and Teams all embed the bearer material directly in the URL.
+_SECRET_SETTING_FIELDS: dict[str, frozenset[str]] = {
+    "integrations": frozenset({"uptimeKumaPushToken", "externalWebhooks"}),
+}
+_REDACTED = "__redacted__"
+
+
+def _redact_value(value):
+    """Placeholder that preserves the field's shape.
+
+    Lists become a same-length list of placeholders so a client can still tell
+    how many entries are configured without learning what they are.
+    """
+    if isinstance(value, list):
+        return [_REDACTED] * len(value)
+    return _REDACTED
+
+
+def _is_redacted(value) -> bool:
+    if isinstance(value, list):
+        return bool(value) and all(item == _REDACTED for item in value)
+    return value == _REDACTED
+
+
+def _is_operator(request: Request) -> bool:
+    return str(getattr(request.state, "admin_role", "operator")).lower() in {"operator", "admin"}
+
+
+def _redact_for_role(request: Request, key: str, value: dict) -> dict:
+    """Blank out credential fields unless the caller is an operator.
+
+    Read access is not role-gated (viewers are meant to be able to look at the
+    dashboard), but "look at the dashboard" should not include reading the
+    Uptime Kuma push token or the notification webhook URLs out of the settings
+    API.
+    """
+    secrets_in_section = _SECRET_SETTING_FIELDS.get(key)
+    if not secrets_in_section or _is_operator(request):
+        return value
+    return {k: (_redact_value(v) if k in secrets_in_section and v else v) for k, v in value.items()}
+
+
+async def _restore_redacted(key: str, incoming: dict) -> dict:
+    """Undo :func:`_redact_for_role` on the way back in.
+
+    A client that only ever saw the placeholder must not be able to overwrite
+    the real credential with it — nor should a round-trip save silently wipe
+    the token for an operator whose form was populated from a redacted read.
+    """
+    secrets_in_section = _SECRET_SETTING_FIELDS.get(key)
+    if not secrets_in_section or not any(_is_redacted(incoming.get(f)) for f in secrets_in_section):
+        return incoming
+    current = await _get_setting(key)
+    return {
+        k: (current.get(k, DEFAULTS.get(key, {}).get(k, "")) if k in secrets_in_section and _is_redacted(v) else v)
+        for k, v in incoming.items()
+    }
 
 
 async def _get_setting(key: str) -> dict:
@@ -100,26 +167,31 @@ async def _put_setting(key: str, value: dict) -> dict:
             row = DashboardSetting(key=key, value=value, updated_at=datetime.now(timezone.utc))
             session.add(row)
         await session.commit()
-        return value
+    if key == "security":
+        # Session timeout, MFA policy and the IP allowlist are read by the auth
+        # middleware through a short-lived cache. Drop it so a save applies now
+        # rather than up to the TTL later.
+        auth_service.invalidate_security_policy()
+    return value
 
 
 # ── General settings ──────────────────────────────────────────────
 
 @router.get("/settings")
-async def get_all_settings() -> dict:
+async def get_all_settings(request: Request) -> dict:
     result = {}
     for key in DEFAULTS:
-        result[key] = await _get_setting(key)
+        result[key] = _redact_for_role(request, key, await _get_setting(key))
     return result
 
 
 # ── Import / Export (must come before {section} catch-all) ────────
 
 @router.get("/settings/export/all")
-async def export_settings() -> dict:
+async def export_settings(request: Request) -> dict:
     result = {}
     for key in DEFAULTS:
-        result[key] = await _get_setting(key)
+        result[key] = _redact_for_role(request, key, await _get_setting(key))
     return {"version": 1, "exportedAt": datetime.now(timezone.utc).isoformat(), "settings": result}
 
 
@@ -131,7 +203,10 @@ async def import_settings(payload: SettingsImportRequest) -> dict:
         if key in _PROTECTED_KEYS:
             continue
         if isinstance(value, dict):
-            await _put_setting(key, value)
+            # An export taken by a non-operator carries placeholders where the
+            # credentials were. Importing it verbatim would overwrite the real
+            # values with the literal "__redacted__".
+            await _put_setting(key, await _restore_redacted(key, value))
             imported.append(key)
     return {"status": "ok", "imported": imported}
 
@@ -148,6 +223,10 @@ async def list_admins() -> list[dict]:
                 "username": u.username,
                 "role": u.role,
                 "enabled": u.enabled,
+                # Surfaced so the UI can flag directory-only rows that cannot
+                # actually sign in yet.
+                "hasPassword": bool(u.password_hash),
+                "mfaEnabled": bool(u.mfa_enabled),
                 "createdAt": u.created_at.isoformat() if u.created_at else None,
                 "lastLogin": u.last_login.isoformat() if u.last_login else None,
             }
@@ -164,9 +243,32 @@ async def add_admin(payload: AddAdminRequest) -> dict:
         if existing:
             raise HTTPException(status_code=409, detail="Username already exists")
         user = AdminUser(username=username, role=role)
+        if payload.password:
+            user.password_hash = auth_service.hash_password(payload.password)
         session.add(user)
         await session.commit()
-        return {"id": user.id, "username": user.username, "role": user.role, "enabled": user.enabled}
+        auth_service.invalidate_signin_cache()
+        return {
+            "id": user.id,
+            "username": user.username,
+            "role": user.role,
+            "enabled": user.enabled,
+            "hasPassword": bool(user.password_hash),
+        }
+
+
+@router.put("/settings/admins/{admin_id}/password")
+async def set_admin_password(admin_id: int, payload: SetAdminPasswordRequest) -> dict:
+    """Set or reset an account's password. Revokes that account's sessions so a
+    reset immediately kicks out anyone already signed in as them."""
+    async with SessionLocal() as session:
+        user = await session.get(AdminUser, admin_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        username = user.username
+    await auth_service.set_password(admin_id, payload.password)
+    auth_service.invalidate_signin_cache()
+    return {"status": "ok", "id": admin_id, "username": username}
 
 
 @router.delete("/settings/admins/{admin_id}")
@@ -175,9 +277,29 @@ async def remove_admin(admin_id: int) -> dict:
         user = await session.get(AdminUser, admin_id)
         if not user:
             raise HTTPException(status_code=404, detail="Admin not found")
+        username = user.username
+        if user.password_hash:
+            remaining = (
+                await session.execute(
+                    select(AdminUser.id)
+                    .where(AdminUser.password_hash.is_not(None))
+                    .where(AdminUser.enabled.is_(True))
+                    .where(AdminUser.id != admin_id)
+                    .limit(1)
+                )
+            ).first()
+            if remaining is None:
+                # Deleting the last account that can sign in would silently drop
+                # the dashboard back to shared-token access.
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot remove the only account that can sign in. Create another first.",
+                )
         await session.delete(user)
         await session.commit()
-        return {"status": "ok", "removed": user.username}
+    await auth_service.revoke_sessions_for_user(admin_id)
+    auth_service.invalidate_signin_cache()
+    return {"status": "ok", "removed": username}
 
 
 @router.put("/settings/admins/{admin_id}")
@@ -186,12 +308,41 @@ async def update_admin(admin_id: int, payload: UpdateAdminRequest) -> dict:
         user = await session.get(AdminUser, admin_id)
         if not user:
             raise HTTPException(status_code=404, detail="Admin not found")
+        role_changed = payload.role is not None and payload.role != user.role
+        being_disabled = payload.enabled is False and user.enabled
+        if being_disabled and user.password_hash:
+            remaining = (
+                await session.execute(
+                    select(AdminUser.id)
+                    .where(AdminUser.password_hash.is_not(None))
+                    .where(AdminUser.enabled.is_(True))
+                    .where(AdminUser.id != admin_id)
+                    .limit(1)
+                )
+            ).first()
+            if remaining is None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot disable the only account that can sign in.",
+                )
         if payload.role is not None:
             user.role = payload.role
         if payload.enabled is not None:
             user.enabled = payload.enabled
         await session.commit()
-        return {"id": user.id, "username": user.username, "role": user.role, "enabled": user.enabled}
+        result = {
+            "id": user.id,
+            "username": user.username,
+            "role": user.role,
+            "enabled": user.enabled,
+            "hasPassword": bool(user.password_hash),
+        }
+    # A demotion or a disable must take effect now, not whenever the existing
+    # session happens to expire.
+    if role_changed or being_disabled:
+        await auth_service.revoke_sessions_for_user(admin_id)
+    auth_service.invalidate_signin_cache()
+    return result
 
 
 # ── Steam account settings (must come before {section} catch-all) ─
@@ -239,15 +390,16 @@ async def clear_steam_account_settings():
 
 
 @router.get("/settings/{section}")
-async def get_setting_section(section: str) -> dict:
+async def get_setting_section(section: str, request: Request) -> dict:
     if section in _PROTECTED_KEYS:
         raise HTTPException(status_code=404, detail="Not found")
-    return await _get_setting(section)
+    return _redact_for_role(request, section, await _get_setting(section))
 
 
 @router.put("/settings/{section}")
 async def update_setting_section(section: str, body: dict[str, Any]) -> dict:
     if section in _PROTECTED_KEYS:
         raise HTTPException(status_code=404, detail="Not found")
+    body = await _restore_redacted(section, body)
     saved = await _put_setting(section, body)
     return saved

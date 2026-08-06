@@ -11,6 +11,8 @@ interface AdminEntry {
   username: string;
   role: string;
   enabled: boolean;
+  hasPassword: boolean;
+  mfaEnabled: boolean;
   createdAt: string | null;
   lastLogin: string | null;
 }

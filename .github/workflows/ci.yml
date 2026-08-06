@@ -39,6 +39,36 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
+      # The Next middleware and the SSE proxy both hold the shared admin token.
+      # If either stops checking whether the caller has a real session, browsing
+      # to the dashboard silently becomes full operator access again (#52).
+      - name: Assert the machine token stays behind a session check
+        run: |
+          for f in src/middleware.ts src/app/api/events/stream/route.ts; do
+            grep -q 'auth/session-check' "$f" \
+              || { echo "$f no longer validates the caller's session with the backend"; exit 1; }
+          done
+          grep -q 'if (!authEnabled)' src/middleware.ts \
+            || { echo 'src/middleware.ts must only inject DUNE_ADMIN_TOKEN while sign-in is unconfigured'; exit 1; }
+          # A failed session check must never be read as "sign-in is off": that is
+          # a silent grant of DUNE_ADMIN_TOKEN to an anonymous caller, and the
+          # sawAuthEnabled latch is per-worker so a fresh worker has no memory.
+          grep -q 'return { authEnabled: true, authenticated: false };' src/middleware.ts \
+            || { echo 'src/middleware.ts must fail closed when the session check errors'; exit 1; }
+          grep -q 'return false;' src/app/api/events/stream/route.ts \
+            || { echo 'the SSE proxy must fail closed when the session check errors'; exit 1; }
+          # Server rendering must fetch as the signed-in caller. Fetching with the
+          # machine token makes the backend answer as an operator, which bakes the
+          # credentials that redaction hides into a viewer's HTML.
+          grep -q 'Cookie: cookie' src/lib/server-api.ts \
+            || { echo 'serverFetch must forward the session cookie so role-based redaction applies'; exit 1; }
+          # A cached "sign-in is off" answer only ever speeds up cookieless
+          # requests, which are exactly the ones that receive the machine token.
+          if grep -q 'cachedDisabledAt' src/middleware.ts; then
+            echo 'src/middleware.ts must not cache the sign-in-disabled answer'
+            exit 1
+          fi
+          echo 'frontend auth gating ok'
 
   lint-backend:
     runs-on: ubuntu-latest
@@ -67,6 +97,87 @@ jobs:
           cd /app
           python -c "import asyncio, pathlib; from routers.system import get_version; got = asyncio.run(get_version(None)); want = pathlib.Path('/workspace/compose/VERSION').read_text().strip(); assert got['version'] == want, f'expected {want!r}, got {got!r}'; print('version endpoint ->', got)"
           python -c "import main; h = main.app.exception_handlers; assert LookupError not in h and KeyError not in h, 'a blanket LookupError/KeyError handler is registered; it reports accidental bugs to clients as 404 and hides them from the logs'; print('exception handler config ok')"
+        env:
+          DUNE_ADMIN_TOKEN: ci-smoke-check
+
+      # Dashboard sign-in (#52/#53). Role enforcement used to be a substring
+      # test, which silently failed to cover routes such as /restart/now and
+      # /system/prepare-shutdown, letting the editor role restart the server.
+      # Pin the classification and the router wiring so that cannot regress.
+      - name: Assert dashboard auth wiring
+        run: |
+          cd /app
+          python - <<'PY'
+          from middleware.auth import (
+              PUBLIC_AUTH_SUFFIXES,
+              _ALLOWLIST_EXEMPT_SUFFIXES,
+              _SELF_SERVICE_AUTH_SUFFIXES,
+              is_operator_path,
+          )
+          import main
+          from routers import auth as auth_router
+          from routers.settings import _SECRET_SETTING_FIELDS
+
+          operator_only = [
+              "/api/v1/backups", "/api/v1/backups/7/restore", "/api/v1/updates/trigger",
+              "/api/v1/watchdog/restart/dune-server", "/api/v1/system/prepare-shutdown",
+              "/api/v1/system/resources", "/api/v1/restart/now", "/api/v1/restart/schedule",
+              "/api/v1/settings/admins", "/api/v1/settings/admins/3/password",
+              "/api/v1/settings/security", "/api/v1/settings/integrations",
+              "/api/v1/settings/steam-account", "/api/v1/settings/import/all",
+              "/api/v1/services/dune-server/restart", "/api/v1/server/restart",
+              "/api/v1/maps/deep-desert/start", "/api/v1/maps/deep-desert/backup",
+          ]
+          editor_allowed = [
+              "/api/v1/announce", "/api/v1/players/kick", "/api/v1/config/ServerSettings.ini",
+              "/api/v1/characters/12/grant-item", "/api/v1/economy/alerts",
+              "/api/v1/settings/general", "/api/v1/maps/deep-desert/teleport-vehicle",
+          ]
+          for path in operator_only:
+              assert is_operator_path(path), f"{path} must require the operator role"
+          for path in editor_allowed:
+              assert not is_operator_path(path), f"{path} must stay available to editors"
+
+          assert not any("setup" in s for s in PUBLIC_AUTH_SUFFIXES), \
+              "/auth/setup must not be public: bootstrapping still requires the shared admin token"
+
+          # The frontend calls session-check server-side. If the IP allowlist could
+          # block it, the frontend would lose its only way to tell "sign-in is off"
+          # from "the check failed" -- and fall back to injecting the admin token.
+          assert _ALLOWLIST_EXEMPT_SUFFIXES == ("/auth/session-check",), \
+              "only /auth/session-check may bypass the IP allowlist"
+
+          # A viewer must always be able to end their own session and rotate a
+          # compromised password, even though those are POSTs.
+          for required in ("/auth/logout", "/auth/password", "/auth/sessions/revoke-all"):
+              assert required in _SELF_SERVICE_AUTH_SUFFIXES, \
+                  f"{required} must stay usable by every signed-in role"
+          assert not any(
+              s.startswith("/auth/") and "mfa" not in s and s not in
+              ("/auth/logout", "/auth/password", "/auth/sessions/revoke-all")
+              for s in _SELF_SERVICE_AUTH_SUFFIXES
+          ), "self-service exemption must not cover privileged endpoints"
+
+          # Webhook URLs routinely embed the bearer secret in the path.
+          for field in ("uptimeKumaPushToken", "externalWebhooks"):
+              assert field in _SECRET_SETTING_FIELDS["integrations"], \
+                  f"integrations.{field} must be redacted for non-operators"
+
+          # Login runs a deliberate memory-hard hash per attempt, including for
+          # unknown usernames, so the endpoint needs a bound that per-username
+          # lockout cannot provide. It must bound *parallel* work rather than
+          # spend a fixed budget of attempts: a budget is itself an availability
+          # DoS, because exhausting it turns away legitimate users too.
+          assert auth_router._MAX_CONCURRENT_LOGINS > 0 and auth_router._MAX_QUEUED_LOGINS > 0, \
+              "login must bound concurrent password hashing"
+          assert not hasattr(auth_router, "_GLOBAL_MAX_ATTEMPTS"), \
+              "a fixed global attempt budget lets one flooder lock out every user"
+
+          routes = {r.path for r in main.app.routes}
+          for required in ("/api/v1/auth/login", "/api/auth/login", "/api/v1/auth/session-check"):
+              assert required in routes, f"{required} is not mounted"
+          print("auth wiring ok")
+          PY
         env:
           DUNE_ADMIN_TOKEN: ci-smoke-check
 
