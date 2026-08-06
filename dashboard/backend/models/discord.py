@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, HttpUrl
 
 class DiscordWebhookCreate(BaseModel):
     url: HttpUrl
+    name: str = "Operations Feed"
+    enabled: bool = True
     notify_start: bool = True
     notify_stop: bool = True
     notify_crash: bool = True

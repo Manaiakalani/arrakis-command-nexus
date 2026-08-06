@@ -13,6 +13,29 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 
+def _is_newer_build(latest: Optional[str], baseline: Optional[str]) -> bool:
+    """Return True only when Steam's build is strictly newer than the baseline.
+
+    Steam depot build IDs are monotonically increasing integers, so a plain
+    inequality would also report "update available" when Steam reports an older
+    build (a depot rollback, or a transient parse producing a stale value).
+    Fall back to inequality only when either value is non-numeric.
+    """
+    if not latest:
+        return False
+    if not baseline:
+        return True
+    if latest.isdigit() and baseline.isdigit():
+        return int(latest) > int(baseline)
+    logger.warning(
+        "Cannot compare non-numeric Steam build IDs (latest=%r, baseline=%r); "
+        "reporting no update rather than risking a spurious auto-update.",
+        latest,
+        baseline,
+    )
+    return False
+
+
 class UpdateService:
     """Manages server update checking and execution."""
 
@@ -47,6 +70,9 @@ class UpdateService:
                 self._latest_steam_build = data.get("latest_steam_build") or data.get("last_available_build")
                 self._baseline_steam_build = data.get("baseline_steam_build") or data.get("last_installed_build")
                 self._update_available = data.get("update_available", False)
+                saved_auto_update = data.get("auto_update_enabled")
+                if isinstance(saved_auto_update, bool):
+                    self.auto_update_enabled = saved_auto_update
             except Exception as e:
                 logger.warning(f"Failed to load update state: {e}")
 
@@ -243,7 +269,17 @@ class UpdateService:
             values[key.strip()] = value.strip().strip('"').strip("'")
         return values
 
-    def _persist_state(self):
+    def set_auto_update_enabled(self, enabled: bool) -> None:
+        """Toggle auto-update and persist it, so the choice survives a restart."""
+        previous = self.auto_update_enabled
+        self.auto_update_enabled = enabled
+        os.environ["UPDATE_AUTO_UPDATE"] = "true" if enabled else "false"
+        if not self._persist_state():
+            self.auto_update_enabled = previous
+            os.environ["UPDATE_AUTO_UPDATE"] = "true" if previous else "false"
+            raise OSError("Failed to persist the auto-update setting to disk")
+
+    def _persist_state(self) -> bool:
         """Persist check state to disk."""
         try:
             data = {
@@ -251,10 +287,13 @@ class UpdateService:
                 "latest_steam_build": self._latest_steam_build,
                 "baseline_steam_build": self._baseline_steam_build,
                 "update_available": self._update_available,
+                "auto_update_enabled": self.auto_update_enabled,
             }
             self.state_file.write_text(json.dumps(data, indent=2))
+            return True
         except Exception as e:
             logger.error(f"Failed to persist update state: {e}")
+            return False
 
     async def check_for_updates(self) -> dict[str, Any]:
         """
@@ -310,7 +349,7 @@ class UpdateService:
                     self._baseline_steam_build = installed
 
             # An update is available only when Steam has a newer build than our baseline
-            self._update_available = (latest_build != self._baseline_steam_build)
+            self._update_available = _is_newer_build(latest_build, self._baseline_steam_build)
 
             self._persist_state()
 

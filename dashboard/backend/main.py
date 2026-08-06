@@ -14,7 +14,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import FileResponse, JSONResponse
 
-from db.database import dispose_db, init_db
+# Load the operator's .env *before* importing any local module. Several of them
+# read configuration at import time (services/watchdog_service.py defines its
+# WATCHDOG_* thresholds at module scope, db/database.py resolves DATABASE_URL,
+# routers/settings.py resolves the world name), so loading later would silently
+# ignore those keys.
+#
+# The deployment mounts the operator's .env at /workspace/.env, which is outside
+# this app's working directory (/app), so python-dotenv's default upward search
+# would never find it. Values already present in the environment - notably the
+# ones docker-compose passes explicitly - always take precedence, because
+# load_dotenv() does not override by default.
+_ENV_FILE = os.getenv("DUNE_ENV_FILE", "/workspace/.env")
+if os.path.isfile(_ENV_FILE):
+    load_dotenv(_ENV_FILE)
+else:
+    load_dotenv()
+
+from db.database import dispose_db, init_db  # noqa: E402
 from middleware.auth import AdminTokenMiddleware, verify_admin_token
 from middleware.rate_limit import RateLimitMiddleware
 from middleware.redaction import redact
@@ -37,9 +54,7 @@ from services.postgres_service import PostgresService
 from services.restart_scheduler import RestartScheduler
 from services.update_scheduler import get_update_scheduler
 from services.watchdog_service import WatchdogService
-from services.event_bus import ChangeDetector, EventBus
-
-load_dotenv()
+from services.event_bus import ChangeDetector, EventBus  # noqa: E402
 
 
 class RedactingFilter(logging.Filter):

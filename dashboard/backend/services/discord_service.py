@@ -18,10 +18,16 @@ from models.discord import DiscordWebhookCreate, DiscordWebhookUpdate
 
 logger = logging.getLogger(__name__)
 
+# Upper bound on pending Discord deliveries. A wedged or rate-limited endpoint
+# would otherwise let the queue grow without limit, since producers (watchdog
+# polls, player join/leave events, restart warnings) never block on delivery.
+_QUEUE_MAXSIZE = 1000
+
 
 class DiscordService:
     def __init__(self) -> None:
-        self.queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=_QUEUE_MAXSIZE)
+        self._dropped_jobs = 0
         self.client = httpx.AsyncClient(timeout=10.0)
         self._worker: asyncio.Task[None] | None = None
         # In-memory delivery stats keyed by webhook id. Survives until the
@@ -91,8 +97,9 @@ class DiscordService:
 
     async def send_test(self, session: AsyncSession, webhook_id: int | None, message: str) -> int:
         webhooks = await self._select_targets(session, webhook_id=webhook_id)
+        queued = 0
         for webhook in webhooks:
-            await self.queue.put(
+            if self._enqueue_job(
                 {
                     "webhook_id": webhook.id,
                     "event": "test",
@@ -100,13 +107,15 @@ class DiscordService:
                     "url": webhook.url,
                     "payload": self._build_payload("test", "Dune Dashboard Test", message),
                 }
-            )
-        return len(webhooks)
+            ):
+                queued += 1
+        return queued
 
     async def announce(self, session: AsyncSession, title: str, message: str, event_type: str) -> int:
         webhooks = await self._select_targets(session, event_type=event_type)
+        queued = 0
         for webhook in webhooks:
-            await self.queue.put(
+            if self._enqueue_job(
                 {
                     "webhook_id": webhook.id,
                     "event": event_type,
@@ -114,8 +123,9 @@ class DiscordService:
                     "url": webhook.url,
                     "payload": self._build_payload(event_type, title, message),
                 }
-            )
-        return len(webhooks)
+            ):
+                queued += 1
+        return queued
 
     async def queue_event(self, session: AsyncSession, event_type: str, title: str, message: str) -> int:
         return await self.announce(session, title, message, event_type)
@@ -124,8 +134,9 @@ class DiscordService:
         async with SessionLocal() as session:
             webhooks = await self._select_targets(session, event_type=event_type)
             rendered_title = title or f"Dune Dashboard {event_type.title()}"
+            queued = 0
             for webhook in webhooks:
-                await self.queue.put(
+                if self._enqueue_job(
                     {
                         "webhook_id": webhook.id,
                         "event": event_type,
@@ -133,8 +144,28 @@ class DiscordService:
                         "url": webhook.url,
                         "payload": self._build_payload(event_type, rendered_title, message),
                     }
+                ):
+                    queued += 1
+            return queued
+
+    def _enqueue_job(self, job: dict[str, Any]) -> bool:
+        """Queue a delivery, dropping it (loudly) if the backlog is saturated."""
+        try:
+            self.queue.put_nowait(job)
+        except asyncio.QueueFull:
+            self._dropped_jobs += 1
+            if self._dropped_jobs == 1 or self._dropped_jobs % 100 == 0:
+                logger.warning(
+                    "Discord delivery queue is full (%d pending); dropped %d notification(s), "
+                    "most recently event=%s webhook_id=%s",
+                    _QUEUE_MAXSIZE,
+                    self._dropped_jobs,
+                    job.get("event"),
+                    job.get("webhook_id"),
                 )
-            return len(webhooks)
+            self._record(job, "dropped", healthy=None, detail="Discord delivery queue full")
+            return False
+        return True
 
     async def _select_targets(
         self,
@@ -187,7 +218,7 @@ class DiscordService:
         job: dict[str, Any],
         status: str,
         *,
-        healthy: bool,
+        healthy: bool | None,
         detail: str | None = None,
     ) -> None:
         """Record a delivery attempt in the in-memory stats store."""
@@ -198,7 +229,8 @@ class DiscordService:
         stats = self._stats.setdefault(
             webhook_id, {"last_triggered_at": None, "healthy": True, "recent": []}
         )
-        stats["healthy"] = healthy
+        if healthy is not None:
+            stats["healthy"] = healthy
         if status == "sent":
             stats["last_triggered_at"] = now.isoformat()
         event = job.get("event", "event")
