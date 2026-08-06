@@ -338,11 +338,15 @@ async def get_version(request: Request) -> dict[str, str]:
     # DUNE_IMAGE_TAG is the Funcom game build, not the release, so it is only a
     # last resort.
     version = os.getenv("DUNE_IMAGE_TAG", "unknown")
-    for candidate in [
-        Path("/app/VERSION"),
-        Path("/workspace/compose/VERSION"),
-        Path(__file__).resolve().parents[3] / "VERSION",
-    ]:
+    candidates = [Path("/app/VERSION"), Path("/workspace/compose/VERSION")]
+    # In a source checkout this module is dashboard/backend/routers/system.py, so
+    # parents[3] is the repository root. In the image it is /app/routers/system.py,
+    # which only has three parents -- indexing it unguarded raised IndexError while
+    # the candidate list was being built, before any path was ever tested.
+    module_path = Path(__file__).resolve()
+    if len(module_path.parents) > 3:
+        candidates.append(module_path.parents[3] / "VERSION")
+    for candidate in candidates:
         if candidate.exists():
             version = candidate.read_text(encoding="utf-8").strip() or version
             break
