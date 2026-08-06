@@ -66,6 +66,9 @@ jobs:
           sudo cp "$GITHUB_WORKSPACE/VERSION" /workspace/compose/VERSION
           cd /app
           python -c "import asyncio, pathlib; from routers.system import get_version; got = asyncio.run(get_version(None)); want = pathlib.Path('/workspace/compose/VERSION').read_text().strip(); assert got['version'] == want, f'expected {want!r}, got {got!r}'; print('version endpoint ->', got)"
+          python -c "import main; h = main.app.exception_handlers; assert LookupError not in h and KeyError not in h, 'a blanket LookupError/KeyError handler is registered; it reports accidental bugs to clients as 404 and hides them from the logs'; print('exception handler config ok')"
+        env:
+          DUNE_ADMIN_TOKEN: ci-smoke-check
 
   e2e-check:
     runs-on: ubuntu-latest

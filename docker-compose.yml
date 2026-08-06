@@ -716,6 +716,7 @@ services:
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
       DUNE_ADMIN_TOKEN: ${DUNE_ADMIN_TOKEN}
+      DUNE_DASHBOARD_API_URL: ${DUNE_DASHBOARD_API_URL:-http://dashboard-api:8080}
     depends_on:
       dashboard-api:
         condition: service_healthy

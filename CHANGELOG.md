@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- An accidental `KeyError` or `IndexError` anywhere in the API was reported to clients as `404 NOT_FOUND`, because both subclass `LookupError` and a blanket `LookupError` handler mapped to 404. That handler has been removed: every deliberate not-found signal in the codebase is already converted to an `HTTPException(404)` at its call site (the character, Discord, watchdog and announcement routers) or swallowed as internal control flow, so it was catching nothing intentional and only masking genuine bugs. Accidental errors now reach the generic handler - a logged `500` with a fixed, non-leaking message - and unhandled `ValueError` is logged too (#58)
+- The audit trail page sent an `Authorization: Bearer` header built from `localStorage['admin_token']`, a key nothing ever sets, to a backend that does not read that header. It also routed through `NEXT_PUBLIC_API_URL`, an undocumented variable that would have bypassed server-side token injection had it been set. The page now uses same-origin `/api/v1/audit*` requests like the rest of the dashboard (#55)
+
+### Changed
+
+- `NEXT_PUBLIC_API_BASE_URL` has been removed. Because it was a `NEXT_PUBLIC_` variable it was read in the browser, so setting it made API calls skip the Next.js middleware that attaches the admin token - every request then failed authentication with nothing to indicate why. The token cannot be attached client-side instead, since anything the browser can read is in the bundle. Setting it now logs an explanatory warning and is otherwise ignored (#55)
+- The dashboard's proxy target is now configurable server-side via `DUNE_DASHBOARD_API_URL` (default `http://dashboard-api:8080`), replacing the hardcoded destination in `next.config.js`. This is the supported way to point the dashboard at an API on another host: requests still traverse the middleware, so authentication keeps working (#55)
+- The `lint-backend` CI smoke check now also asserts that no blanket `LookupError`/`KeyError` exception handler is registered, so the masking behaviour cannot be reintroduced
+
 ## [1.6.1] - 2026-08-06
 
 ### Fixed
