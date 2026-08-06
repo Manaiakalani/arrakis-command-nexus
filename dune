@@ -133,7 +133,10 @@ cmd_start() {
   # installed on this host.
   if command -v systemctl >/dev/null 2>&1 && systemctl cat dune-cpu-pin.service >/dev/null 2>&1; then
     log_info 'Re-applying CPU core affinity via dune-cpu-pin.service...'
-    sudo systemctl restart dune-cpu-pin.service 2>/dev/null || \
+    # --no-block: the unit pins cores for containers that are still starting,
+    # so a synchronous restart can sit waiting on them and stall `dune start`.
+    # Pinning is best-effort here anyway, hence the non-fatal warning below.
+    sudo systemctl restart --no-block dune-cpu-pin.service 2>/dev/null || \
       log_warn 'CPU pinning service restart failed (non-fatal). Run: sudo systemctl restart dune-cpu-pin.service'
   elif [[ -f "$PROJECT_ROOT/scripts/cpu-pin.sh" ]]; then
     # Checked for existence (-f), not executability (-x): this is invoked via
