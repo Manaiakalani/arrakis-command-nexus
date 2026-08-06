@@ -95,6 +95,16 @@ function formatCountdown(target?: string | null, now = Date.now()) {
   return parts.join(' ');
 }
 
+/** Isolated 1-second countdown so it doesn't re-render the entire page */
+function RestartCountdown({ targetTime }: { targetTime?: string | null }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return <p className="mt-2 text-lg font-semibold text-th-text">{formatCountdown(targetTime, now)}</p>;
+}
+
 function formatRestartTimeLocal(value: string) {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   if (!match) {
@@ -160,7 +170,6 @@ export default function SystemPage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceWarning, setMaintenanceWarning] = useState(5);
   const [activatingMaintenance, setActivatingMaintenance] = useState(false);
-  const [countdownNow, setCountdownNow] = useState(Date.now());
   const metrics = useApiSWR('api/system/metrics', () => apiClient.getSystemMetrics(), { refreshInterval: 10_000 });
   const history = useApiSWR(`api/system/history/${range}`, () => apiClient.getSystemHistory(range), { refreshInterval: 15_000, initialData: { range, points: [] } });
   const restartScheduleApi = useApiSWR('api/system/restart-schedule', () => apiClient.getRestartSchedule(), { refreshInterval: 15_000, initialData: DEFAULT_RESTART_SCHEDULE });
@@ -174,13 +183,7 @@ export default function SystemPage() {
     setRestartTimeInput(restartScheduleApi.data.restartTimeUtc ?? '');
   }, [restartScheduleApi.data]);
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => setCountdownNow(Date.now()), 1000);
-    return () => window.clearInterval(intervalId);
-  }, []);
-
   const warningSummary = useMemo(() => (schedule.warningMinutes.length > 0 ? schedule.warningMinutes.join(', ') : 'No warnings'), [schedule.warningMinutes]);
-  const nextRestartCountdown = useMemo(() => formatCountdown(schedule.nextRestartAt, countdownNow), [schedule.nextRestartAt, countdownNow]);
   const exportUrl = `/api/system/export?range=${encodeURIComponent(range)}&format=${encodeURIComponent(exportFormat)}${exportWidget !== 'all' ? `&widget=${encodeURIComponent(exportWidget)}` : ''}`;
 
   const isLoading = metrics.loading && !metrics.data;
@@ -583,7 +586,7 @@ export default function SystemPage() {
           </div>
           <div className="rounded-2xl border border-th-border/70 bg-th-surface-s/60 p-4 text-sm text-th-text-s">
             <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Countdown</p>
-            <p className="mt-2 text-lg font-semibold text-th-text">{nextRestartCountdown}</p>
+            <RestartCountdown targetTime={schedule.nextRestartAt} />
           </div>
         </div>
 

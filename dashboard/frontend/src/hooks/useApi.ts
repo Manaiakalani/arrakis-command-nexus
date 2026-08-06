@@ -12,15 +12,19 @@ interface InflightEntry {
 
 const inflight = new Map<string, InflightEntry>();
 
-function dedupedFetch<T>(key: string, fn: () => Promise<T>): Promise<T> {
+function dedupedFetch<T>(key: string, fn: () => Promise<T>, force = false): Promise<T> {
   const existing = inflight.get(key);
-  if (existing) {
+  if (existing && !force) {
     existing.subscribers++;
     return existing.promise as Promise<T>;
   }
 
   const promise = fn().finally(() => {
-    inflight.delete(key);
+    // Only delete if this is still the active entry (force may have replaced it)
+    const current = inflight.get(key);
+    if (current && current.promise === promise) {
+      inflight.delete(key);
+    }
   });
 
   inflight.set(key, { promise, subscribers: 1 });
@@ -101,11 +105,14 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     enabledRef.current = enabled;
   }, [enabled]);
 
-  useEffect(() => () => {
-    isMountedRef.current = false;
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-  const run = useCallback(async (rethrow = true) => {
+  const run = useCallback(async (rethrow = true, force = false) => {
     if (!enabledRef.current) {
       return undefined;
     }
@@ -115,7 +122,7 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
         setLoading(true);
       }
 
-      const next = await dedupedFetch(keyRef.current, () => fetcherRef.current());
+      const next = await dedupedFetch(keyRef.current, () => fetcherRef.current(), force);
       if (!isMountedRef.current) {
         return next;
       }
@@ -207,11 +214,15 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     });
   }, [enabled, run, refreshInterval]);
 
+  const forceRefetch = useCallback(() => run(true, true), [run]);
+
   return {
     data,
     loading,
     error,
     setData,
     refetch: run,
+    /** Refetch bypassing deduplication. Use after mutations to ensure fresh data. */
+    forceRefetch,
   };
 }

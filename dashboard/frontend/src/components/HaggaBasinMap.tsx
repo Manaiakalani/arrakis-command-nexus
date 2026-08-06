@@ -186,7 +186,7 @@ function TeleportDialog({
             })}
           </div>
         )}
-        <p className="mt-3 text-[10px] text-th-text-m/70">
+        <p className="mt-3 text-[10px] text-th-text-m">
           Teleport only takes effect on a fresh login from a fully logged-out state. Online characters are disabled.
         </p>
       </div>
@@ -221,17 +221,17 @@ function ManualTeleportInput({
       <div className="flex-1">
         <label className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">X</label>
         <input type="number" value={x} onChange={(e) => setX(e.target.value)} placeholder="-50000"
-          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m/50 focus:border-amber-500/40 focus:outline-none" />
+          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus:outline-none" />
       </div>
       <div className="flex-1">
         <label className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">Y</label>
         <input type="number" value={y} onChange={(e) => setY(e.target.value)} placeholder="50000"
-          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m/50 focus:border-amber-500/40 focus:outline-none" />
+          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus:outline-none" />
       </div>
       <div className="flex-1">
         <label className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">Z</label>
         <input type="number" value={z} onChange={(e) => setZ(e.target.value)} placeholder="0"
-          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m/50 focus:border-amber-500/40 focus:outline-none" />
+          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus:outline-none" />
       </div>
       <button type="submit" disabled={!x || !y}
         className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-500/20 disabled:opacity-40">
@@ -639,7 +639,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
               {teleportResult.message}
             </span>
           ) : (
-            <span className="ml-auto text-[10px] text-th-text-m/60">
+            <span className="ml-auto text-[10px] text-th-text-m">
               {vehicleTeleportTarget ? `Click map to move vehicle #${vehicleTeleportTarget.actor_id}` : 'Click map to place pin, or use presets'}
             </span>
           )}

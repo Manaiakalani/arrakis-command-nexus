@@ -182,6 +182,7 @@ services:
 
   deep_desert_1:
     <<: *game-server-common
+    profiles: [disabled]
     mem_limit: ${MEM_LIMIT_DEEP_DESERT}
     memswap_limit: ${MEM_LIMIT_DEEP_DESERT}
     pids_limit: 512

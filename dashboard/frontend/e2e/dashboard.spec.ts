@@ -57,7 +57,7 @@ test.describe('Sidebar navigation', () => {
     const links = sidebar.locator('nav a');
 
     const count = await links.count();
-    expect(count).toBe(15);
+    expect(count).toBe(20);
 
     // Click a few and verify navigation
     await links.filter({ hasText: 'Players' }).click();

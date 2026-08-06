@@ -306,6 +306,12 @@ async def export_connections(
     import io
     import json as json_mod
 
+    def _sanitize(val: str) -> str:
+        """Prefix cells that could be interpreted as formulas."""
+        if val and val[0] in ('=', '+', '-', '@', '\t', '\r'):
+            return f"'{val}"
+        return val
+
     if format == "json":
         data = [
             {
@@ -329,10 +335,10 @@ async def export_connections(
     writer.writerow(["Steam ID", "Player Name", "Event", "Map", "Timestamp"])
     for r in rows:
         writer.writerow([
-            r.steam_id,
-            r.player_name or "",
+            _sanitize(r.steam_id or ""),
+            _sanitize(r.player_name or ""),
             r.event,
-            r.map_name or "",
+            _sanitize(r.map_name or ""),
             r.timestamp.isoformat() if r.timestamp else "",
         ])
     return StreamingResponse(

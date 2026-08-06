@@ -2048,7 +2048,7 @@ export default function CharactersPage() {
                                 onClick={() => { setGrantTemplate(item.id); setCatalogOpen(false); }}
                               >
                                 <span className="font-medium text-th-text">{item.name || item.id}{item.count > 0 && <span className="ml-1 font-normal text-th-text-m">({item.count})</span>}</span>
-                                {item.name && item.name !== item.id && <span className="font-mono text-[10px] text-th-text-m/70 leading-tight">{item.id}</span>}
+                                {item.name && item.name !== item.id && <span className="font-mono text-[10px] text-th-text-m leading-tight">{item.id}</span>}
                               </button>
                             ))}
                           </div>
@@ -2072,7 +2072,7 @@ export default function CharactersPage() {
                     <RefreshCcw className={cn('mr-1.5 h-3.5 w-3.5', loadingInventory && 'animate-spin')} /> Refresh
                   </button>
                 </div>
-                <p className="mt-2 text-xs text-th-text-m/70 italic">
+                <p className="mt-2 text-xs text-th-text-m italic">
                   Reads from the last database save. Items consumed, dropped, or moved in-game may still appear until the game server saves again (on logout or periodic save).
                 </p>
                 {inventoryData ? (

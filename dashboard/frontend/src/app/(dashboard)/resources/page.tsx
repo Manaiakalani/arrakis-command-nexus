@@ -195,7 +195,7 @@ export default function ResourcesPage() {
                         ))}
                       </select>
                     </div>
-                    <p className="mt-2 text-xs text-th-text-m/60">
+                    <p className="mt-2 text-xs text-th-text-m">
                       <code className="rounded bg-th-surface-s px-1 py-0.5">{resource.key}</code>
                       {resource.value !== resource.default ? (
                         <span className="ml-2">Default: {resource.default}</span>

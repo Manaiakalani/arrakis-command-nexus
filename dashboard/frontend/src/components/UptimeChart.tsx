@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { useApi } from '@/hooks/useApi';
@@ -45,7 +45,7 @@ function formatTick(timestamp: string, range: string) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export function UptimeChart() {
+export const UptimeChart = memo(function UptimeChart() {
   const [range, setRange] = useState('24h');
   const tooltipStyles = getTooltipStyles();
   const uptime = useApi(() => apiClient.getUptimeData(range), {
@@ -161,4 +161,4 @@ export function UptimeChart() {
       </div>
     </div>
   );
-}
+});

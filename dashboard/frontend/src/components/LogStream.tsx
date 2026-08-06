@@ -2,6 +2,8 @@
 
 import { Search, Wifi, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { List, useListRef } from 'react-window';
+import type { RowComponentProps } from 'react-window';
 
 import { apiClient } from '@/lib/api';
 import { useSSE } from '@/hooks/useSSE';
@@ -14,6 +16,9 @@ const severityClasses: Record<Severity, string> = {
   INFO: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
   DEBUG: 'border-th-border bg-th-surface text-th-text-s',
 };
+
+const ROW_HEIGHT = 36;
+const MAX_BUFFER = 2000;
 
 function parseLogEvent(raw: unknown): LogEvent {
   if (typeof raw === 'string') {
@@ -49,21 +54,53 @@ interface LogStreamProps {
   timeRangeMs?: number;
 }
 
+interface LogRowProps {
+  messages: LogEvent[];
+}
+
+function LogRow({ index, style, messages, ariaAttributes }: RowComponentProps<LogRowProps>) {
+  const entry = messages[index];
+  return (
+    <div style={style} {...ariaAttributes} className="flex items-center border-b border-th-border-m/40 hover:bg-th-surface-s/60 px-2">
+      <span className="w-[6.5rem] shrink-0 whitespace-nowrap tabular-nums text-th-text-m">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+      <span className="w-[4.5rem] shrink-0 px-1">
+        <span className={cn('inline-block w-[3.5rem] text-center rounded border px-1 py-0.5 text-[10px] font-bold uppercase', severityClasses[entry.level])}>{entry.level}</span>
+      </span>
+      <span className="w-[8rem] shrink-0 truncate whitespace-nowrap text-th-text-m">{entry.service.replace('dune-awakening-', '').replace(/-1$/, '')}</span>
+      <span className="min-w-0 flex-1 truncate text-th-text-s">{entry.message}</span>
+    </div>
+  );
+}
+
 export function LogStream({ endpoint, selectedService: controlledService, onServiceChange, services, externalSearch, timeRangeMs }: LogStreamProps) {
   const [uncontrolledService, setUncontrolledService] = useState('all');
   const [query, setQuery] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const [seedLogs, setSeedLogs] = useState<LogEvent[]>([]);
   const [sseMessages, setSseMessages] = useState<LogEvent[]>([]);
+  const listRef = useListRef(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [listHeight, setListHeight] = useState(500);
 
   const handleEvent = useCallback((event: { type: string; data: unknown }) => {
     const logEvent = parseLogEvent(event.data);
-    setSseMessages((prev) => [...prev, logEvent].slice(-2000));
+    setSseMessages((prev) => [...prev, logEvent].slice(-MAX_BUFFER));
   }, []);
 
   const { status } = useSSE(endpoint, { onEvent: handleEvent });
   const selectedService = controlledService ?? uncontrolledService;
+
+  // Measure container height for the virtual list
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height;
+      if (height) setListHeight(height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Fetch initial log tail on mount
   const seeded = useRef(false);
@@ -121,13 +158,11 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
     });
   }, [allMessages, query, externalSearch, timeRangeMs, selectedService]);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (!autoScroll || !containerRef.current) {
-      return;
-    }
-
-    containerRef.current.scrollTop = containerRef.current.scrollHeight;
-  }, [autoScroll, visibleMessages]);
+    if (!autoScroll || !listRef.current || visibleMessages.length === 0) return;
+    listRef.current.scrollToRow({ index: visibleMessages.length - 1, align: 'end' });
+  }, [autoScroll, visibleMessages.length, listRef]);
 
   const setService = useCallback((service: string) => {
     onServiceChange?.(service);
@@ -173,30 +208,17 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
           </div>
         </div>
       </div>
-      <div ref={containerRef} className="max-h-[70vh] min-h-[400px] overflow-auto bg-th-bg/90 p-3 font-mono text-[13px] leading-relaxed">
+      <div ref={containerRef} className="h-[70vh] min-h-[400px] bg-th-bg/90 font-mono text-[13px] leading-relaxed" aria-label="Service log entries">
         {visibleMessages.length > 0 ? (
-          <table className="w-full border-collapse" aria-label="Service log entries">
-            <thead className="sr-only">
-              <tr>
-                <th scope="col">Time</th>
-                <th scope="col">Level</th>
-                <th scope="col">Service</th>
-                <th scope="col">Message</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleMessages.map((entry) => (
-                <tr key={entry.id} className="border-b border-th-border-m/40 hover:bg-th-surface-s/60">
-                  <td className="whitespace-nowrap px-2 py-1.5 align-top tabular-nums text-th-text-m">{new Date(entry.timestamp).toLocaleTimeString()}</td>
-                  <td className="whitespace-nowrap px-2 py-1.5 align-top">
-                    <span className={cn('inline-block w-[3.5rem] text-center rounded border px-1 py-0.5 text-[10px] font-bold uppercase', severityClasses[entry.level])}>{entry.level}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-1.5 align-top text-th-text-m">{entry.service.replace('dune-awakening-', '').replace(/-1$/, '')}</td>
-                  <td className="w-full break-all px-2 py-1.5 align-top text-th-text-s">{entry.message}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <List
+            listRef={listRef}
+            style={{ height: listHeight, width: '100%' }}
+            rowCount={visibleMessages.length}
+            rowHeight={ROW_HEIGHT}
+            rowComponent={LogRow}
+            rowProps={{ messages: visibleMessages }}
+            overscanCount={20}
+          />
         ) : (
           <div className="flex min-h-[320px] items-center justify-center text-th-text-m">
             {status === 'connecting' ? 'Connecting to log stream\u2026' : seedLogs.length === 0 ? 'Loading initial logs\u2026' : 'No matching log events.'}
