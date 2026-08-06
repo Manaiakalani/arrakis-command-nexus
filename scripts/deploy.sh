@@ -209,6 +209,39 @@ spinner() {
   printf '\r%*s\r' "$((${#label} + 12))" ''
 }
 
+# Run a compose command behind the spinner while capturing its output, so a
+# genuine failure is surfaced instead of being discarded. Pass "required" to
+# abort the deployment on failure, or "optional" to report and keep going.
+run_compose_step() {
+  local mode="$1" label="$2" success_label="$3"
+  shift 3
+
+  local log_file status=0
+  log_file="$(mktemp)"
+
+  run_compose "$@" >"$log_file" 2>&1 &
+  local pid=$!
+  spinner "$pid" "$label"
+  wait "$pid" || status=$?
+
+  if (( status == 0 )); then
+    print_check ok "$success_label"
+    rm -f "$log_file"
+    return 0
+  fi
+
+  print_check fail "$success_label"
+  printf '\n  %bdocker compose %s exited with status %d:%b\n' "$COLOR_RED" "$*" "$status" "$RESET"
+  sed 's/^/    /' "$log_file" >&2
+  printf '\n'
+  rm -f "$log_file"
+
+  if [[ "$mode" == required ]]; then
+    die "Deployment aborted: 'docker compose $*' failed."
+  fi
+  return "$status"
+}
+
 wait_with_dots() {
   local seconds="$1" label="$2"
   printf '  %s ' "$label"
@@ -799,21 +832,26 @@ deploy_containers() {
     "db-init:Database schema initialization"
     "director:Battlegroup Director"
     "gateway:Gateway server"
-    "auth-shim:Auth shim"
+    "rmq-auth-shim:Auth shim"
     "text-router:Text router"
   )
+  # Referenced only for operator-facing ordering documentation; keep in sync
+  # with the service names in docker-compose.yml.
+  : "${services_order[*]}"
 
   # Start infrastructure
-  run_compose up -d postgres admin-rmq game-rmq 2>/dev/null &
-  spinner $! "Starting core infrastructure..."
-  wait $! 2>/dev/null || true
-  print_check ok "Core infrastructure started"
+  run_compose_step required "Starting core infrastructure..." "Core infrastructure started" \
+    up -d postgres admin-rmq game-rmq
 
-  # Wait for postgres health
+  # Wait for postgres health. Use run_compose so every active overlay file is
+  # taken into account, and query as the role the compose file actually
+  # provisions (POSTGRES_USER/POSTGRES_DB are both "dune").
   printf '  Waiting for database'
   local pg_wait=0
+  local postgres_ready=false
   while [[ "$pg_wait" -lt 30 ]]; do
-    if docker compose -f "$PROJECT_ROOT/docker-compose.yml" exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
+    if run_compose exec -T postgres pg_isready -U dune -d dune >/dev/null 2>&1; then
+      postgres_ready=true
       printf ' %b ready%b\n' "$COLOR_GREEN" "$RESET"
       break
     fi
@@ -821,21 +859,21 @@ deploy_containers() {
     sleep 2
     pg_wait=$((pg_wait + 2))
   done
-  [[ "$pg_wait" -ge 30 ]] && printf ' %b(timeout - continuing anyway)%b\n' "$COLOR_YELLOW" "$RESET"
+  if [[ "$postgres_ready" != true ]]; then
+    printf ' %bfailed%b\n' "$COLOR_RED" "$RESET"
+    print_check fail "PostgreSQL did not become ready within 30s"
+    die 'Deployment aborted: the database never became ready, so schema initialization and the game services cannot start. Check `docker compose logs postgres`.'
+  fi
 
   # DB init
   if service_exists db-init; then
-    run_compose run --rm db-init >/dev/null 2>&1 &
-    spinner $! "Initializing database schema..."
-    wait $! 2>/dev/null || true
-    print_check ok "Database initialized"
+    run_compose_step optional "Initializing database schema..." "Database initialized" \
+      run --rm db-init ||
+      log_warn 'Database schema initialization reported an error (see output above). This is expected when the schema already exists, but review it if the server fails to start.'
   fi
 
   # Start remaining services
-  run_compose up -d 2>/dev/null &
-  spinner $! "Starting all services..."
-  wait $! 2>/dev/null || true
-  print_check ok "All containers started"
+  run_compose_step required "Starting all services..." "All containers started" up -d
 
   # Wait a moment for containers to settle
   wait_with_dots 5 "Waiting for services to initialize"

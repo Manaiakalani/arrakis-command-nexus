@@ -284,12 +284,13 @@ class RestartScheduler:
         async with self._lock:
             if not self.enabled or self.next_restart_at is None:
                 return
+            scheduled_for = self.next_restart_at
             now = datetime.now(timezone.utc)
             due_minutes = [
                 minutes
                 for minutes in self.warning_minutes
                 if minutes not in self._sent_warnings
-                and now >= self.next_restart_at - timedelta(minutes=minutes)
+                and now >= scheduled_for - timedelta(minutes=minutes)
             ]
             if not due_minutes:
                 return
@@ -297,20 +298,32 @@ class RestartScheduler:
         for minutes in due_minutes:
             message = self._warning_message(minutes)
             success = await asyncio.to_thread(self.announce_service.send_announcement, message)
+
+            async with self._lock:
+                # The schedule can be changed, or disabled, while an
+                # announcement is in flight. Only record the warning as sent if
+                # it still belongs to the same restart; otherwise a newly
+                # scheduled restart would inherit warnings that were never
+                # announced for it and silently skip them.
+                if (
+                    not self.enabled
+                    or self.next_restart_at != scheduled_for
+                    or minutes not in self.warning_minutes
+                ):
+                    return
+                self._sent_warnings.add(minutes)
+                self._persist_settings()
+
             await self._write_audit_log(
                 "scheduled_restart",
                 {
                     "event": "warning",
                     "warning_minutes": minutes,
                     "announcement_sent": success,
-                    "scheduled_for": _serialize_datetime(self.next_restart_at),
+                    "scheduled_for": _serialize_datetime(scheduled_for),
                 },
                 performed_by="system",
             )
-
-        async with self._lock:
-            self._sent_warnings.update(due_minutes)
-            self._persist_settings()
 
     async def _run_delayed_manual_restart(self, restart_at: datetime, warning_minutes: int) -> None:
         try:
@@ -494,7 +507,7 @@ class RestartScheduler:
         return f"Event: `{event}` — {details}"
 
     def _compute_next_restart(self, now: datetime | None = None) -> datetime:
-        current_time = now or datetime.now(timezone.utc)
+        current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
         if self.restart_time_utc is None:
             return current_time + timedelta(hours=self.interval_hours)
 

@@ -13,7 +13,7 @@ from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel
 
 from middleware.auth import verify_admin_token
-from services.env_file import write_env_var
+from services.env_file import ENV_PATH, write_env_var
 
 router = APIRouter(tags=["system"])
 logger = logging.getLogger(__name__)
@@ -350,7 +350,11 @@ async def get_version(request: Request) -> dict[str, str]:
 # Resource Tuning: read/write .env resource limits
 # ---------------------------------------------------------------------------
 
-_ENV_FILE = Path(os.getenv("DUNE_PROJECT_ROOT", "/workspace")) / ".env"
+# Resolved from services.env_file so that reads here and writes performed by
+# write_env_var() always target the same file. Deriving it independently from
+# DUNE_PROJECT_ROOT meant a custom DUNE_ENV_FILE made saved resource limits
+# read back stale.
+_ENV_FILE = Path(ENV_PATH)
 
 _RESOURCE_VARS: dict[str, dict[str, str]] = {
     "MEM_LIMIT_SURVIVAL": {

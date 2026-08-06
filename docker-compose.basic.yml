@@ -252,7 +252,7 @@ services:
   # SURVIVAL_RESET_SEED is unset. Reuses the postgres image (has psql + sh).
   # -------------------------------------------------------------------------
   seed-guardian:
-    image: igw-postgres:17.4-alpine-fc-13
+    image: funcom/self-hosting/igw-postgres:17.4-alpine-fc-13
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/workspace/scripts/seed-guard.sh"]
     environment:

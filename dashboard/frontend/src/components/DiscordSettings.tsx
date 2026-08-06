@@ -61,7 +61,6 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
         return incoming;
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webhooks]);
 
   const updateDraft = (id: string, patch: Partial<DiscordWebhook>) => {

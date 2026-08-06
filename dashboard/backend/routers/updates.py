@@ -205,7 +205,8 @@ async def get_trigger_status():
 async def update_settings(payload: AutoUpdateSettingsRequest):
     """Toggle auto-update mode on or off."""
     service = get_update_service()
-    service.auto_update_enabled = payload.auto_update_enabled
-    import os
-    os.environ["UPDATE_AUTO_UPDATE"] = "true" if payload.auto_update_enabled else "false"
+    try:
+        service.set_auto_update_enabled(payload.auto_update_enabled)
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {"auto_update_enabled": service.auto_update_enabled}
