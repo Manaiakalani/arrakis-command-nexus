@@ -407,8 +407,24 @@ async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse
     )
 
 
+@app.exception_handler(IndexError)
+async def index_error_handler(request: Request, exc: IndexError) -> JSONResponse:
+    # IndexError subclasses LookupError, so without this it would be answered by
+    # the handler below and reported to clients as a 404 -- with no log line at
+    # all. Nothing in this codebase raises IndexError deliberately (KeyError and
+    # LookupError are the intentional not-found signals), so it always indicates
+    # a bug and must surface as a logged 500. A crash in /api/system/version was
+    # previously masked as {"code": "NOT_FOUND", "message": "3"}.
+    logger.exception("Unhandled IndexError on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
+    )
+
+
 @app.exception_handler(LookupError)
 async def lookup_error_handler(request: Request, exc: LookupError) -> JSONResponse:
+    logger.info("Not found on %s %s: %s", request.method, request.url.path, exc)
     return JSONResponse(
         status_code=404,
         content={"error": {"code": "NOT_FOUND", "message": str(exc)}},

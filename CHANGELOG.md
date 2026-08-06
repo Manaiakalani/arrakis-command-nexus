@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-08-06
+
+### Fixed
+
+- `GET /api/system/version` returned `{"code": "NOT_FOUND", "message": "3"}` instead of the release version in every deployed stack. The list of candidate `VERSION` paths was built eagerly, so the source-checkout fallback `Path(__file__).resolve().parents[3]` was evaluated while the list was being constructed - before any path was tested. In a checkout that index is the repository root, but the image runs from `/app/routers/system.py`, which has only three parents, so it raised `IndexError`. The valid `/workspace/compose/VERSION` candidate was never reached even though the compose project-root mount makes it correct in a deployed stack
+- A bare `IndexError` anywhere in the API was reported to clients as a `404 NOT_FOUND` and logged nothing at all, because `IndexError` subclasses `LookupError` and the `LookupError` handler maps to 404. Genuine crashes were indistinguishable from missing resources and left no trace in the logs, which is how the version bug above reached production unnoticed. `IndexError` now returns a logged `500 INTERNAL_ERROR`; the deliberate `LookupError`/`KeyError` not-found signals raised by the character, Discord, watchdog, and announcement services still return 404, and those are now logged too
+
+### Changed
+
+- The `lint-backend` CI job now runs a smoke check against the container's path layout. `py_compile` and `ast.parse` are purely syntactic, and a source checkout is deep enough that path-depth bugs cannot reproduce in CI, so the job now copies the backend to `/app` (matching the Dockerfile's `WORKDIR /app` and `COPY . .`), stages the project root at `/workspace/compose` as compose does, and asserts the version endpoint returns the contents of `VERSION`
+
 ## [1.6.0] - 2026-08-06
 
 ### Added

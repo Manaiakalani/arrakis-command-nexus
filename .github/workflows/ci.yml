@@ -53,6 +53,19 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m py_compile main.py
       - run: python -c "import ast, pathlib; [ast.parse(f.read_text()) for f in pathlib.Path('.').rglob('*.py')]"
+      # The checks above are purely syntactic. The image runs the backend from
+      # /app (Dockerfile: WORKDIR /app, COPY . .), which is far shallower than a
+      # source checkout, so defects that depend on path depth -- such as indexing
+      # Path(__file__).parents -- pass in CI yet fail in production. Reproduce the
+      # deployed layout, including the read-only project-root mount that compose
+      # provides at /workspace/compose, and exercise the code for real.
+      - name: Smoke-check runtime paths under the container layout
+        run: |
+          sudo cp -a . /app
+          sudo mkdir -p /workspace/compose
+          sudo cp "$GITHUB_WORKSPACE/VERSION" /workspace/compose/VERSION
+          cd /app
+          python -c "import asyncio, pathlib; from routers.system import get_version; got = asyncio.run(get_version(None)); want = pathlib.Path('/workspace/compose/VERSION').read_text().strip(); assert got['version'] == want, f'expected {want!r}, got {got!r}'; print('version endpoint ->', got)"
 
   e2e-check:
     runs-on: ubuntu-latest
