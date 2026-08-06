@@ -32,50 +32,28 @@ else:
     load_dotenv()
 
 from db.database import dispose_db, init_db  # noqa: E402
-from middleware.auth import AdminTokenMiddleware, verify_admin_token
-  # noqa: E402
-from middleware.rate_limit import RateLimitMiddleware
-  # noqa: E402
-from middleware.redaction import redact
-  # noqa: E402
-from middleware.request_logging import RequestLoggingMiddleware
-  # noqa: E402
-from middleware.security_headers import SecurityHeadersMiddleware
-  # noqa: E402
-from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, events, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog
-  # noqa: E402
-from services.announce_scheduler import AnnounceScheduler
-  # noqa: E402
-from services.announce_service import AnnounceService
-  # noqa: E402
-from services.backup_scheduler import BackupScheduler
-  # noqa: E402
-from services.backup_service import BackupService
-  # noqa: E402
-from services.character_service import CharacterService
-  # noqa: E402
-from services.chat_guard_service import ChatGuardService
-  # noqa: E402
-from services.config_service import ConfigService
-  # noqa: E402
-from services.discord_service import DiscordService
-  # noqa: E402
-from services.docker_service import DockerService
-  # noqa: E402
-from services.economy_service import EconomyService
-  # noqa: E402
-from services.log_service import LogService
-  # noqa: E402
-from services.metrics_service import MetricsService
-  # noqa: E402
-from services.postgres_service import PostgresService
-  # noqa: E402
-from services.restart_scheduler import RestartScheduler
-  # noqa: E402
-from services.update_scheduler import get_update_scheduler
-  # noqa: E402
-from services.watchdog_service import WatchdogService
-  # noqa: E402
+from middleware.auth import AdminTokenMiddleware, verify_admin_token  # noqa: E402
+from middleware.rate_limit import RateLimitMiddleware  # noqa: E402
+from middleware.redaction import redact  # noqa: E402
+from middleware.request_logging import RequestLoggingMiddleware  # noqa: E402
+from middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
+from routers import announce, audit, backups, characters, chat_guard, config, dashboard, discord, economy, events, logs, maps, players, restart_schedule, scheduled_announce, settings, status, system, updates, watchdog  # noqa: E402
+from services.announce_scheduler import AnnounceScheduler  # noqa: E402
+from services.announce_service import AnnounceService  # noqa: E402
+from services.backup_scheduler import BackupScheduler  # noqa: E402
+from services.backup_service import BackupService  # noqa: E402
+from services.character_service import CharacterService  # noqa: E402
+from services.chat_guard_service import ChatGuardService  # noqa: E402
+from services.config_service import ConfigService  # noqa: E402
+from services.discord_service import DiscordService  # noqa: E402
+from services.docker_service import DockerService  # noqa: E402
+from services.economy_service import EconomyService  # noqa: E402
+from services.log_service import LogService  # noqa: E402
+from services.metrics_service import MetricsService  # noqa: E402
+from services.postgres_service import PostgresService  # noqa: E402
+from services.restart_scheduler import RestartScheduler  # noqa: E402
+from services.update_scheduler import get_update_scheduler  # noqa: E402
+from services.watchdog_service import WatchdogService  # noqa: E402
 from services.event_bus import ChangeDetector, EventBus  # noqa: E402
 
 
