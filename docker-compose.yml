@@ -644,6 +644,7 @@ services:
       DUNE_SSH_USER: ${DUNE_SSH_USER:-}
       DUNE_SSH_HOST: ${DUNE_SSH_HOST:-}
       DUNE_SERVER_DIR: ${DUNE_SERVER_DIR:-~/dune-server-docker}
+      DUNE_HOST_PROJECT_DIR: ${DUNE_HOST_PROJECT_DIR:-}
       # Watchdog RMQ ghost-cleanup disabled by default: even with the 60s
       # newer-vs-older debounce, killing AMQP connections during player
       # travel was preventing the S2sController peer index from converging

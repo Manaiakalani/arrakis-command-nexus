@@ -83,6 +83,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m py_compile main.py
       - run: python -c "import ast, pathlib; [ast.parse(f.read_text()) for f in pathlib.Path('.').rglob('*.py')]"
+      - run: python -m unittest discover -s tests
       # The checks above are purely syntactic. The image runs the backend from
       # /app (Dockerfile: WORKDIR /app, COPY . .), which is far shallower than a
       # source checkout, so defects that depend on path depth -- such as indexing
