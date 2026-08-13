@@ -927,6 +927,7 @@ class UpdateService:
         self,
         base_compose_cmd: list[str],
         expected_tag: str,
+        proc_env: dict[str, str] | None = None,
     ) -> tuple[list[str], str | None]:
         """Discover services whose image contains funcom self-hosting images.
 
@@ -940,7 +941,7 @@ class UpdateService:
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=self._docker_environment(),
+                env=proc_env if proc_env is not None else self._docker_environment(),
             )
             stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=30)
             if proc.returncode != 0:
@@ -1007,8 +1008,19 @@ class UpdateService:
             base_cmd.extend(["-f", str(f)])
         base_cmd.extend(["--env-file", str(env_file)])
 
+        # Environment variables override --env-file values in Compose. The API
+        # container retains its startup tag, so explicitly pass the newly loaded
+        # tag to both config discovery and the recreate command.
+        proc_env = self._docker_environment()
+        proc_env["DUNE_IMAGE_TAG"] = self.current_tag
+        proc_env["COMPOSE_FILE"] = ":".join(str(p) for p in compose_files)
+
         # Discover which services use funcom images to avoid recreating dashboard
-        tagged_services, discover_error = await self._discover_tagged_services(base_cmd, self.current_tag)
+        tagged_services, discover_error = await self._discover_tagged_services(
+            base_cmd,
+            self.current_tag,
+            proc_env,
+        )
         if discover_error:
             logger.error("Compose recreate pre-flight failed: %s", discover_error)
             return [], {"_compose_preflight": discover_error}
@@ -1022,8 +1034,6 @@ class UpdateService:
         logger.info("Compose recreate files: %s", [str(p) for p in compose_files])
         logger.info("Compose recreate: %s", " ".join(cmd))
         try:
-            proc_env = self._docker_environment()
-            proc_env["COMPOSE_FILE"] = ":".join(str(p) for p in compose_files)
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,

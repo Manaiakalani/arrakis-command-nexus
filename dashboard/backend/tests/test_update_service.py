@@ -48,18 +48,21 @@ class UpdateServiceTests(unittest.IsolatedAsyncioTestCase):
             }
         }
         proc = FakeProcess(stdout=json.dumps(config).encode())
+        proc_env = {"DUNE_IMAGE_TAG": "2064155-0-shipping"}
 
         with patch(
             "services.update_service.asyncio.create_subprocess_exec",
             new=AsyncMock(return_value=proc),
-        ):
+        ) as create_subprocess:
             services, error = await self.service._discover_tagged_services(
                 ["/usr/bin/docker", "compose"],
                 "2064155-0-shipping",
+                proc_env,
             )
 
         self.assertIsNone(error)
         self.assertEqual(services, ["game-rmq"])
+        self.assertIs(create_subprocess.await_args.kwargs["env"], proc_env)
 
     def test_compose_failure_detail_prefers_mount_error(self):
         output = "\n".join(
