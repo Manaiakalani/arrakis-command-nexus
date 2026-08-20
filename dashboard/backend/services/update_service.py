@@ -7,7 +7,7 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -695,7 +695,7 @@ class UpdateService:
             # Verify all tagged services are running the expected image
             verify_result = {"ok": False, "mismatch": False, "inconclusive": True, "mismatched": [], "error": "not run"}
             try:
-                verify_result = await self._verify_image_tags(new_tag)
+                verify_result = await self._verify_image_tags(new_tag, restarted)
             except Exception as exc:
                 verify_result = {"ok": False, "mismatch": False, "inconclusive": True, "mismatched": [], "error": str(exc)}
                 logger.warning("Post-update verification error: %s", exc)
@@ -732,8 +732,12 @@ class UpdateService:
                         from services.env_file import write_env_var
                         await asyncio.to_thread(write_env_var, "DUNE_IMAGE_TAG", old_tag)
                         self.current_tag = old_tag
-                        await self._compose_recreate_tagged_services()
-                        logger.info("Rollback to %s completed", old_tag)
+                        _, rollback_errors = await self._compose_recreate_tagged_services()
+                        if rollback_errors:
+                            errors["_rollback"] = rollback_errors
+                            logger.error("Rollback to %s failed: %s", old_tag, rollback_errors)
+                        else:
+                            logger.info("Rollback to %s completed", old_tag)
                     except Exception as rb_exc:
                         errors["_rollback"] = str(rb_exc)
                         logger.error("Rollback failed: %s", rb_exc)
@@ -844,12 +848,92 @@ class UpdateService:
         logger.info("Resolved compose files for update recreate: %s", [str(p) for p in deduped])
         return deduped, errors
 
-    async def _discover_tagged_services(self, base_compose_cmd: list[str]) -> tuple[list[str], str | None]:
+    async def _discover_host_project_dir(self, docker_bin: str) -> tuple[str | None, str | None]:
+        """Resolve the host-side Compose project directory from dashboard metadata."""
+        compose_project = os.getenv("DUNE_COMPOSE_PROJECT", "dune-awakening")
+        configured = os.getenv("DUNE_HOST_PROJECT_DIR", "").strip()
+        if configured:
+            if not PurePosixPath(configured).is_absolute():
+                return None, "DUNE_HOST_PROJECT_DIR must be an absolute host path"
+            return configured, None
+
+        try:
+            find_proc = await asyncio.create_subprocess_exec(
+                docker_bin,
+                "ps",
+                "--filter", f"label=com.docker.compose.project={compose_project}",
+                "--filter", "label=com.docker.compose.service=dashboard-api",
+                "--format", "{{.ID}}",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=self._docker_environment(),
+            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(find_proc.communicate(), timeout=30)
+            if find_proc.returncode != 0:
+                detail = stderr_bytes.decode(errors="replace").strip() if stderr_bytes else "unknown error"
+                return None, f"Could not find dashboard container (rc={find_proc.returncode}): {detail[:300]}"
+
+            container_ids = stdout_bytes.decode(errors="replace").split()
+            if not container_ids:
+                return None, "Could not find the running dashboard-api Compose container"
+
+            inspect_proc = await asyncio.create_subprocess_exec(
+                docker_bin,
+                "inspect",
+                "--format", '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}',
+                container_ids[0],
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=self._docker_environment(),
+            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(inspect_proc.communicate(), timeout=30)
+            if inspect_proc.returncode != 0:
+                detail = stderr_bytes.decode(errors="replace").strip() if stderr_bytes else "unknown error"
+                return None, f"Could not inspect dashboard Compose metadata (rc={inspect_proc.returncode}): {detail[:300]}"
+
+            resolved = stdout_bytes.decode(errors="replace").strip()
+            if not resolved or not PurePosixPath(resolved).is_absolute():
+                return None, f"Dashboard Compose working directory is not an absolute host path: {resolved!r}"
+            return resolved, None
+        except asyncio.TimeoutError:
+            return None, "Timed out while discovering the host Compose project directory"
+        except Exception as exc:
+            return None, f"Could not discover the host Compose project directory: {exc}"
+
+    @staticmethod
+    def _image_uses_tag(image: str, expected_tag: str) -> bool:
+        """Return whether a resolved image reference uses the exact expected tag."""
+        return bool(expected_tag and ":" in image and image.rsplit(":", 1)[1] == expected_tag)
+
+    @staticmethod
+    def _compose_failure_detail(output: str, limit: int = 1200) -> str:
+        """Keep the actionable end of Compose output instead of recreation progress."""
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        error_markers = (
+            "error",
+            "failed",
+            "invalid",
+            "not a directory",
+            "permission denied",
+            "address already in use",
+            "dependency",
+            "unhealthy",
+        )
+        actionable = [line for line in lines if any(marker in line.lower() for marker in error_markers)]
+        detail = "\n".join(actionable[-8:] if actionable else lines[-12:])
+        return detail[-limit:] if detail else "no output"
+
+    async def _discover_tagged_services(
+        self,
+        base_compose_cmd: list[str],
+        expected_tag: str,
+        proc_env: dict[str, str] | None = None,
+    ) -> tuple[list[str], str | None]:
         """Discover services whose image contains funcom self-hosting images.
 
         Uses ``docker compose config`` to inspect the resolved config and
-        returns only service names that reference ``funcom/self-hosting/``.
-        This prevents recreating the dashboard container during updates.
+        returns only Funcom service names using the exact DUNE_IMAGE_TAG.
+        Fixed-tag prerequisites such as PostgreSQL and the dashboard are excluded.
         """
         cmd = list(base_compose_cmd) + ["config", "--format", "json"]
         try:
@@ -857,7 +941,7 @@ class UpdateService:
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=self._docker_environment(),
+                env=proc_env if proc_env is not None else self._docker_environment(),
             )
             stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=30)
             if proc.returncode != 0:
@@ -869,11 +953,11 @@ class UpdateService:
             tagged = []
             for name, svc in services.items():
                 image = svc.get("image", "")
-                if "funcom/self-hosting/" in image:
+                if "funcom/self-hosting/" in image and self._image_uses_tag(image, expected_tag):
                     tagged.append(name)
 
             if not tagged:
-                return [], "No services found with funcom/self-hosting/ images"
+                return [], f"No Funcom services found using DUNE_IMAGE_TAG={expected_tag}"
 
             return sorted(tagged), None
         except json.JSONDecodeError as exc:
@@ -894,7 +978,6 @@ class UpdateService:
         import shutil
 
         compose_dir = Path("/workspace/compose")
-        project_dir = Path("/workspace")
         env_file = Path("/workspace/.env")
         docker_bin = shutil.which("docker")
 
@@ -913,36 +996,44 @@ class UpdateService:
             logger.error("Compose recreate pre-flight failed: %s", error)
             return [], {"_compose_preflight": error}
 
+        project_dir, project_dir_error = await self._discover_host_project_dir(docker_bin)
+        if project_dir_error or project_dir is None:
+            error = project_dir_error or "Host Compose project directory was not found"
+            logger.error("Compose recreate pre-flight failed: %s", error)
+            return [], {"_compose_preflight": error}
+
         # Build base compose command
         base_cmd = [docker_bin, "compose", "--project-directory", str(project_dir)]
         for f in compose_files:
             base_cmd.extend(["-f", str(f)])
         base_cmd.extend(["--env-file", str(env_file)])
 
+        # Environment variables override --env-file values in Compose. The API
+        # container retains its startup tag, so explicitly pass the newly loaded
+        # tag to both config discovery and the recreate command.
+        proc_env = self._docker_environment()
+        proc_env["DUNE_IMAGE_TAG"] = self.current_tag
+        proc_env["COMPOSE_FILE"] = ":".join(str(p) for p in compose_files)
+
         # Discover which services use funcom images to avoid recreating dashboard
-        tagged_services, discover_error = await self._discover_tagged_services(base_cmd)
+        tagged_services, discover_error = await self._discover_tagged_services(
+            base_cmd,
+            self.current_tag,
+            proc_env,
+        )
         if discover_error:
-            logger.warning(
-                "Could not discover tagged services (%s). "
-                "Falling back to full recreate — dashboard may restart.",
-                discover_error,
-            )
+            logger.error("Compose recreate pre-flight failed: %s", discover_error)
+            return [], {"_compose_preflight": discover_error}
 
-        if tagged_services:
-            logger.info("Funcom-tagged services to recreate: %s", tagged_services)
-        else:
-            logger.warning("No funcom-tagged services discovered; will recreate all services")
-
+        logger.info("Funcom-tagged services to recreate: %s", tagged_services)
         cmd = list(base_cmd) + ["up", "-d", "--force-recreate", "--remove-orphans"]
-        if tagged_services:
-            cmd.extend(tagged_services)
+        cmd.extend(tagged_services)
 
+        logger.info("Compose recreate host project directory: %s", str(project_dir))
         logger.info("Compose recreate env file: %s", str(env_file))
         logger.info("Compose recreate files: %s", [str(p) for p in compose_files])
         logger.info("Compose recreate: %s", " ".join(cmd))
         try:
-            proc_env = self._docker_environment()
-            proc_env["COMPOSE_FILE"] = ":".join(str(p) for p in compose_files)
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -953,8 +1044,9 @@ class UpdateService:
             output = stdout_bytes.decode(errors="replace").strip() if stdout_bytes else ""
 
             if proc.returncode != 0:
-                logger.error("Compose recreate failed (rc=%d): %s", proc.returncode, output[:500])
-                return [], {"_compose": f"rc={proc.returncode}: {output[:200]}"}
+                detail = self._compose_failure_detail(output)
+                logger.error("Compose recreate failed (rc=%d): %s", proc.returncode, detail)
+                return [], {"_compose": f"rc={proc.returncode}: {detail}"}
 
             logger.info("Compose recreate succeeded: %s", output[:500])
 
@@ -980,20 +1072,18 @@ class UpdateService:
                     except Exception as exc:
                         logger.warning("Failed to stop disabled services: %s", exc)
 
-            # Parse recreated services from output
-            recreated = []
-            for line in output.splitlines():
-                low = line.lower()
-                if "recreat" in low or "started" in low or "running" in low:
-                    recreated.append(line.strip())
-            return recreated, {}
+            return tagged_services, {}
         except asyncio.TimeoutError:
             return [], {"_compose": "docker compose up timed out (300s)"}
         except Exception as exc:
             return [], {"_compose": str(exc)}
 
-    async def _verify_image_tags(self, expected_tag: str) -> dict[str, Any]:
-        """Verify all running funcom containers use the expected image tag.
+    async def _verify_image_tags(
+        self,
+        expected_tag: str,
+        expected_services: list[str],
+    ) -> dict[str, Any]:
+        """Verify every recreated Compose service uses the expected image tag.
 
         Returns a structured result distinguishing real mismatches from
         inconclusive Docker CLI failures:
@@ -1010,14 +1100,22 @@ class UpdateService:
         if not expected_tag:
             logger.warning("Cannot verify image tags: expected_tag is empty")
             return {**empty_result, "error": "expected_tag is empty"}
+        if not expected_services:
+            logger.warning("Cannot verify image tags: expected service list is empty")
+            return {**empty_result, "error": "expected service list is empty"}
 
         docker_bin = shutil.which("docker")
         if not docker_bin:
             return {**empty_result, "error": "docker binary not found"}
 
         try:
+            compose_project = os.getenv("DUNE_COMPOSE_PROJECT", "dune-awakening")
             proc = await asyncio.create_subprocess_exec(
-                docker_bin, "ps", "--format", "{{.Names}} {{.Image}}",
+                docker_bin,
+                "ps",
+                "-a",
+                "--filter", f"label=com.docker.compose.project={compose_project}",
+                "--format", '{{.Label "com.docker.compose.service"}}|{{.Image}}',
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=self._docker_environment(),
@@ -1030,18 +1128,20 @@ class UpdateService:
             output = stdout_bytes.decode(errors="replace") if stdout_bytes else ""
 
             mismatched = []
-            matched = 0
+            images_by_service: dict[str, str] = {}
             for line in output.strip().splitlines():
-                parts = line.split(None, 1)
+                parts = line.split("|", 1)
                 if len(parts) != 2:
                     continue
-                name, image = parts
-                if "funcom/self-hosting/" not in image:
-                    continue
-                if expected_tag not in image:
-                    mismatched.append(f"{name}={image}")
-                else:
-                    matched += 1
+                service, image = parts
+                images_by_service[service] = image
+
+            for service in expected_services:
+                image = images_by_service.get(service)
+                if image is None:
+                    mismatched.append(f"{service}=missing")
+                elif not self._image_uses_tag(image, expected_tag):
+                    mismatched.append(f"{service}={image}")
 
             if mismatched:
                 logger.error(
@@ -1050,11 +1150,11 @@ class UpdateService:
                 )
                 return {"ok": False, "mismatch": True, "inconclusive": False, "mismatched": mismatched, "error": None}
 
-            if matched == 0:
-                logger.warning("No funcom containers found to verify")
-                return {**empty_result, "error": "No funcom containers found"}
-
-            logger.info("All %d funcom containers verified running tag %s", matched, expected_tag)
+            logger.info(
+                "All %d recreated services verified on tag %s",
+                len(expected_services),
+                expected_tag,
+            )
             return {"ok": True, "mismatch": False, "inconclusive": False, "mismatched": [], "error": None}
         except asyncio.TimeoutError:
             return {**empty_result, "error": "docker ps timed out (30s)"}
