@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `.github/workflows/ci.yml` declares `permissions: contents: read`. No job writes to the repository; stating it explicitly keeps the token read-only even if the org or repo default is later widened
 - README: corrected the `sanitize-check.sh` description to match what the script checks, documented `scripts/security-audit.sh` (previously undocumented), and expanded the contributor test commands to the full set CI runs - typecheck, lint, `python -m unittest discover -s tests`, and the `pip-audit`/`npm audit` gates
 
+### Fixed
+
+- `./dune status` failed outright with a Python `SyntaxError`, and `./dune ready` could not report which service was down. Both embed Python in a single-quoted shell string, and both used single quotes inside it (`item.get('Service', '')`), so the shell ended the string at the first inner quote and handed Python `item.get(Service, )`. The embedded programs now use `%`-formatting and double quotes only, with a comment recording the constraint. `status` is documented in the README as a primary command, so this was broken for every operator rather than an edge case
+- `./dune status` and `./dune ready` also assumed `docker compose ps --format json` returns a JSON array. Current Compose releases print one JSON object per line, so `json.load` aborted with `Extra data: line 2 column 1` as soon as more than one service was running - meaning `ready` failed on exactly the multi-service stacks it exists to check. Both now accept newline-delimited objects, a bare array, or a single object, and treat empty input as "nothing running" rather than a crash
+
 ## [1.7.0] - 2026-08-06
 
 ### Added
