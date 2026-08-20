@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# No job here writes to the repository. Stating this explicitly means the
+# workflow keeps a read-only token even if the org/repo default is later
+# widened to read-write.
+permissions:
+  contents: read
+
 jobs:
   security-scan:
     runs-on: ubuntu-latest

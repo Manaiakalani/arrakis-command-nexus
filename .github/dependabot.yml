@@ -1,0 +1,58 @@
+version: 2
+
+# Without this file GitHub only opens Dependabot *security* PRs for the two
+# application manifests. The pinned base images in dashboard/*/Dockerfile and
+# the pinned action refs in .github/workflows are never watched at all, so a
+# patched base image or action release has no way to reach us.
+updates:
+  - package-ecosystem: npm
+    directory: /dashboard/frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build(deps)
+      prefix-development: build(deps-dev)
+    groups:
+      # next and eslint-config-next are version-locked to each other; splitting
+      # them across PRs produces a peer-dependency conflict that cannot merge.
+      next:
+        patterns:
+          - next
+          - eslint-config-next
+          - "@next/*"
+      react:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+      dev-minor-patch:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: pip
+    directory: /dashboard/backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build(deps)
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci(deps)
+
+  - package-ecosystem: docker
+    directories:
+      - /dashboard/frontend
+      - /dashboard/backend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build(deps)

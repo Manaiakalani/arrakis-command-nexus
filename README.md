@@ -74,7 +74,9 @@ Funcom's official self-hosting flow involves several services, credentials, and 
 - **Container allowlisting and response redaction** for safer automation
 - **Scheduled backups** with configurable retention windows
 - **Inventory conflict detection** (`bash scripts/inventory-conflicts.sh [--repair]`)  -  finds duplicate `(inventory_id, position_index)` rows in `dune.items` (the silicon-style ghost bug) and relocates duplicates to free slots. Safe to run on a live server.
-- **Repo sanitization check** (`bash scripts/sanitize-check.sh`) blocks accidental commits of internal hostnames, SSH usernames, IPs, JWTs, RMQ secrets, and real Discord webhook URLs. Run with `--staged` as a pre-commit hook, or `--history` to audit past commits.
+- **Repo sanitization check** (`bash scripts/sanitize-check.sh`) blocks accidental commits of private keys, provider tokens (GitHub, AWS, Google, Slack, npm, OpenAI), JWTs, real Discord webhook URLs, connection strings with inline passwords, and your battlegroup's unique name. Run with `--staged` as a pre-commit hook, or `--history` to audit every past commit. Deployment-specific values  -  your hostname, SSH user, public IP  -  belong in an untracked `.sanitize-patterns.local` (one extended-regex per line): this repository is public, so a pattern committed here to catch your hostname would publish that hostname.
+- **Security posture audit** (`bash scripts/security-audit.sh`) checks the deployment rather than the repo  -  leaked tokens in source, whether `.env` is tracked, dashboard/PostgreSQL/RabbitMQ bind addresses, and Docker socket permissions.
+- **Automated dependency updates** via [`.github/dependabot.yml`](./.github/dependabot.yml), covering npm, pip, GitHub Actions, and the pinned Docker base images. CI additionally gates every PR on `pip-audit` and `npm audit --audit-level=high`.
 - **No-hardcoded-host configuration**  -  SSH host hints in the dashboard are driven by `DUNE_SSH_USER`, `DUNE_SSH_HOST`, `DUNE_SERVER_DIR` env vars (placeholders by default), so a fresh public clone never leaks the operator's hostname or username.
 
 ### Dashboard sign-in
@@ -295,12 +297,26 @@ npm ci
 
 ### Running tests
 
-```bash
-# Frontend build check
-cd dashboard/frontend && npm run build
+These are the same checks CI runs, in the same order:
 
-# Backend compile check
-cd dashboard/backend && python -m py_compile main.py
+```bash
+# Frontend: typecheck, production build, lint
+cd dashboard/frontend
+npx tsc --noEmit
+npm run build
+npx eslint .
+
+# Backend: compile check and unit tests
+cd ../backend
+python -m py_compile main.py
+python -m unittest discover -s tests
+
+# Dependency vulnerability gates
+pip-audit -r requirements.txt
+npm audit --omit=dev --audit-level=high --prefix ../frontend
+
+# Secret scan (add --history to audit past commits)
+cd ../.. && bash scripts/sanitize-check.sh
 
 # Playwright e2e (requires a running dashboard)
 cd dashboard/frontend && npx playwright test
@@ -310,9 +326,10 @@ cd dashboard/frontend && npx playwright test
 
 1. Fork the repo and branch from `main` (`feature/your-change` or `fix/your-fix`).
 2. Run `./dune doctor` to verify your local environment.
-3. Confirm `npm run build` and `python -m py_compile main.py` pass.
-4. Add a changelog entry under `## [Unreleased]` in `CHANGELOG.md`.
-5. Open a PR with a clear summary of what changed and why.
+3. Confirm `npm run build`, `python -m py_compile main.py`, and `python -m unittest discover -s tests` pass.
+4. Run `bash scripts/sanitize-check.sh --staged` so no credential or internal hostname rides along.
+5. Add a changelog entry under `## [Unreleased]` in `CHANGELOG.md`.
+6. Open a PR with a clear summary of what changed and why.
 
 ## License
 
