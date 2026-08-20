@@ -205,12 +205,30 @@ cmd_status() {
     return 0
   fi
 
+  # This Python runs inside a single-quoted shell string, so it must not contain
+  # a single quote anywhere: the shell would end the string there and hand
+  # Python a syntax error. Use %-formatting and double quotes only.
   run_compose ps --format json | python3 -c 'import json, sys
-items = json.load(sys.stdin)
+
+def load_items(stream):
+    raw = stream.read().strip()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        # Newer Compose prints one JSON object per line instead of an array.
+        return [json.loads(line) for line in raw.splitlines() if line.strip()]
+    if isinstance(data, dict):
+        return [data]
+    return data
+
+items = load_items(sys.stdin)
 if not items:
     print("No compose services are currently running.")
     raise SystemExit(0)
-print(f"{'SERVICE':<24} {'STATE':<12} {'HEALTH':<12} PORTS")
+row = "%-24s %-12s %-12s %s"
+print(row % ("SERVICE", "STATE", "HEALTH", "PORTS"))
 for item in items:
     ports = []
     for publisher in item.get("Publishers") or []:
@@ -219,8 +237,13 @@ for item in items:
         target = publisher.get("TargetPort")
         proto = publisher.get("Protocol") or "tcp"
         if pub and target:
-            ports.append(f"{host_ip}:{pub}->{target}/{proto}")
-    print(f"{item.get('Service', ''):<24} {item.get('State', ''):<12} {item.get('Health', '') or '-':<12} {', '.join(ports) or '-'}")
+            ports.append("%s:%s->%s/%s" % (host_ip, pub, target, proto))
+    print(row % (
+        item.get("Service", ""),
+        item.get("State", ""),
+        item.get("Health", "") or "-",
+        ", ".join(ports) or "-",
+    ))
 '
 }
 
@@ -234,8 +257,23 @@ cmd_ready() {
     return 0
   fi
 
+  # See cmd_status: no single quotes may appear in this embedded Python.
   result="$(run_compose ps --format json | python3 -c 'import json, sys
-items = json.load(sys.stdin)
+
+def load_items(stream):
+    raw = stream.read().strip()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        # Newer Compose prints one JSON object per line instead of an array.
+        return [json.loads(line) for line in raw.splitlines() if line.strip()]
+    if isinstance(data, dict):
+        return [data]
+    return data
+
+items = load_items(sys.stdin)
 if not items:
     print("FAIL:No running services")
     raise SystemExit(0)
@@ -244,7 +282,7 @@ for item in items:
     state = (item.get("State") or "").lower()
     health = (item.get("Health") or "").lower()
     if state not in {"running", "created"}:
-        print(f"FAIL:{item.get('Service')} is {item.get('State')}")
+        print("FAIL:%s is %s" % (item.get("Service"), item.get("State")))
         raise SystemExit(0)
     if health in {"unhealthy", "starting"}:
         any_wait = True
