@@ -27,6 +27,14 @@ fail() {
   ((fail_count+=1))
 }
 
+# The leak patterns use PCRE (negative lookahead), which BSD/macOS grep does not
+# support. Without this probe the scan looks like it passes: grep exits 2 with
+# "invalid option -- P", the error goes to /dev/null, and an empty result reads
+# as "nothing found" rather than "nothing searched".
+pcre_grep_supported() {
+  printf 'probe\n' | grep -qP 'probe' 2>/dev/null
+}
+
 search_leaks() {
   local -a excludes=(
     --exclude-dir=.git
@@ -46,8 +54,12 @@ search_leaks() {
   )
   local -a patterns=(
     'FLS_SECRET\s*=\s*[^${\s].+$'
-    # Exclude placeholder tokens (change-me*, xxx, <...>)
-    'DUNE_ADMIN_TOKEN\s*=\s*(?!change-me|xxx|<)[^\s${"'"'"'<].{8,}'
+    # Exclude placeholder tokens (change-me*, xxx, <...>) and the ci-* literals
+    # the workflow passes to throwaway containers. Those cannot be named
+    # "change-me..." like the other placeholders, because the backend refuses to
+    # start on a token with that prefix -- so a CI smoke test needs a value that
+    # is real enough to boot and obviously not a credential.
+    'DUNE_ADMIN_TOKEN\s*=\s*(?!change-me|changeme|ci-|xxx|<)[^\s${"'"'"'<].{8,}'
     'DISCORD_WEBHOOK_URL\s*=\s*https://discord\.com/api/webhooks/'
     'gh[pousr]_[A-Za-z0-9_]{36,}'
     'github_pat_[A-Za-z0-9_]+'
@@ -146,7 +158,9 @@ check_docker_socket_permissions() {
 
 print_banner
 
-if leak_output="$(search_leaks)"; then
+if ! pcre_grep_supported; then
+  warn 'Skipped the source token scan: this grep has no -P (PCRE) support, so the patterns cannot run. Run this audit on the deployment host, where GNU grep is available.'
+elif leak_output="$(search_leaks)"; then
   fail 'Potential secret material found in tracked source paths:'
   printf '%s\n' "$leak_output"
 else

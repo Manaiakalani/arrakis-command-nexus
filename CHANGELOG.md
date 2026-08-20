@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `scripts/security-audit.sh` reported a false failure on the `DUNE_ADMIN_TOKEN=ci-image-smoke` literal that the new image-build job passes to a throwaway container. That value cannot be named `change-me...` like the other placeholders the scan already ignores, because the backend deliberately refuses to start on a token with that prefix, so a CI smoke test needs something real enough to boot and obviously not a credential. An audit that cries wolf is one people stop reading
+- The same scan silently reported success on macOS. Its patterns use PCRE negative lookahead, which BSD grep does not support: grep exited 2 with `invalid option -- P`, the error went to `/dev/null`, and an empty result was indistinguishable from "nothing found". It now probes for `grep -P` up front and warns that it skipped the scan, rather than passing without having searched anything
+
 ## [1.7.1] - 2026-08-20
 
 ### Security
