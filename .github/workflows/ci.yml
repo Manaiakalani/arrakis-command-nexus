@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
           cache: npm
           cache-dependency-path: dashboard/frontend/package-lock.json
       - run: python -m pip install --upgrade pip pip-audit
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
           cache: npm
           cache-dependency-path: dashboard/frontend/package-lock.json
       - run: npm ci
@@ -197,7 +197,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
           cache: npm
           cache-dependency-path: dashboard/frontend/package-lock.json
       - run: npm ci
@@ -205,3 +205,43 @@ jobs:
       - run: npx playwright test --list
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+  # Nothing above builds the images that actually run in production: the other
+  # jobs install dependencies via setup-python/setup-node, so they never read
+  # the `FROM` lines. A base-image bump could therefore pass every check and
+  # still produce an image that cannot build -- which is exactly what happened
+  # with the python 3.14 bump, where pydantic-core has no cp314 wheel and the
+  # slim image has no Rust toolchain to build one (#69).
+  build-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the backend image
+        run: docker build -t dune-dashboard-api:ci dashboard/backend
+      - name: Build the frontend image
+        run: docker build -t dune-dashboard-frontend:ci dashboard/frontend
+      # A successful build still says nothing about whether the entrypoint runs.
+      - name: Boot the backend and check it answers
+        run: |
+          docker run -d --name api-ci -p 8080:8080 \
+            -e DUNE_ADMIN_TOKEN=ci-image-smoke \
+            -e DATABASE_URL=sqlite+aiosqlite:////tmp/ci.db \
+            dune-dashboard-api:ci
+          for i in $(seq 1 30); do
+            if curl -fsS -m 2 http://127.0.0.1:8080/health >/dev/null 2>&1; then
+              echo 'backend image answers /health'
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo 'backend image never answered /health'
+              docker logs api-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          # The token must still be required: an image that boots but serves
+          # privileged routes anonymously is worse than one that fails to build.
+          code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/v1/system/version)"
+          [ "$code" = "401" ] || { echo "expected 401 without a token, got $code"; exit 1; }
+          echo 'backend image rejects unauthenticated access'
+          docker rm -f api-ci >/dev/null
