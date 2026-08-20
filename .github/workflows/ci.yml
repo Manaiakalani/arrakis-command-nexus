@@ -44,6 +44,10 @@ jobs:
           cache-dependency-path: dashboard/frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      # The repo has an eslint config and a `lint` script, but nothing ran them,
+      # so a config that cannot even load counted as passing. The Next 16 bump
+      # (#74) crashed eslint outright and still showed four green checks.
+      - run: npm run lint
       - run: npm run build
       # The Next middleware and the SSE proxy both hold the shared admin token.
       # If either stops checking whether the caller has a real session, browsing
