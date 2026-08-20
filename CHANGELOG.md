@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- Dependabot configuration (`.github/dependabot.yml`) for npm, pip, GitHub Actions, and Docker. Without a config file GitHub only opens *security* PRs, and only for the two application manifests, so the pinned base images in `dashboard/*/Dockerfile` and the pinned action refs in `.github/workflows` were not being watched at all - a patched base image or action release had no route into the repository. `next`/`eslint-config-next` and the React type packages are grouped, because those are version-locked to each other and splitting them across PRs produces a peer-dependency conflict that cannot merge
+
+### Changed
+
+- `scripts/sanitize-check.sh` now scans for secret material that it previously missed: private keys of every flavour, GitHub/AWS/Google/Slack/npm/OpenAI tokens, `Authorization: Bearer` credentials, and connection strings carrying an inline password. The check ran as a pre-commit hook and as the `--history` auditor, but every deployment-specific pattern in it was a commented-out template, so the three categories the README advertised most prominently - internal hostnames, SSH usernames, IPs - were not actually being checked and the resulting `ALL CLEAN` was weaker than it appeared. Those values now load from an untracked `.sanitize-patterns.local` instead of the tracked pattern list: this repository is public, so committing a pattern to catch your own hostname would publish that hostname. When no local file is present the summary says so rather than implying full coverage. Matches are filtered against an allowlist of placeholders (`change-me*`, `your-host`, `<YOUR_IP>`, RFC documentation values) so the hook stays quiet on the repository's own examples
+- `.github/workflows/ci.yml` declares `permissions: contents: read`. No job writes to the repository; stating it explicitly keeps the token read-only even if the org or repo default is later widened
+- README: corrected the `sanitize-check.sh` description to match what the script checks, documented `scripts/security-audit.sh` (previously undocumented), and expanded the contributor test commands to the full set CI runs - typecheck, lint, `python -m unittest discover -s tests`, and the `pip-audit`/`npm audit` gates
+
 ## [1.7.0] - 2026-08-06
 
 ### Added

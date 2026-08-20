@@ -9,6 +9,10 @@ secrets/
 *.p12
 *.dump
 
+# Deployment-specific sanitize-check patterns (hostname, SSH user, public IP).
+# Committing these would publish the very values they exist to catch.
+.sanitize-patterns.local
+
 # Ad-hoc restore/migration scripts (may contain credentials)
 restore-*.sh
 
