@@ -1,4 +1,4 @@
-FROM python:3.12.10-slim-bookworm AS builder
+FROM python:3.14.7-slim-bookworm AS builder
 WORKDIR /build
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-FROM python:3.12.10-slim-bookworm
+FROM python:3.14.7-slim-bookworm
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
