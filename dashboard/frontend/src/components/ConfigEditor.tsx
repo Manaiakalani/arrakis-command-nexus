@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, FileText, Info, RotateCcw, Save } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
@@ -39,28 +39,29 @@ function friendlySection(raw: string): string {
   return SECTION_LABELS[raw] || raw.replace(/[/_]/g, ' ').replace(/\bScript\b/gi, '').replace(/\s+/g, ' ').trim();
 }
 
+function draftsFromFiles(files: ConfigFile[]) {
+  return files.reduce<Record<string, Record<string, string | number | boolean>>>((accumulator, file) => {
+    accumulator[file.filename] = file.fields.reduce<Record<string, string | number | boolean>>((fieldAccumulator, field) => {
+      fieldAccumulator[fieldKey(field)] = field.value;
+      return fieldAccumulator;
+    }, {});
+    return accumulator;
+  }, {});
+}
+
 export function ConfigEditor({ files, onSave, onAcceptDrift }: ConfigEditorProps) {
   const [selected, setSelected] = useState(files[0]?.filename ?? '');
-  const [drafts, setDrafts] = useState<Record<string, Record<string, string | number | boolean>>>({});
+  const [drafts, setDrafts] = useState<Record<string, Record<string, string | number | boolean>>>(() => draftsFromFiles(files));
+  const [prevFiles, setPrevFiles] = useState(files);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (files.length > 0 && !selected) {
-      setSelected(files[0].filename);
-    }
-  }, [files, selected]);
-
-  useEffect(() => {
-    const nextDrafts = files.reduce<Record<string, Record<string, string | number | boolean>>>((accumulator, file) => {
-      accumulator[file.filename] = file.fields.reduce<Record<string, string | number | boolean>>((fieldAccumulator, field) => {
-        fieldAccumulator[fieldKey(field)] = field.value;
-        return fieldAccumulator;
-      }, {});
-      return accumulator;
-    }, {});
-
-    setDrafts(nextDrafts);
-  }, [files]);
+  if (files !== prevFiles) {
+    setPrevFiles(files);
+    setDrafts(draftsFromFiles(files));
+  }
+  if (files.length > 0 && !files.some((file) => file.filename === selected)) {
+    setSelected(files[0].filename);
+  }
 
   const activeFile = useMemo(() => files.find((file) => file.filename === selected) ?? files[0], [files, selected]);
 

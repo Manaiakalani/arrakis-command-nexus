@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Light mode tokens ── */
 :root {
@@ -137,7 +137,8 @@ body {
   }
 
   .metric-card {
-    @apply glass-panel p-5;
+    @apply rounded-2xl border border-th-border/70 bg-th-surface/[0.78] p-5 backdrop-blur-xl;
+    box-shadow: var(--glass-shadow);
   }
 
   .section-title {

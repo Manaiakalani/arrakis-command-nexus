@@ -1,7 +1,8 @@
 'use client';
 
 import { KeyRound, ShieldCheck } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import useSWR from 'swr';
 
 import { useToast } from '@/components/ToastProvider';
 import { apiClient } from '@/lib/api';
@@ -15,28 +16,23 @@ interface MeResponse {
  * Per-account MFA enrolment. Only rendered for a signed-in session — a
  * deployment still using the shared token has no account to enrol.
  */
+async function fetchMe(): Promise<MeResponse | null> {
+  const res = await fetch('/api/v1/auth/me', { cache: 'no-store' });
+  if (!res.ok) return null;
+  const body = (await res.json()) as MeResponse;
+  return body.method === 'session' ? body : null;
+}
+
 export function MfaPanel() {
   const { toast } = useToast();
-  const [me, setMe] = useState<MeResponse | null>(null);
+  const { data: me, mutate: refreshMe } = useSWR('auth/me', fetchMe, { revalidateOnFocus: false });
+  const refresh = useCallback(async () => {
+    await refreshMe();
+  }, [refreshMe]);
   const [secret, setSecret] = useState('');
   const [otpauth, setOtpauth] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch('/api/v1/auth/me', { cache: 'no-store' });
-      if (!res.ok) return;
-      const body = (await res.json()) as MeResponse;
-      setMe(body.method === 'session' ? body : null);
-    } catch {
-      setMe(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   if (!me) return null;
 

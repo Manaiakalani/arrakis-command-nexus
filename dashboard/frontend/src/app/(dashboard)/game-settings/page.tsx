@@ -236,14 +236,16 @@ export default function GameSettingsPage() {
   const sectionIds = useMemo(() => sections.map((section) => section.id), [sections]);
   const [activeSection, setActiveSection] = useActiveSection(sectionIds);
 
-  useEffect(() => {
-    if (!config.data) return;
-
-    setDrafts(config.data.fields.reduce<Record<string, DraftValue>>((acc, field) => {
-      acc[fieldKey(field)] = field.value;
-      return acc;
-    }, {}));
-  }, [config.data]);
+  const [prevConfig, setPrevConfig] = useState(config.data);
+  if (config.data !== prevConfig) {
+    setPrevConfig(config.data);
+    if (config.data) {
+      setDrafts(config.data.fields.reduce<Record<string, DraftValue>>((acc, field) => {
+        acc[fieldKey(field)] = field.value;
+        return acc;
+      }, {}));
+    }
+  }
 
   const fieldsByKey = useMemo(() => {
     return (config.data?.fields ?? []).reduce<Record<string, ConfigField>>((acc, field) => {

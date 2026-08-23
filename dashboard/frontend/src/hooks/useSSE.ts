@@ -40,7 +40,8 @@ export function useSSE(endpoint: string, options: UseSSEOptions = {}) {
     maxRetries = 0,
   } = options;
 
-  const [status, setStatus] = useState<ConnectionStatus>('closed');
+  const [liveStatus, setStatus] = useState<ConnectionStatus>('closed');
+  const status: ConnectionStatus = enabled ? liveStatus : 'closed';
   const [retryCount, setRetryCount] = useState(0);
   const reconnectRef = useRef<number | undefined>(undefined);
   const onEventRef = useRef(onEvent);
@@ -52,7 +53,6 @@ export function useSSE(endpoint: string, options: UseSSEOptions = {}) {
 
   useEffect(() => {
     if (!enabled) {
-      setStatus('closed');
       return;
     }
 
@@ -62,10 +62,9 @@ export function useSSE(endpoint: string, options: UseSSEOptions = {}) {
     const connect = () => {
       if (!mounted) return;
 
-      setStatus('connecting');
-
       const url = token ? `${endpoint}${endpoint.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : endpoint;
       source = new EventSource(url);
+      // Status updates live in EventSource callbacks, not synchronously in this effect.
 
       source.onopen = () => {
         if (!mounted) return;
@@ -119,7 +118,6 @@ export function useSSE(endpoint: string, options: UseSSEOptions = {}) {
         window.clearTimeout(reconnectRef.current);
       }
       source?.close();
-      setStatus('closed');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, endpoint, token, maxRetries, JSON.stringify(eventTypes)]);

@@ -12,7 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `src/middleware.ts` renamed to `src/proxy.ts` and the exported function to `proxy`, matching the Next 16 file convention. CI now asserts the auth gating on that path (and refuses a leftover `middleware.ts`)
 - `recharts` 2.15 -> 3.x. The dashboard charts never used `CategoricalChartState` / `<Customized />`, which is the breaking surface
 - Session sign-out uses `router.replace('/login')` instead of `window.location.assign`, which Next 16 flags as a relative-destination navigation
-- React compiler `refs` and `purity` rules are on. Callback refs update in an effect instead of during render, and clocks go through `useNow` (`useSyncExternalStore`) instead of `Date.now()` in render. `set-state-in-effect` stays off: it still flags ~18 fetch/prop-sync effects across dashboard pages, which is a separate rewrite
+- React compiler `refs`, `purity`, and `set-state-in-effect` rules are on. Prop-synced form state resets during render (React's previous-render pattern); fetch-on-mount uses SWR; `Date.now()` in render goes through `useNow`
+- Dashboard frontend Tailwind CSS 3 -> 4 (`@tailwindcss/postcss`, existing `tailwind.config.js` loaded via `@config`) and `tailwind-merge` 3
+- Dashboard backend FastAPI 0.136.3 -> 0.141.1. CI's auth-wiring assertion walks `_IncludedRouter.effective_candidates()` because included routers no longer have `.path`
 
 ### Fixed
 

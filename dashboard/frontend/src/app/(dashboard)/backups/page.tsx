@@ -1,12 +1,13 @@
 'use client';
 
 import { CalendarClock, Database, HardDrive, Save } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { BackupList } from '@/components/BackupList';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
+import { usePropState } from '@/hooks/usePropState';
 import { apiClient } from '@/lib/api';
 import type { BackupSchedule } from '@/lib/types';
 
@@ -26,15 +27,9 @@ export default function BackupsPage() {
   const { toast } = useToast();
   const backups = useApi(() => apiClient.getBackups(), { refreshInterval: 15000, initialData: [] });
   const scheduleApi = useApi(() => apiClient.getBackupSchedule(), { refreshInterval: 15000, initialData: DEFAULT_SCHEDULE });
-  const [schedule, setSchedule] = useState<BackupSchedule>(DEFAULT_SCHEDULE);
+  const [schedule, setSchedule] = usePropState<BackupSchedule>(scheduleApi.data ?? DEFAULT_SCHEDULE);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (scheduleApi.data) {
-      setSchedule(scheduleApi.data);
-    }
-  }, [scheduleApi.data]);
 
   const totalSize = (backups.data ?? []).reduce((sum, backup) => sum + backup.sizeBytes, 0);
   const isLoading = backups.loading || scheduleApi.loading;

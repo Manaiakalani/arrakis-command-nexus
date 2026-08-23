@@ -10,15 +10,12 @@ interface UsePollingOptions {
 export function usePolling(callback: () => void | Promise<void>, interval = 5000, options: UsePollingOptions = {}) {
   const { enabled = true, immediate = true } = options;
   const callbackRef = useRef(callback);
-  const [isPaused, setIsPaused] = useState(!enabled);
+  const [forcedPause, setForcedPause] = useState(false);
+  const isPaused = !enabled || forcedPause;
 
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
-
-  useEffect(() => {
-    setIsPaused(!enabled);
-  }, [enabled]);
 
   useEffect(() => {
     if (isPaused) {
@@ -36,8 +33,8 @@ export function usePolling(callback: () => void | Promise<void>, interval = 5000
     return () => window.clearInterval(id);
   }, [immediate, interval, isPaused]);
 
-  const pause = useCallback(() => setIsPaused(true), []);
-  const resume = useCallback(() => setIsPaused(false), []);
+  const pause = useCallback(() => setForcedPause(true), []);
+  const resume = useCallback(() => setForcedPause(false), []);
 
   return { isPaused, pause, resume };
 }

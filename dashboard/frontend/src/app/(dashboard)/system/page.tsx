@@ -2,7 +2,7 @@
 
 import { AlarmClock, Cpu, Download, HardDrive, Network, Pause, Play, Power, Server, ShieldOff, Waves, Wrench } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton } from '@/components/Skeleton';
@@ -170,15 +170,15 @@ export default function SystemPage() {
   const metrics = useApiSWR('api/system/metrics', () => apiClient.getSystemMetrics(), { refreshInterval: 10_000 });
   const history = useApiSWR(`api/system/history/${range}`, () => apiClient.getSystemHistory(range), { refreshInterval: 15_000, initialData: { range, points: [] } });
   const restartScheduleApi = useApiSWR('api/system/restart-schedule', () => apiClient.getRestartSchedule(), { refreshInterval: 15_000, initialData: DEFAULT_RESTART_SCHEDULE });
-
-  useEffect(() => {
-    if (!restartScheduleApi.data) {
-      return;
+  const [prevScheduleData, setPrevScheduleData] = useState(restartScheduleApi.data);
+  if (restartScheduleApi.data !== prevScheduleData) {
+    setPrevScheduleData(restartScheduleApi.data);
+    if (restartScheduleApi.data) {
+      setSchedule(restartScheduleApi.data);
+      setWarningInput((restartScheduleApi.data.warningMinutes ?? []).join(', '));
+      setRestartTimeInput(restartScheduleApi.data.restartTimeUtc ?? '');
     }
-    setSchedule(restartScheduleApi.data);
-    setWarningInput((restartScheduleApi.data.warningMinutes ?? []).join(', '));
-    setRestartTimeInput(restartScheduleApi.data.restartTimeUtc ?? '');
-  }, [restartScheduleApi.data]);
+  }
 
   const warningSummary = useMemo(() => (schedule.warningMinutes.length > 0 ? schedule.warningMinutes.join(', ') : 'No warnings'), [schedule.warningMinutes]);
   const exportUrl = `/api/system/export?range=${encodeURIComponent(range)}&format=${encodeURIComponent(exportFormat)}${exportWidget !== 'all' ? `&widget=${encodeURIComponent(exportWidget)}` : ''}`;
