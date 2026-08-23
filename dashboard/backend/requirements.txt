@@ -5,7 +5,7 @@ docker==7.2.0
 psutil==7.0.0
 pydantic==2.11.3
 sqlalchemy==2.0.52
-aiosqlite==0.21.0
+aiosqlite==0.22.1
 asyncpg==0.31.0
 pika==1.4.4
 httpx==0.28.1
