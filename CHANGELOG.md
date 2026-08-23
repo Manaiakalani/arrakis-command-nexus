@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- Dashboard frontend Next.js 15.5.21 -> 16.3.x, with matching `eslint-config-next`. Dependabot #74 could not merge: once `eslint-config-next` is 16, the previous FlatCompat `extends('next/core-web-vitals')` path crashes ESLint 9 with "Converting circular structure to JSON", so `npm run lint` never ran and the bump stayed a draft. The config now loads `eslint-config-next/core-web-vitals` as a native flat config. Next 16's preset also enables the React compiler hook rules, which were not part of the Next 15 surface this repo linted against; those stay off so the version bump is not a rewrite of every dashboard page. `src/middleware.ts` keeps that filename because CI asserts the auth gating lives there — Next 16's `middleware` -> `proxy` rename is a deprecation warning, not a requirement. `@eslint/eslintrc` is unused after the native flat config and is gone
+
 ### Fixed
 
 - `scripts/security-audit.sh` reported a false failure on the `DUNE_ADMIN_TOKEN=ci-image-smoke` literal that the new image-build job passes to a throwaway container. That value cannot be named `change-me...` like the other placeholders the scan already ignores, because the backend deliberately refuses to start on a token with that prefix, so a CI smoke test needs something real enough to boot and obviously not a credential. An audit that cries wolf is one people stop reading
