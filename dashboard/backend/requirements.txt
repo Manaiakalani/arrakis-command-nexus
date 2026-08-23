@@ -3,7 +3,7 @@ uvicorn[standard]==0.52.4
 python-dotenv==1.2.3
 docker==7.2.0
 psutil==7.0.0
-pydantic==2.11.3
+pydantic==2.13.4
 sqlalchemy==2.0.52
 aiosqlite==0.21.0
 asyncpg==0.31.0
