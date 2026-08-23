@@ -189,7 +189,21 @@ jobs:
           assert not hasattr(auth_router, "_GLOBAL_MAX_ATTEMPTS"), \
               "a fixed global attempt budget lets one flooder lock out every user"
 
-          routes = {r.path for r in main.app.routes}
+          # FastAPI 0.141 wraps include_router in _IncludedRouter, which has no
+          # .path. Walk effective_candidates so the assertion still sees the
+          # mounted auth routes (0.136 APIRoute.path keeps working too).
+          def collect_paths(routes):
+              paths = set()
+              for r in routes:
+                  if type(r).__name__ == "_IncludedRouter":
+                      paths |= collect_paths(r.effective_candidates())
+                      continue
+                  path = getattr(r, "path", None)
+                  if isinstance(path, str):
+                      paths.add(path)
+              return paths
+
+          routes = collect_paths(main.app.routes)
           for required in ("/api/v1/auth/login", "/api/auth/login", "/api/v1/auth/session-check"):
               assert required in routes, f"{required} is not mounted"
           print("auth wiring ok")

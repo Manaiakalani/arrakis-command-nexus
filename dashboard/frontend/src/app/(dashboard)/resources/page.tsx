@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, Cpu, HardDrive, Package, RotateCcw, Save } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
@@ -38,10 +38,12 @@ export default function ResourcesPage() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  useEffect(() => {
+  const [prevResources, setPrevResources] = useState(resources.data);
+  if (resources.data !== prevResources) {
+    setPrevResources(resources.data);
     setEdits({});
     setFeedback(null);
-  }, [resources.data]);
+  }
 
   const getValue = useCallback(
     (key: string, original: string) => (key in edits ? edits[key] : original),
