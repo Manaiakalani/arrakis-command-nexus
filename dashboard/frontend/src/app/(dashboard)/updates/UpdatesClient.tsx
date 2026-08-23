@@ -2,6 +2,7 @@
 
 import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Database, Download, Loader2, RefreshCw, RotateCcw, Settings2, Terminal, ThumbsUp, Wrench, Zap, ZapOff } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import useSWR from 'swr';
 
 import { useToast } from '@/components/ToastProvider';
 import { apiClient } from '@/lib/api';
@@ -59,6 +60,23 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
   const [steamTesting, setSteamTesting] = useState(false);
   const [steamError, setSteamError] = useState<string | null>(null);
   const [steamSuccess, setSteamSuccess] = useState<string | null>(null);
+
+  useSWR(initialStatus ? null : 'update-status', () => apiClient.getUpdateStatus(), {
+    onSuccess: (data) => {
+      setStatus(data);
+      setLoading(false);
+    },
+    onError: () => setLoading(false),
+  });
+  useSWR('update-host', () => apiClient.getUpdateHostInfo(), {
+    onSuccess: setHostInfo,
+  });
+  useSWR('steam-account', () => apiClient.getSteamAccount(), {
+    onSuccess: (sa) => {
+      setSteamAccount(sa);
+      if (sa.username) setSteamForm((f) => ({ ...f, username: sa.username }));
+    },
+  });
 
   const loadStatus = useCallback(async () => {
     try {
@@ -286,11 +304,10 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
   };
 
   useEffect(() => {
-    void loadStatus();
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [loadStatus]);
+  }, []);
 
   const formatDate = (isoString: string | null) => {
     if (!isoString) return 'Never';

@@ -7,15 +7,6 @@ import nextVitals from 'eslint-config-next/core-web-vitals';
 // (Dependabot #74).
 export default defineConfig([
   ...nextVitals,
-  {
-    // set-state-in-effect still fires on ~18 fetch/prop-sync effects across
-    // dashboard pages. Those are real compiler findings but a rewrite of every
-    // page's load path, not part of this follow-up. The other compiler rules
-    // are on.
-    rules: {
-      'react-hooks/set-state-in-effect': 'off',
-    },
-  },
   globalIgnores([
     '.next/**',
     'out/**',

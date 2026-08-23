@@ -22,6 +22,7 @@ import {
   UserCog,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/components/ToastProvider';
@@ -112,7 +113,7 @@ export default function CharactersPage() {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterRecord | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('stats');
-  const [loadingCharacter, setLoadingCharacter] = useState(false);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
   const [characterError, setCharacterError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>(null);
   const [saving, setSaving] = useState(false);
@@ -124,8 +125,13 @@ export default function CharactersPage() {
   const [grantingLabel, setGrantingLabel] = useState<string | null>(null);
   const [templateResults, setTemplateResults] = useState<{ id: string; name?: string; count: number; source?: string; category?: string }[]>([]);
   const [searchingTemplates, setSearchingTemplates] = useState(false);
-  const [inventoryData, setInventoryData] = useState<Record<string, { template_id: string; stack_size: number; position_index: number; quality_level: number }[]> | null>(null);
-  const [loadingInventory, setLoadingInventory] = useState(false);
+  const { data: inventoryData = null, isLoading: loadingInventory, mutate: loadInventory } = useSWR(
+    selectedId ? (['character-inventory', selectedId] as const) : null,
+    async ([, id]) => {
+      const result = await apiClient.getCharacterInventory(id);
+      return result.inventories;
+    },
+  );
   const [teleportX, setTeleportX] = useState('');
   const [teleportY, setTeleportY] = useState('');
   const [teleportZ, setTeleportZ] = useState('');
@@ -211,35 +217,30 @@ export default function CharactersPage() {
     );
   }, [schema.data?.stats]);
 
-  useEffect(() => {
-    if (availableCategories.length === 0) {
-      return;
-    }
-    if (!availableCategories.includes(activeCategory)) {
-      setActiveCategory(availableCategories[0]);
-    }
-  }, [activeCategory, availableCategories]);
+  if (availableCategories.length > 0 && !availableCategories.includes(activeCategory)) {
+    setActiveCategory(availableCategories[0]);
+  }
+  const nextSelectedId = filteredCharacters.length === 0
+    ? null
+    : (!selectedId || !filteredCharacters.some((character) => character.id === selectedId)
+      ? filteredCharacters[0].id
+      : selectedId);
+  if (nextSelectedId !== selectedId) {
+    setSelectedId(nextSelectedId);
+  }
 
-  useEffect(() => {
-    if (filteredCharacters.length === 0) {
-      setSelectedId(null);
-      return;
-    }
-    if (!selectedId || !filteredCharacters.some((character) => character.id === selectedId)) {
-      setSelectedId(filteredCharacters[0].id);
-    }
-  }, [filteredCharacters, selectedId]);
+  if (!selectedId && selectedCharacter !== null) {
+    setSelectedCharacter(null);
+    setDraft({});
+    setCharacterError(null);
+  }
 
   useEffect(() => {
     if (!selectedId) {
-      setSelectedCharacter(null);
-      setDraft({});
       return;
     }
 
     let cancelled = false;
-    setLoadingCharacter(true);
-    setCharacterError(null);
     void apiClient
       .getCharacter(selectedId)
       .then((character) => {
@@ -248,6 +249,8 @@ export default function CharactersPage() {
         }
         setSelectedCharacter(character);
         setDraft(buildDraft(character, schema.data?.stats ?? []));
+        setCharacterError(null);
+        setLoadedId(selectedId);
       })
       .catch((error) => {
         if (cancelled) {
@@ -257,11 +260,7 @@ export default function CharactersPage() {
         setSelectedCharacter(fallback);
         setDraft(buildDraft(fallback, schema.data?.stats ?? []));
         setCharacterError(error instanceof Error ? error.message : 'Unable to load character details.');
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingCharacter(false);
-        }
+        setLoadedId(selectedId);
       });
 
     return () => {
@@ -269,6 +268,7 @@ export default function CharactersPage() {
     };
   }, [characters.data, schema.data?.stats, selectedId]);
 
+  const loadingCharacter = Boolean(selectedId) && loadedId !== selectedId;
   const activeFields = fieldsByCategory[activeCategory] ?? [];
   const selectedSource = selectedCharacter?.source ?? 'unknown';
   const mutationsEnabled = schema.data?.summary.mutationsEnabled ?? false;
@@ -279,16 +279,16 @@ export default function CharactersPage() {
       return;
     }
     setSaveState(null);
-    setLoadingCharacter(true);
+    setLoadedId(null);
     try {
       const character = await apiClient.getCharacter(selectedId);
       setSelectedCharacter(character);
       setDraft(buildDraft(character, schema.data?.stats ?? []));
       setCharacterError(null);
+      setLoadedId(selectedId);
     } catch (error) {
       setCharacterError(error instanceof Error ? error.message : 'Unable to reload character.');
-    } finally {
-      setLoadingCharacter(false);
+      setLoadedId(selectedId);
     }
   };
 
@@ -460,19 +460,6 @@ export default function CharactersPage() {
     }
   };
 
-  const loadInventory = useCallback(async () => {
-    if (!selectedId) return;
-    setLoadingInventory(true);
-    try {
-      const result = await apiClient.getCharacterInventory(selectedId);
-      setInventoryData(result.inventories);
-    } catch {
-      setInventoryData(null);
-    } finally {
-      setLoadingInventory(false);
-    }
-  }, [selectedId]);
-
   const handleTeleport = async (x?: number, y?: number, z?: number) => {
     if (!selectedId) return;
     const px = x ?? parseFloat(teleportX);
@@ -496,15 +483,13 @@ export default function CharactersPage() {
     }
   };
 
-  useEffect(() => {
-    if (selectedId) {
-      setInventoryData(null);
-      void loadInventory();
-      setGrantResult(null);
-      setTeleportResult(null);
-      setTemplateResults([]);
-    }
-  }, [loadInventory, selectedId]);
+  const [prevInvId, setPrevInvId] = useState(selectedId);
+  if (selectedId !== prevInvId) {
+    setPrevInvId(selectedId);
+    setGrantResult(null);
+    setTeleportResult(null);
+    setTemplateResults([]);
+  }
 
   return (
     <div className="space-y-6">

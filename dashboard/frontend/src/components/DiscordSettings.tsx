@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, Send, TestTube2, Trash2, Webhook } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { DiscordWebhook } from '@/lib/types';
@@ -33,37 +33,27 @@ interface DiscordSettingsProps {
 export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, onAnnouncement }: DiscordSettingsProps) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DiscordWebhook[]>(webhooks);
+  const [prevWebhooks, setPrevWebhooks] = useState(webhooks);
   const [announcement, setAnnouncement] = useState('');
   const [newWebhook, setNewWebhook] = useState({ name: 'Operations Feed', url: '', enabled: true, events: availableEvents });
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set());
-  // Ref mirrors dirtyIds so the webhooks effect always sees the latest value
-  const dirtyIdsRef = useRef(dirtyIds);
-  useEffect(() => {
-    dirtyIdsRef.current = dirtyIds;
-  });
 
-  useEffect(() => {
-    // Prune dirty IDs for webhooks no longer present (deleted server-side)
+  if (webhooks !== prevWebhooks) {
+    setPrevWebhooks(webhooks);
     const serverIds = new Set(webhooks.map((w) => w.id));
-    setDirtyIds((current) => {
-      const pruned = new Set([...current].filter((id) => serverIds.has(id)));
-      return pruned.size === current.size ? current : pruned;
-    });
-    // Merge server data while preserving locally-edited fields
-    const currentDirty = dirtyIdsRef.current;
-    setDrafts((current) => {
-      if (currentDirty.size === 0) return webhooks;
-      return webhooks.map((incoming) => {
-        if (currentDirty.has(incoming.id)) {
-          const local = current.find((d) => d.id === incoming.id);
-          if (!local) return incoming;
-          // Preserve only editable fields; let server-owned fields (health, recentEvents) update
-          return { ...incoming, name: local.name, enabled: local.enabled, events: local.events };
-        }
-        return incoming;
-      });
-    });
-  }, [webhooks]);
+    const nextDirty = new Set([...dirtyIds].filter((id) => serverIds.has(id)));
+    setDirtyIds(nextDirty);
+    setDrafts(
+      nextDirty.size === 0
+        ? webhooks
+        : webhooks.map((incoming) => {
+            if (!nextDirty.has(incoming.id)) return incoming;
+            const local = drafts.find((d) => d.id === incoming.id);
+            if (!local) return incoming;
+            return { ...incoming, name: local.name, enabled: local.enabled, events: local.events };
+          }),
+    );
+  }
 
   const updateDraft = (id: string, patch: Partial<DiscordWebhook>) => {
     setDirtyIds((current) => new Set(current).add(id));

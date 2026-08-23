@@ -86,7 +86,8 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
   const enabledRef = useRef(enabled);
   const isMountedRef = useRef(true);
   const [data, setData] = useState<T | undefined>(initialData);
-  const [loading, setLoading] = useState(enabled);
+  const [loadingFlag, setLoading] = useState(enabled);
+  const loading = enabled && loadingFlag;
   const [error, setError] = useState<Error | null>(null);
   const hasData = useRef(initialData !== undefined);
 
@@ -118,10 +119,6 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
     }
 
     try {
-      if (!hasData.current && isMountedRef.current) {
-        setLoading(true);
-      }
-
       const next = await dedupedFetch(keyRef.current, () => fetcherRef.current(), force);
       if (!isMountedRef.current) {
         return next;
@@ -148,7 +145,6 @@ export function useApi<T>(fetcher: () => Promise<T>, options: UseApiOptions<T> =
   // Initial fetch + dep-driven refetch
   useEffect(() => {
     if (!enabled) {
-      setLoading(false);
       return;
     }
 

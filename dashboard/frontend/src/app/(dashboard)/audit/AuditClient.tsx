@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
 import {
   FileSearch,
   ChevronLeft,
@@ -95,13 +96,44 @@ export default function AuditClient({
   initialSummary,
 }: AuditClientProps) {
   const { toast } = useToast();
-  const [entries, setEntries] = useState<AuditEntry[]>(initialEntries);
-  const [total, setTotal] = useState(initialTotal);
   const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState<string>('');
-  const [summary, setSummary] = useState<Record<string, number>>(initialSummary);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const isFirstPage = offset === 0 && category === '';
+
+  const { data: auditData, isLoading: loading, mutate: mutateAudit } = useSWR(
+    ['audit', offset, category],
+    async () => {
+      const params = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        offset: String(offset),
+      });
+      if (category) params.set('category', category);
+      const res = await fetch(`/api/v1/audit?${params}`);
+      if (!res.ok) throw new Error('Failed to load audit trail');
+      return res.json() as Promise<{ entries: AuditEntry[]; total: number }>;
+    },
+    {
+      fallbackData: isFirstPage ? { entries: initialEntries, total: initialTotal } : undefined,
+      keepPreviousData: true,
+      onError: () => toast('Failed to load audit trail', 'error'),
+    },
+  );
+  const { data: summary = initialSummary, mutate: mutateSummary } = useSWR(
+    'audit/summary',
+    async () => {
+      const res = await fetch('/api/v1/audit/summary');
+      if (!res.ok) throw new Error('Failed to load audit summary');
+      const data = await res.json();
+      return (data.by_action ?? {}) as Record<string, number>;
+    },
+    {
+      fallbackData: initialSummary,
+      onError: () => toast('Failed to load audit summary', 'error'),
+    },
+  );
+  const entries = auditData?.entries ?? initialEntries;
+  const total = auditData?.total ?? initialTotal;
 
   const handleExport = (format: 'csv' | 'json') => {
     const params = new URLSearchParams({ fmt: format });
@@ -119,48 +151,6 @@ export default function AuditClient({
       })
       .catch(() => toast('Export failed', 'error'));
   };
-
-  const fetchAudit = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        limit: String(PAGE_SIZE),
-        offset: String(offset),
-      });
-      if (category) params.set('category', category);
-
-      const res = await fetch(`/api/v1/audit?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setEntries(data.entries ?? []);
-        setTotal(data.total ?? 0);
-      }
-    } catch {
-      toast('Failed to load audit trail', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [offset, category, toast]);
-
-  const fetchSummary = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/v1/audit/summary`);
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data.by_action ?? {});
-      }
-    } catch {
-      toast('Failed to load audit summary', 'error');
-    }
-  }, [toast]);
-
-  // Re-fetch when offset or category changes (skip initial render since we have server data)
-  const isInitialRender = offset === 0 && category === '';
-  useEffect(() => {
-    if (!isInitialRender) {
-      fetchAudit();
-    }
-  }, [fetchAudit, isInitialRender]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
@@ -194,7 +184,7 @@ export default function AuditClient({
             JSON
           </button>
           <button type="button"
-            onClick={() => { fetchAudit(); fetchSummary(); }}
+            onClick={() => { void mutateAudit(); void mutateSummary(); }}
             className="dune-button-muted flex items-center gap-2"
           >
             <RefreshCw aria-hidden="true" className="h-4 w-4" />
