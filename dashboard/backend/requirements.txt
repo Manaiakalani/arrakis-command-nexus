@@ -9,4 +9,4 @@ aiosqlite==0.22.1
 asyncpg==0.31.0
 pika==1.4.4
 httpx==0.28.1
-sse-starlette==3.4.4
+sse-starlette==3.4.8
