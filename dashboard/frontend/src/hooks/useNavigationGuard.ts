@@ -9,9 +9,11 @@ import { useEffect, useRef } from 'react';
  */
 export function useNavigationGuard(dirty: boolean, message?: string) {
   const msgRef = useRef(message ?? 'You have unsaved changes. Are you sure you want to leave?');
-  msgRef.current = message ?? 'You have unsaved changes. Are you sure you want to leave?';
   const dirtyRef = useRef(dirty);
-  dirtyRef.current = dirty;
+  useEffect(() => {
+    msgRef.current = message ?? 'You have unsaved changes. Are you sure you want to leave?';
+    dirtyRef.current = dirty;
+  });
   const historyPushed = useRef(false);
 
   // Browser navigation (refresh, close tab, URL bar)

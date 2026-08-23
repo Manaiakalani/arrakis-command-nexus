@@ -7,10 +7,11 @@ import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
 import { useApi } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api';
+import { useNow } from '@/lib/now';
 import { cn } from '@/lib/utils';
 
-function timeAgo(iso: string) {
-  const ms = Date.now() - new Date(iso).getTime();
+function timeAgo(iso: string, now: number) {
+  const ms = now - new Date(iso).getTime();
   const mins = Math.floor(ms / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
@@ -21,6 +22,7 @@ function timeAgo(iso: string) {
 
 export default function IncidentsPage() {
   const { toast } = useToast();
+  const now = useNow(60_000);
   const crashes = useApi(() => apiClient.getWatchdogCrashes(), { refreshInterval: 15000, initialData: [] });
   const watchdog = useApi(() => apiClient.getWatchdogStatus(), { refreshInterval: 15000 });
 
@@ -38,7 +40,6 @@ export default function IncidentsPage() {
   }, [crashes.data]);
 
   const stats = useMemo(() => {
-    const now = Date.now();
     const last24h = incidents.filter((e) => now - new Date(e.timestamp).getTime() < 86400000);
     return {
       total: incidents.length,
@@ -46,7 +47,7 @@ export default function IncidentsPage() {
       restarts: last24h.filter((e) => e.type === 'restart').length,
       alerts: last24h.filter((e) => e.type === 'alert').length,
     };
-  }, [incidents]);
+  }, [incidents, now]);
 
   const handleRestart = async (service: string) => {
     try {
@@ -156,7 +157,7 @@ export default function IncidentsPage() {
                       {event.exitCode != null && <span className="text-xs text-th-text-m">exit {event.exitCode}</span>}
                     </div>
                     <p className="mt-1 text-sm text-th-text-m">{event.message}</p>
-                    <p className="mt-1 text-xs text-th-text-m">{timeAgo(event.timestamp)} — {new Date(event.timestamp).toLocaleString()}</p>
+                    <p className="mt-1 text-xs text-th-text-m">{timeAgo(event.timestamp, now)} — {new Date(event.timestamp).toLocaleString()}</p>
                   </div>
                 </div>
                 <button type="button" onClick={() => void handleRestart(event.service)} className="dune-button-muted shrink-0 text-sm">

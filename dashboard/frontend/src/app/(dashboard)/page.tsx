@@ -3,13 +3,14 @@
 import { Activity, AlertTriangle, Check, Clock3, Cpu, Database, HardDrive, LayoutDashboard, Map, Play, RefreshCcw, Server, ShieldCheck, Square, Users, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import { ResourceGauge } from '@/components/ResourceGauge';
 import { StatusCard } from '@/components/StatusCard';
 import { useToast } from '@/components/ToastProvider';
-import useSWR from 'swr';
 import { useDashboardSSE } from '@/hooks/useDashboardSSE';
 import { apiClient } from '@/lib/api';
+import { useNow } from '@/lib/now';
 import { cn } from '@/lib/utils';
 
 const readinessStyles = {
@@ -37,6 +38,7 @@ function formatUptime(seconds = 0) {
 
 export default function OverviewPage() {
   const { toast } = useToast();
+  const now = useNow(60_000);
   const { data: overviewData, error: overviewError, isLoading: overviewLoading, mutate: overviewMutate } = useSWR('api/overview', () => apiClient.getOverview(), { refreshInterval: 30_000 });
   // SSE real-time updates — merges into overview state, polling is fallback
   const handleSSEUpdate = useCallback(
@@ -346,7 +348,7 @@ export default function OverviewPage() {
               if (!lastBackup) {
                 return <p className="mt-3 text-sm text-th-text-m">No backups recorded yet.</p>;
               }
-              const age = Date.now() - new Date(lastBackup.createdAt).getTime();
+              const age = now - new Date(lastBackup.createdAt).getTime();
               const hoursAgo = Math.floor(age / 3600000);
               const isStale = hoursAgo > 24;
               return (

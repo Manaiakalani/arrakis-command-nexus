@@ -41,9 +41,9 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    // Server-side only, so requests still pass through src/middleware.ts and get
+    // Server-side only, so requests still pass through src/proxy.ts and get
     // the admin token injected. Do not expose this as NEXT_PUBLIC_*: an absolute
-    // base URL used by the browser bypasses that middleware entirely.
+    // base URL used by the browser bypasses that proxy entirely.
     const apiUrl = (process.env.DUNE_DASHBOARD_API_URL || 'http://dashboard-api:8080').replace(/\/$/, '');
     return [
       {

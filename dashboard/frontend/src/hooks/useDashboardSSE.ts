@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { useSSE } from './useSSE';
 
@@ -35,7 +35,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function useDashboardSSE(options: UseDashboardSSEOptions) {
   const { enabled = true, onUpdate } = options;
   const onUpdateRef = useRef(onUpdate);
-  onUpdateRef.current = onUpdate;
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  });
 
   const handleEvent = useCallback(
     (event: { type: string; data: unknown }) => {

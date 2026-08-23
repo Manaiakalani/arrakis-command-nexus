@@ -78,7 +78,7 @@ async function sessionCheck(request: NextRequest): Promise<SessionCheck> {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const requestHeaders = new Headers(request.headers);
 
