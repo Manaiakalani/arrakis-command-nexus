@@ -21,7 +21,7 @@
     "react-dom": "^19.2.8",
     "react-window": "^2.3.0",
     "recharts": "^2.15.0",
-    "swr": "^2.4.2",
+    "swr": "^2.5.1",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
