@@ -1,6 +1,7 @@
 'use client';
 
 import { LogOut, UserRound } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface SessionUser {
@@ -15,6 +16,7 @@ interface SessionUser {
  * no change until they create an account.
  */
 export function SessionMenu() {
+  const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -41,7 +43,8 @@ export function SessionMenu() {
     } catch {
       // Even if the call fails the cookie is likely gone; send them onward.
     } finally {
-      window.location.assign('/login');
+      router.replace('/login');
+      router.refresh();
     }
   };
 

@@ -38,7 +38,9 @@ export function DiscordSettings({ webhooks, onAdd, onUpdate, onDelete, onTest, o
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set());
   // Ref mirrors dirtyIds so the webhooks effect always sees the latest value
   const dirtyIdsRef = useRef(dirtyIds);
-  dirtyIdsRef.current = dirtyIds;
+  useEffect(() => {
+    dirtyIdsRef.current = dirtyIds;
+  });
 
   useEffect(() => {
     // Prune dirty IDs for webhooks no longer present (deleted server-side)

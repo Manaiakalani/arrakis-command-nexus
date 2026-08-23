@@ -49,22 +49,23 @@ jobs:
       # (#74) crashed eslint outright and still showed four green checks.
       - run: npm run lint
       - run: npm run build
-      # The Next middleware and the SSE proxy both hold the shared admin token.
+      # The Next.js proxy and the SSE route both hold the shared admin token.
       # If either stops checking whether the caller has a real session, browsing
       # to the dashboard silently becomes full operator access again (#52).
+      # Next 16 renamed middleware.ts -> proxy.ts; keep asserting that path.
       - name: Assert the machine token stays behind a session check
         run: |
-          for f in src/middleware.ts src/app/api/events/stream/route.ts; do
+          for f in src/proxy.ts src/app/api/events/stream/route.ts; do
             grep -q 'auth/session-check' "$f" \
               || { echo "$f no longer validates the caller's session with the backend"; exit 1; }
           done
-          grep -q 'if (!authEnabled)' src/middleware.ts \
-            || { echo 'src/middleware.ts must only inject DUNE_ADMIN_TOKEN while sign-in is unconfigured'; exit 1; }
+          grep -q 'if (!authEnabled)' src/proxy.ts \
+            || { echo 'src/proxy.ts must only inject DUNE_ADMIN_TOKEN while sign-in is unconfigured'; exit 1; }
           # A failed session check must never be read as "sign-in is off": that is
           # a silent grant of DUNE_ADMIN_TOKEN to an anonymous caller, and the
           # sawAuthEnabled latch is per-worker so a fresh worker has no memory.
-          grep -q 'return { authEnabled: true, authenticated: false };' src/middleware.ts \
-            || { echo 'src/middleware.ts must fail closed when the session check errors'; exit 1; }
+          grep -q 'return { authEnabled: true, authenticated: false };' src/proxy.ts \
+            || { echo 'src/proxy.ts must fail closed when the session check errors'; exit 1; }
           grep -q 'return false;' src/app/api/events/stream/route.ts \
             || { echo 'the SSE proxy must fail closed when the session check errors'; exit 1; }
           # Server rendering must fetch as the signed-in caller. Fetching with the
@@ -74,8 +75,12 @@ jobs:
             || { echo 'serverFetch must forward the session cookie so role-based redaction applies'; exit 1; }
           # A cached "sign-in is off" answer only ever speeds up cookieless
           # requests, which are exactly the ones that receive the machine token.
-          if grep -q 'cachedDisabledAt' src/middleware.ts; then
-            echo 'src/middleware.ts must not cache the sign-in-disabled answer'
+          if grep -q 'cachedDisabledAt' src/proxy.ts; then
+            echo 'src/proxy.ts must not cache the sign-in-disabled answer'
+            exit 1
+          fi
+          if [ -e src/middleware.ts ]; then
+            echo 'src/middleware.ts must not remain after the Next 16 proxy rename'
             exit 1
           fi
           echo 'frontend auth gating ok'

@@ -10,6 +10,7 @@ import { ShutdownPanel } from '@/components/ShutdownPanel';
 import { useToast } from '@/components/ToastProvider';
 import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
+import { useNow } from '@/lib/now';
 import type { RestartSchedule } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -97,11 +98,7 @@ function formatCountdown(target?: string | null, now = Date.now()) {
 
 /** Isolated 1-second countdown so it doesn't re-render the entire page */
 function RestartCountdown({ targetTime }: { targetTime?: string | null }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
+  const now = useNow(1000);
   return <p className="mt-2 text-lg font-semibold text-th-text">{formatCountdown(targetTime, now)}</p>;
 }
 
