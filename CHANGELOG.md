@@ -8,7 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
-- Dashboard frontend Next.js 15.5.21 -> 16.3.x, with matching `eslint-config-next`. Dependabot #74 could not merge: once `eslint-config-next` is 16, the previous FlatCompat `extends('next/core-web-vitals')` path crashes ESLint 9 with "Converting circular structure to JSON", so `npm run lint` never ran and the bump stayed a draft. The config now loads `eslint-config-next/core-web-vitals` as a native flat config. Next 16's preset also enables the React compiler hook rules, which were not part of the Next 15 surface this repo linted against; those stay off so the version bump is not a rewrite of every dashboard page. `src/middleware.ts` keeps that filename because CI asserts the auth gating lives there — Next 16's `middleware` -> `proxy` rename is a deprecation warning, not a requirement. `@eslint/eslintrc` is unused after the native flat config and is gone
+- Dashboard frontend Next.js 15.5.21 -> 16.3.x, with matching `eslint-config-next`. Dependabot #74 could not merge: once `eslint-config-next` is 16, the previous FlatCompat `extends('next/core-web-vitals')` path crashes ESLint 9 with "Converting circular structure to JSON", so `npm run lint` never ran and the bump stayed a draft. The config now loads `eslint-config-next/core-web-vitals` as a native flat config. `@eslint/eslintrc` is unused after the native flat config and is gone
+- `src/middleware.ts` renamed to `src/proxy.ts` and the exported function to `proxy`, matching the Next 16 file convention. CI now asserts the auth gating on that path (and refuses a leftover `middleware.ts`)
+- `recharts` 2.15 -> 3.x. The dashboard charts never used `CategoricalChartState` / `<Customized />`, which is the breaking surface
+- Session sign-out uses `router.replace('/login')` instead of `window.location.assign`, which Next 16 flags as a relative-destination navigation
+- React compiler `refs` and `purity` rules are on. Callback refs update in an effect instead of during render, and clocks go through `useNow` (`useSyncExternalStore`) instead of `Date.now()` in render. `set-state-in-effect` stays off: it still flags ~18 fetch/prop-sync effects across dashboard pages, which is a separate rewrite
 
 ### Fixed
 

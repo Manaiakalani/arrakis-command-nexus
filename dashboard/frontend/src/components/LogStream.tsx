@@ -7,6 +7,7 @@ import type { RowComponentProps } from 'react-window';
 
 import { apiClient } from '@/lib/api';
 import { useSSE } from '@/hooks/useSSE';
+import { useNow } from '@/lib/now';
 import type { LogEvent, Severity } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -73,6 +74,7 @@ function LogRow({ index, style, messages, ariaAttributes }: RowComponentProps<Lo
 }
 
 export function LogStream({ endpoint, selectedService: controlledService, onServiceChange, services, externalSearch, timeRangeMs }: LogStreamProps) {
+  const now = useNow(1000);
   const [uncontrolledService, setUncontrolledService] = useState('all');
   const [query, setQuery] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
@@ -149,14 +151,14 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
 
   const visibleMessages = useMemo(() => {
     const combinedQuery = externalSearch || query;
-    const cutoff = timeRangeMs && timeRangeMs > 0 ? Date.now() - timeRangeMs : 0;
+    const cutoff = timeRangeMs && timeRangeMs > 0 ? now - timeRangeMs : 0;
     return allMessages.filter((message) => {
       const matchesService = selectedService === 'all' || message.service === selectedService;
       const matchesQuery = combinedQuery.length === 0 || `${message.message} ${message.service}`.toLowerCase().includes(combinedQuery.toLowerCase());
       const matchesTime = cutoff === 0 || new Date(message.timestamp).getTime() >= cutoff;
       return matchesService && matchesQuery && matchesTime;
     });
-  }, [allMessages, query, externalSearch, timeRangeMs, selectedService]);
+  }, [allMessages, query, externalSearch, timeRangeMs, selectedService, now]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

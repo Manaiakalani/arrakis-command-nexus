@@ -41,14 +41,14 @@ const DEFAULT_BASE_URL = '/api/v1';
 
 function resolveBaseUrl() {
   // Requests must stay same-origin. The admin token is injected server-side by
-  // src/middleware.ts, which only runs for same-origin /api/* requests, so an
+  // src/proxy.ts, which only runs for same-origin /api/* requests, so an
   // absolute base URL would bypass it and every call would fail authentication
   // with nothing to indicate why. The token cannot be attached here instead:
   // anything readable by this code is in the browser bundle.
   //
   // To point the dashboard at a backend on another host, set DUNE_DASHBOARD_API_URL
   // (server-side, see next.config.js) so the proxy target changes while requests
-  // still traverse the middleware.
+  // still traverse the Next.js proxy.
   const legacyBase = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (legacyBase) {
     console.warn(
