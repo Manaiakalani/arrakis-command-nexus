@@ -13,6 +13,12 @@ updates:
     commit-message:
       prefix: build(deps)
       prefix-development: build(deps-dev)
+    # typescript-eslint (vendored by eslint-config-next) does not support
+    # TypeScript 7.0: 7.0 ships no compiler API. Support is expected with 7.1.
+    # Drop this once typescript-eslint documents 7.x.
+    ignore:
+      - dependency-name: typescript
+        versions: [">=7"]
     groups:
       # next and eslint-config-next are version-locked to each other; splitting
       # them across PRs produces a peer-dependency conflict that cannot merge.
