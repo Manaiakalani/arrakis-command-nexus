@@ -103,13 +103,14 @@ if [ -f "$DEFAULT_GAME_INI" ]; then
   echo "[pre-start] Patched DefaultGame.ini: survival FPS 20→30, hubs 10→20"
   # Sand decay off. UserGame.ini is copied above; these DefaultGame.ini patches
   # are the same belt-and-suspenders used for FPS so a binary that ignores
-  # User* overrides still cannot eat player bases.
-  sed -i 's/^m_bMitigateAllSandstormDamage=False$/m_bMitigateAllSandstormDamage=True/' "$DEFAULT_GAME_INI"
-  sed -i 's/^m_SandBuildupMultiplier=1.0$/m_SandBuildupMultiplier=0.0/' "$DEFAULT_GAME_INI"
-  sed -i 's/^m_SandBuildUpPlaceablesShelteredTargetValue=0.300000$/m_SandBuildUpPlaceablesShelteredTargetValue=0.000000/' "$DEFAULT_GAME_INI"
-  sed -i 's/^m_SandBuildUpPlaceablesUnShelteredTargetValue=0.700000$/m_SandBuildUpPlaceablesUnShelteredTargetValue=0.000000/' "$DEFAULT_GAME_INI"
-  sed -i 's/^m_SmallSandStormDamageConfig=(Player=5.000000,Building=5.000000,Placeable=5.000000,Vehicle=5.000000)$/m_SmallSandStormDamageConfig=(Player=5.000000,Building=0.000000,Placeable=0.000000,Vehicle=5.000000)/' "$DEFAULT_GAME_INI"
-  sed -i 's/^m_LargeSandStormDamageConfig=(Player=7.000000,Building=7.000000,Placeable=7.000000,Vehicle=7.000000)$/m_LargeSandStormDamageConfig=(Player=7.000000,Building=0.000000,Placeable=0.000000,Vehicle=7.000000)/' "$DEFAULT_GAME_INI"
+  # User* overrides still cannot eat player bases. Unanchored replaces (like
+  # the FPS lines above) because Funcom ships this file with CRLF.
+  sed -i 's/m_bMitigateAllSandstormDamage=False/m_bMitigateAllSandstormDamage=True/' "$DEFAULT_GAME_INI"
+  sed -i 's/m_SandBuildupMultiplier=1.0/m_SandBuildupMultiplier=0.0/' "$DEFAULT_GAME_INI"
+  sed -i 's/m_SandBuildUpPlaceablesShelteredTargetValue=0.300000/m_SandBuildUpPlaceablesShelteredTargetValue=0.000000/' "$DEFAULT_GAME_INI"
+  sed -i 's/m_SandBuildUpPlaceablesUnShelteredTargetValue=0.700000/m_SandBuildUpPlaceablesUnShelteredTargetValue=0.000000/' "$DEFAULT_GAME_INI"
+  sed -i 's/m_SmallSandStormDamageConfig=(Player=5.000000,Building=5.000000,Placeable=5.000000,Vehicle=5.000000)/m_SmallSandStormDamageConfig=(Player=5.000000,Building=0.000000,Placeable=0.000000,Vehicle=5.000000)/' "$DEFAULT_GAME_INI"
+  sed -i 's/m_LargeSandStormDamageConfig=(Player=7.000000,Building=7.000000,Placeable=7.000000,Vehicle=7.000000)/m_LargeSandStormDamageConfig=(Player=7.000000,Building=0.000000,Placeable=0.000000,Vehicle=7.000000)/' "$DEFAULT_GAME_INI"
   echo "[pre-start] Patched DefaultGame.ini: sandstorm building/placeable damage off, sand buildup multiplier 0"
 fi
 
