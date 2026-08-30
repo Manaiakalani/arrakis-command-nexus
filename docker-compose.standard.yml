@@ -64,6 +64,7 @@ x-game-env-common: &game-env-common
   AuthenticationConfiguration__BackendLoginConfiguration__UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
   AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
   AuthenticationConfiguration__BackendLoginConfiguration__ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+  WORLD_RESET_SEED: ${SURVIVAL_RESET_SEED:-}
 
 services:
   overmap:

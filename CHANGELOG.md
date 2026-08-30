@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Player bases no longer take sandstorm damage or sand buildup by default: `UserGame.ini` sets `m_bMitigateAllSandstormDamage=True` and `m_SandBuildupMultiplier=0`, `survival-pre-start.sh` patches the same keys in `DefaultGame.ini`, and the standard-lean survival command line repeats the mitigate/buildup overrides. Weather can still be toggled separately; this only stops the decay that eats structures
 - Dashboard frontend Next.js 15.5.21 -> 16.3.x, with matching `eslint-config-next`. Dependabot #74 could not merge: once `eslint-config-next` is 16, the previous FlatCompat `extends('next/core-web-vitals')` path crashes ESLint 9 with "Converting circular structure to JSON", so `npm run lint` never ran and the bump stayed a draft. The config now loads `eslint-config-next/core-web-vitals` as a native flat config. `@eslint/eslintrc` is unused after the native flat config and is gone
 - `src/middleware.ts` renamed to `src/proxy.ts` and the exported function to `proxy`, matching the Next 16 file convention. CI now asserts the auth gating on that path (and refuses a leftover `middleware.ts`)
 - `recharts` 2.15 -> 3.x. The dashboard charts never used `CategoricalChartState` / `<Customized />`, which is the breaking surface
@@ -18,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- `SURVIVAL_RESET_SEED` was only injected on the basic overlay, so standard-lean / standard / full boots never pinned `world_*_reset_seed` and a later "storm reset" could hide every player base. Those profiles now pass `WORLD_RESET_SEED` into every map server, and standard-lean also runs the `seed-guardian` sidecar
 - `scripts/security-audit.sh` reported a false failure on the `DUNE_ADMIN_TOKEN=ci-image-smoke` literal that the new image-build job passes to a throwaway container. That value cannot be named `change-me...` like the other placeholders the scan already ignores, because the backend deliberately refuses to start on a token with that prefix, so a CI smoke test needs something real enough to boot and obviously not a credential. An audit that cries wolf is one people stop reading
 - The same scan silently reported success on macOS. Its patterns use PCRE negative lookahead, which BSD grep does not support: grep exited 2 with `invalid option -- P`, the error went to `/dev/null`, and an empty result was indistinguishable from "nothing found". It now probes for `grep -P` up front and warns that it skipped the scan, rather than passing without having searched anything
 

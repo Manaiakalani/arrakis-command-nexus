@@ -75,6 +75,10 @@ x-game-env-common: &game-env-common
   AuthenticationConfiguration__BackendLoginConfiguration__UsernameSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
   AuthenticationConfiguration__BackendLoginConfiguration__ServerLoginSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
   AuthenticationConfiguration__BackendLoginConfiguration__ChecksumSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
+  # Pin the world reset seed so "A storm has reset the map" cannot hide bases.
+  # Required here: the basic overlay is the only other place this was wired, so
+  # standard-lean boots never received SURVIVAL_RESET_SEED from .env.
+  WORLD_RESET_SEED: ${SURVIVAL_RESET_SEED:-}
 
 services:
   overmap:
@@ -161,6 +165,9 @@ services:
       - -ini:engine:[ConsoleVariables]:Sandstorm.Treasure.Enabled=false
       - -ini:game:[/Script/DuneSandbox.SandStormConfig]:m_bAutoSpawnEnabled=false
       - -ini:game:[/Script/DuneSandbox.SandStormConfig]:m_bCoriolisAutoSpawnEnabled=false
+      # Sand decay off even if a later overlay re-enables weather
+      - -ini:game:[/Script/DuneSandbox.BuildingSettings]:m_bMitigateAllSandstormDamage=true
+      - -ini:game:[/Script/DuneSandbox.BiomeSettings]:m_SandBuildupMultiplier=0
       - -Port=7777
       - -IGWPort=7888
       - -PartitionIndex=1
@@ -330,3 +337,30 @@ services:
     networks:
       default:
         ipv4_address: 10.80.0.14
+
+  # -------------------------------------------------------------------------
+  # Seed guardian - continuously pins the world reset seed so player bases are
+  # never hidden by a "storm reset" seed mismatch. Defense-in-depth alongside
+  # the pre-game enforcement in survival-pre-start.sh. No-op when
+  # SURVIVAL_RESET_SEED is unset. 10.80.0.19 is free in every profile overlay.
+  # -------------------------------------------------------------------------
+  seed-guardian:
+    image: funcom/self-hosting/igw-postgres:17.4-alpine-fc-13
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/workspace/scripts/seed-guard.sh"]
+    environment:
+      POSTGRES_DUNE_PASSWORD: ${POSTGRES_DUNE_PASSWORD}
+      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME:-dune_sb_1_4_0_0}
+      WORLD_RESET_SEED: ${SURVIVAL_RESET_SEED:-}
+      SEED_GUARD_INTERVAL: ${SEED_GUARD_INTERVAL:-300}
+    mem_limit: 128m
+    pids_limit: 32
+    cpus: 0.25
+    volumes:
+      - .:/workspace:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      default:
+        ipv4_address: 10.80.0.19
