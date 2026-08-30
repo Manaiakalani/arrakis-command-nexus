@@ -36,6 +36,7 @@ x-game-env-common: &game-env-common
   LoginPasswordSkew: ${DUNE_LOGIN_PASSWORD_SKEW_SECONDS:-300}
   BackendLoginConfiguration__ServerLoginPasswordSecret: ${DUNE_SERVER_LOGIN_PASSWORD_SECRET:-}
   BackendLoginConfiguration__UsernameServerLoginSecret: ${DUNE_USERNAME_SERVER_LOGIN_SECRET:-}
+  WORLD_RESET_SEED: ${SURVIVAL_RESET_SEED:-}
 
 services:
   overmap:
