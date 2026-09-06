@@ -318,6 +318,9 @@ npm audit --omit=dev --audit-level=high --prefix ../frontend
 # Secret scan (add --history to audit past commits)
 cd ../.. && bash scripts/sanitize-check.sh
 
+# Net-rate flags (Igw MaxClientRate=0 + player 100000; CI also runs this)
+bash scripts/assert-net-rate-flags.sh
+
 # Playwright e2e (requires a running dashboard)
 cd dashboard/frontend && npx playwright test
 ```
@@ -327,7 +330,7 @@ cd dashboard/frontend && npx playwright test
 1. Fork the repo and branch from `main` (`feature/your-change` or `fix/your-fix`).
 2. Run `./dune doctor` to verify your local environment.
 3. Confirm `npm run build`, `python -m py_compile main.py`, and `python -m unittest discover -s tests` pass.
-4. Run `bash scripts/sanitize-check.sh --staged` so no credential or internal hostname rides along.
+4. Run `bash scripts/sanitize-check.sh --staged` so no credential or internal hostname rides along, and `bash scripts/assert-net-rate-flags.sh` so S2S/player rate flags were not dropped.
 5. Add a changelog entry under `## [Unreleased]` in `CHANGELOG.md`.
 6. Open a PR with a clear summary of what changed and why.
 

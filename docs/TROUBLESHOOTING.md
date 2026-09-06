@@ -145,21 +145,33 @@ docker logs dune-awakening-survival_1-1 2>&1 | grep -E 'NumOutRec|Marked.*dead'
 # LogIgwDatabaseInterface: Log: Marked server <SELF_ID> as dead
 ```
 
-**Fix:** The working baseline uses only socket buffers and `ConnectionTimeout`:
+**Fix:** Socket buffers and `ConnectionTimeout` are not enough on a busy
+multi-map host. The shipped baseline is:
 
 ```
 -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+-ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
+-ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=100000
+-ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=100000
 -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
 -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
 -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
 -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
 ```
 
-> **⚠️ Do NOT add NetServerMaxTickRate, MaxClientRate, t.MaxFPS, or -forcelogflush.**
-> These were tested in PRs #21–#26 and REVERTED — they cause rubberbanding
-> (`NetServerMaxTickRate=120` at 30fps creates tick debt), client load timeouts
-> (`MaxClientRate=0` floods initial replication), and I/O stalls (`-forcelogflush`
-> blocks the game thread on every log write).
+`IgwNetDriver:MaxClientRate=0` is S2S-only: default UE5 LAN/internet caps
+(~10–15 KB/s) throttle inter-server replication until `NumOutRec 2047`
+overflows and the map SIGSEGVs. A finite player cap of `100000` stops the
+client ack window (`Too many received packets to ack (256)`) from filling
+during movement.
+
+> **⚠️ Do NOT add `NetServerMaxTickRate`, `t.MaxFPS`, `-forcelogflush`, or
+> `IpNetDriver:MaxClientRate=0`.** Those were tested in PRs #21–#26 and
+> REVERTED — they cause rubberbanding (`NetServerMaxTickRate=120` at 30fps
+> creates tick debt), client load timeouts (`IpNetDriver MaxClientRate=0`
+> floods initial replication → error 324), and I/O stalls (`-forcelogflush`
+> blocks the game thread on every log write). `IgwNetDriver:MaxClientRate=0`
+> is required and is gated by `scripts/assert-net-rate-flags.sh`.
 
 ## Dashboard Is Not Accessible
 

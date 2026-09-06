@@ -32,6 +32,9 @@ services:
       - --RMQAdminPort=5672
       - -MultiHome=$$POD_IP
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=100000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=100000
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
@@ -145,6 +148,9 @@ services:
       - --RMQAdminPort=5672
       - -MultiHome=$$POD_IP
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ConnectionTimeout=604800.0
+      - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:MaxClientRate=0
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxClientRate=100000
+      - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:MaxInternetClientRate=100000
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
       - -ini:engine:[/Script/OnlineSubsystemUtils.IpNetDriver]:ServerDesiredSocketSendBufferBytes=4194304
       - -ini:engine:[/Script/InfiniteGameWorlds.IgwNetDriver]:ServerDesiredSocketReceiveBufferBytes=16777216
