@@ -13,6 +13,13 @@ permissions:
   contents: read
 
 jobs:
+  compose-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assert S2S/player net-rate flags cannot silently vanish
+        run: bash scripts/assert-net-rate-flags.sh
+
   security-scan:
     runs-on: ubuntu-latest
     steps:

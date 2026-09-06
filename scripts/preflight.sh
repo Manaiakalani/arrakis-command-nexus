@@ -100,6 +100,15 @@ else
   ((failures+=port_failures))
 fi
 
+if [[ -x "$PROJECT_ROOT/scripts/assert-net-rate-flags.sh" ]] || [[ -f "$PROJECT_ROOT/scripts/assert-net-rate-flags.sh" ]]; then
+  if bash "$PROJECT_ROOT/scripts/assert-net-rate-flags.sh" >/dev/null; then
+    check 'Game-server net-rate flags (Igw MaxClientRate=0, player 100000) are present.' '' '0'
+  else
+    check 'Game-server net-rate flags (Igw MaxClientRate=0, player 100000) are present.' \
+      'S2S/player net-rate flags are missing or mismatched. Rubberbanding and NumOutRec 2047 crashes come back if these drop. Restore from git or run: bash scripts/assert-net-rate-flags.sh' '1'
+  fi
+fi
+
 if ((failures > 0)); then
   log_error "Preflight failed with $failures issue(s)."
   exit 1
