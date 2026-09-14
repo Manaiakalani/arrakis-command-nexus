@@ -55,7 +55,7 @@ export default function ModerationPage() {
               <Shield aria-hidden="true" className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-th-text">Chat Guard</h1>
+              <h2 className="text-xl font-semibold text-th-text">Chat Guard</h2>
               <p className="text-sm text-th-text-m">Active spam limits and the latest enforcement activity.</p>
             </div>
           </div>

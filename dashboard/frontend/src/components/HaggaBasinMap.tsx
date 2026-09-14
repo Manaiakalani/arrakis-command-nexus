@@ -1,10 +1,11 @@
 'use client';
 
 import { Building2, LocateFixed, MapPin, Minus, Navigation, Plus, RotateCcw, Send, Users, X } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import React, { useCallback, useMemo, useState } from 'react';
 import { CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts';
 
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { useMapZoom } from '@/hooks/useMapZoom';
 import { apiClient } from '@/lib/api';
 import { DEFAULT_HAGGA_BASIN_BOUNDS, formatSessionDuration, getPlayerMapBounds, normalizePlayerMapData, type PlayerMapSource } from '@/lib/player-map';
@@ -219,19 +220,19 @@ function ManualTeleportInput({
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-2">
       <div className="flex-1">
-        <label className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">X</label>
-        <input type="number" value={x} onChange={(e) => setX(e.target.value)} placeholder="-50000"
-          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus:outline-none" />
+        <label htmlFor="hagga-coord-x" className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">X</label>
+        <input id="hagga-coord-x" type="number" value={x} onChange={(e) => setX(e.target.value)} placeholder="-50000"
+          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60" />
       </div>
       <div className="flex-1">
-        <label className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">Y</label>
-        <input type="number" value={y} onChange={(e) => setY(e.target.value)} placeholder="50000"
-          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus:outline-none" />
+        <label htmlFor="hagga-coord-y" className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">Y</label>
+        <input id="hagga-coord-y" type="number" value={y} onChange={(e) => setY(e.target.value)} placeholder="50000"
+          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60" />
       </div>
       <div className="flex-1">
-        <label className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">Z</label>
-        <input type="number" value={z} onChange={(e) => setZ(e.target.value)} placeholder="0"
-          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus:outline-none" />
+        <label htmlFor="hagga-coord-z" className="text-[10px] uppercase tracking-[0.15em] text-th-text-m">Z</label>
+        <input id="hagga-coord-z" type="number" value={z} onChange={(e) => setZ(e.target.value)} placeholder="0"
+          className="mt-0.5 w-full rounded-lg border border-th-border-m/60 bg-th-surface-s/30 px-2.5 py-1.5 font-mono text-xs text-th-text placeholder:text-th-text-m focus:border-amber-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60" />
       </div>
       <button type="submit" disabled={!x || !y}
         className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-500/20 disabled:opacity-40">
@@ -258,24 +259,29 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleRecord | null>(null);
   const [vehicleTeleportTarget, setVehicleTeleportTarget] = useState<VehicleRecord | null>(null);
   const [vehicleTeleporting, setVehicleTeleporting] = useState<number | null>(null);
+  const [pendingVehicleTp, setPendingVehicleTp] = useState<{ vehicle: VehicleRecord; x: number; y: number } | null>(null);
   const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
   const zoom = useMapZoom();
-  const { data: polledPlayers } = useApi(() => apiClient.getPlayerPositions(), {
-    enabled: refreshIntervalMs > 0,
-    refreshInterval: refreshIntervalMs || undefined,
+  const parentOwnsPlayers = refreshIntervalMs <= 0;
+  const { data: polledPlayers } = useApiSWR(
+    parentOwnsPlayers ? null : 'api/players/positions',
+    () => apiClient.getPlayerPositions(),
+    { refreshInterval: refreshIntervalMs || undefined },
+  );
+  const { data: bases } = useApiSWR('api/bases', () => apiClient.getBases(), {
+    refreshInterval: parentOwnsPlayers ? 0 : 60_000,
   });
-  const { data: bases } = useApi(() => apiClient.getBases(), {
-    refreshInterval: 60_000,
-  });
-  const { data: vehicles, refetch: refetchVehicles } = useApi(() => apiClient.getVehicles(HAGGA_BASIN_MAP_NAME), {
-    refreshInterval: refreshIntervalMs > 0 ? refreshIntervalMs : 10_000,
-  });
+  const { data: vehicles, refetch: refetchVehicles } = useApiSWR(
+    `api/vehicles/${HAGGA_BASIN_MAP_NAME}`,
+    () => apiClient.getVehicles(HAGGA_BASIN_MAP_NAME),
+    { refreshInterval: parentOwnsPlayers ? 0 : refreshIntervalMs },
+  );
   /* Fetch the full character roster (online + offline) so we can teleport
      offline characters too. The teleport API only takes effect on a fresh
      login from a fully logged-out state, so offline players are the
      primary intended audience for this feature. */
-  const { data: allCharacters } = useApi(() => apiClient.getCharacters(), {
-    refreshInterval: 30_000,
+  const { data: allCharacters } = useApiSWR('api/characters', () => apiClient.getCharacters(), {
+    refreshInterval: parentOwnsPlayers ? 0 : 30_000,
   });
 
   const sourcePlayers = polledPlayers ?? players;
@@ -383,28 +389,14 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
       const gameY = mapBounds.maxY - pctY * spanY; // Y is inverted (top=maxY)
 
       if (vehicleTeleportTarget) {
-        const confirmed = window.confirm(`Teleport ${vehicleTeleportTarget.vehicle_type} #${vehicleTeleportTarget.actor_id} to X ${Math.round(gameX).toLocaleString()}, Y ${Math.round(gameY).toLocaleString()}?`);
-        if (!confirmed) return;
-        setVehicleTeleporting(vehicleTeleportTarget.actor_id);
-        setTeleportResult(null);
-        try {
-          await apiClient.teleportVehicle(HAGGA_BASIN_MAP_NAME, vehicleTeleportTarget.actor_id, gameX, gameY);
-          setTeleportResult({ success: true, message: `Vehicle #${vehicleTeleportTarget.actor_id} teleported.` });
-          setVehicleTeleportTarget(null);
-          setSelectedVehicle(null);
-          void refetchVehicles(false);
-        } catch (err) {
-          setTeleportResult({ success: false, message: err instanceof Error ? err.message : 'Vehicle teleport failed' });
-        } finally {
-          setVehicleTeleporting(null);
-        }
+        setPendingVehicleTp({ vehicle: vehicleTeleportTarget, x: gameX, y: gameY });
         return;
       }
 
       setTeleportTarget({ x: gameX, y: gameY, z: SAFE_DEFAULT_Z });
       setTeleportResult(null);
     },
-    [mapBounds, refetchVehicles, vehicleTeleportTarget, zoom.scale],
+    [mapBounds, vehicleTeleportTarget, zoom.scale],
   );
 
   /* Track cursor to show live game coordinates under the pointer */
@@ -1024,6 +1016,37 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
           </div>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={!!pendingVehicleTp}
+        title={`Teleport ${pendingVehicleTp?.vehicle.vehicle_type ?? 'vehicle'} #${pendingVehicleTp?.vehicle.actor_id ?? ''}?`}
+        message={
+          pendingVehicleTp
+            ? `Move it to X ${Math.round(pendingVehicleTp.x).toLocaleString()}, Y ${Math.round(pendingVehicleTp.y).toLocaleString()}.`
+            : ''
+        }
+        confirmLabel="Teleport vehicle"
+        onCancel={() => setPendingVehicleTp(null)}
+        onConfirm={() => {
+          const pending = pendingVehicleTp;
+          setPendingVehicleTp(null);
+          if (!pending) return;
+          void (async () => {
+            setVehicleTeleporting(pending.vehicle.actor_id);
+            setTeleportResult(null);
+            try {
+              await apiClient.teleportVehicle(HAGGA_BASIN_MAP_NAME, pending.vehicle.actor_id, pending.x, pending.y);
+              setTeleportResult({ success: true, message: `Vehicle #${pending.vehicle.actor_id} teleported.` });
+              setVehicleTeleportTarget(null);
+              setSelectedVehicle(null);
+              void refetchVehicles();
+            } catch (err) {
+              setTeleportResult({ success: false, message: err instanceof Error ? err.message : 'Vehicle teleport failed' });
+            } finally {
+              setVehicleTeleporting(null);
+            }
+          })();
+        }}
+      />
     </section>
   );
 }

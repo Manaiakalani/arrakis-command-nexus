@@ -6,7 +6,7 @@ import { useCallback, useMemo } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 
 const ConfigEditor = dynamic(
@@ -52,8 +52,8 @@ const configFiles = ['UserGame.ini', 'UserEngine.ini', 'director.ini', 'gateway.
 
 export default function ConfigPage() {
   const { toast } = useToast();
-  const configs = useApi(() => Promise.all(configFiles.map((file) => apiClient.getConfig(file))), { initialData: [] });
-  const driftStatus = useApi(() => apiClient.getConfigDrift(), { initialData: { files: {} } });
+  const configs = useApiSWR('api/config/all', () => Promise.all(configFiles.map((file) => apiClient.getConfig(file))), { initialData: [] });
+  const driftStatus = useApiSWR('api/config/drift', () => apiClient.getConfigDrift(), { initialData: { files: {} } });
 
   const driftedCount = useMemo(
     () => Object.values(driftStatus.data?.files ?? {}).filter((file) => file.drifted).length,

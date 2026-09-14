@@ -10,52 +10,18 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 
 from middleware.request_utils import get_client_ip
-from services.env_file import read_env_var
 from services.cache import invalidate_overview
+from services.env_file import read_env_var
+from services.health_status import readiness_to_health, service_to_frontend
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["status"])
 
-_HEALTH_MAP = {"running": "healthy", "stopped": "stopped", "completed": "completed", "error": "offline"}
-
-# Containers that are one-shot init tasks — exited 0 is expected and healthy
-_INIT_CONTAINERS = {"db-init", "db_init", "dbinit"}
 _PUBLIC_STATUS_RATE_LIMIT = 60
 _PUBLIC_STATUS_WINDOW_SECONDS = 60
 _public_status_requests: dict[str, list[float]] = defaultdict(list)
 _public_status_lock = asyncio.Lock()
-
-
-def _is_init_container(name: str) -> bool:
-    """Check if a container is a known one-shot init task."""
-    short = name.replace("dune-awakening-", "").replace("-1", "").lower()
-    return any(tag in short for tag in _INIT_CONTAINERS)
-
-
-def _service_to_frontend(svc) -> dict:
-    """Convert backend ServiceStatus to the shape the frontend expects."""
-    name = getattr(svc, "name", "")
-    raw_status = getattr(svc, "status", "stopped")
-    health = getattr(svc, "health", None)
-    fe_status = _HEALTH_MAP.get(raw_status, "offline")
-    if health == "unhealthy":
-        fe_status = "degraded"
-    is_init = _is_init_container(name)
-    if is_init and raw_status in ("completed", "exited"):
-        fe_status = "completed"
-    label = name.replace("dune-awakening-", "").replace("-1", "").replace("_", " ").title()
-    message = health or raw_status
-    if is_init and fe_status == "completed":
-        message = "Finished successfully"
-    return {
-        "name": name,
-        "label": label,
-        "status": fe_status,
-        "latencyMs": getattr(svc, "latency_ms", 0),
-        "message": message,
-        "isInit": is_init,
-    }
 
 
 async def _enforce_public_status_rate_limit(request: Request) -> None:
@@ -108,17 +74,16 @@ async def get_status(request: Request) -> dict:
         and docker_service._map_role(getattr(s, "name", "")) in map_roles
     )
 
-    status_map = {"ok": "healthy", "warn": "degraded", "fail": "offline"}
     return {
         "serverName": read_env_var("WORLD_NAME") or os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
         "region": os.getenv("WORLD_REGION", "North America"),
-        "status": status_map.get(readiness["status"], "offline"),
+        "status": readiness_to_health(readiness["status"]),
         "uptimeSeconds": uptime or 0,
         "playersOnline": len(players),
         "mapsActive": maps_active,
         "maxPlayers": int(os.getenv("DUNE_MAX_PLAYERS", "70")),
         "version": os.getenv("DUNE_IMAGE_TAG", "1979201-0-shipping"),
-        "services": [_service_to_frontend(s) for s in services],
+        "services": [service_to_frontend(s) for s in services],
     }
 
 

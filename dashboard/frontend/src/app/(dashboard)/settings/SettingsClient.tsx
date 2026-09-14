@@ -23,7 +23,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MfaPanel } from '@/components/MfaPanel';
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 
 type SettingsData = Record<string, Record<string, unknown>>;
@@ -36,8 +36,10 @@ interface SettingsClientProps {
 export default function SettingsClient({ initialSettings, initialAdmins }: SettingsClientProps) {
   const { toast } = useToast();
   const [pendingRemoveAdminId, setPendingRemoveAdminId] = useState<number | null>(null);
-  const settings = useApi(() => apiClient.getSettings(), { initialData: initialSettings });
-  const admins = useApi(() => apiClient.getAdmins(), { initialData: initialAdmins });
+  const [passwordTarget, setPasswordTarget] = useState<{ id: number; username: string } | null>(null);
+  const [passwordDraft, setPasswordDraft] = useState('');
+  const settings = useApiSWR('api/settings', () => apiClient.getSettings(), { initialData: initialSettings });
+  const admins = useApiSWR('api/settings/admins', () => apiClient.getAdmins(), { initialData: initialAdmins });
   const [saving, setSaving] = useState<string | null>(null);
   const [newAdmin, setNewAdmin] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
@@ -49,12 +51,12 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
   const integrations = useMemo(() => (settings.data?.integrations ?? {}) as Record<string, unknown>, [settings.data]);
   const appearance = useMemo(() => (settings.data?.appearance ?? {}) as Record<string, unknown>, [settings.data]);
 
-  const serverPassword = useApi(() => apiClient.getServerPassword(), { initialData: { enabled: false, hasPassword: false } });
+  const serverPassword = useApiSWR('api/settings/server-password', () => apiClient.getServerPassword(), { initialData: { enabled: false, hasPassword: false } });
   const [passwordEnabled, setPasswordEnabled] = useState<boolean | null>(null);
   const [passwordValue, setPasswordValue] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
 
-  const serverIdentity = useApi(() => apiClient.getServerIdentity(), { initialData: { worldName: '', externalAddress: 'auto' } });
+  const serverIdentity = useApiSWR('api/settings/server-identity', () => apiClient.getServerIdentity(), { initialData: { worldName: '', externalAddress: 'auto' } });
   const [savingIdentity, setSavingIdentity] = useState(false);
 
   const effectivePasswordEnabled = passwordEnabled ?? (serverPassword.data?.enabled ?? false);
@@ -130,9 +132,7 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
     }
   }, [newAdmin, newAdminPassword, newAdminRole, admins, toast]);
 
-  const handleSetAdminPassword = useCallback(async (adminId: number, username: string) => {
-    const password = window.prompt(`Set a new password for ${username} (at least 12 characters):`);
-    if (password === null) return;
+  const handleSetAdminPassword = useCallback(async (adminId: number, username: string, password: string) => {
     if (password.length < 12) {
       toast('Password must be at least 12 characters.', 'error');
       return;
@@ -611,7 +611,10 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
                   <button
                     type="button"
                     className="dune-button-muted text-xs"
-                    onClick={() => void handleSetAdminPassword(admin.id, admin.username)}
+                    onClick={() => {
+                      setPasswordTarget({ id: admin.id, username: admin.username });
+                      setPasswordDraft('');
+                    }}
                   >
                     {admin.hasPassword ? 'Reset password' : 'Set password'}
                   </button>
@@ -700,6 +703,36 @@ export default function SettingsClient({ initialSettings, initialAdmins }: Setti
         onConfirm={() => { if (pendingRemoveAdminId !== null) void handleRemoveAdmin(pendingRemoveAdminId); }}
         onCancel={() => setPendingRemoveAdminId(null)}
       />
+      <ConfirmDialog
+        open={passwordTarget !== null}
+        title={`Set password for ${passwordTarget?.username ?? 'administrator'}`}
+        message="At least 12 characters. Their existing sessions will be signed out."
+        confirmLabel="Set password"
+        onCancel={() => {
+          setPasswordTarget(null);
+          setPasswordDraft('');
+        }}
+        onConfirm={() => {
+          if (!passwordTarget) return;
+          const target = passwordTarget;
+          const password = passwordDraft;
+          setPasswordTarget(null);
+          setPasswordDraft('');
+          void handleSetAdminPassword(target.id, target.username, password);
+        }}
+      >
+        <label htmlFor="admin-password-draft" className="mb-1.5 block text-sm font-medium text-th-text-s">
+          New password
+        </label>
+        <input
+          id="admin-password-draft"
+          type="password"
+          autoComplete="new-password"
+          className="dune-input"
+          value={passwordDraft}
+          onChange={(event) => setPasswordDraft(event.target.value)}
+        />
+      </ConfirmDialog>
     </div>
   );
 }

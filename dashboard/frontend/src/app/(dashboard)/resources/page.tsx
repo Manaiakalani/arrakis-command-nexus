@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 
 interface ResourceEntry {
@@ -33,7 +33,7 @@ const CATEGORY_META: Record<string, { title: string; subtitle: string; icon: typ
 
 export default function ResourcesPage() {
   const { toast } = useToast();
-  const resources = useApi(() => apiClient.getResourceLimits(), { initialData: null });
+  const resources = useApiSWR('api/resources', () => apiClient.getResourceLimits(), { initialData: null });
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -97,7 +97,7 @@ export default function ResourcesPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="section-title">Infrastructure tuning</p>
-          <h1 className="mt-1 inline-flex items-center gap-3 text-2xl font-bold text-th-text sm:text-3xl"><Package aria-hidden="true" className="h-7 w-7 text-amber-600 dark:text-amber-300" /> Resource Limits</h1>
+          <h2 className="mt-1 inline-flex items-center gap-3 text-2xl font-bold text-th-text sm:text-3xl"><Package aria-hidden="true" className="h-7 w-7 text-amber-600 dark:text-amber-300" /> Resource Limits</h2>
           <p className="mt-2 text-sm text-th-text-m">
             Adjust Docker container memory and CPU caps. Changes update the <code className="rounded bg-th-surface-s px-1.5 py-0.5 text-xs">.env</code> file and require a container restart to take effect.
           </p>
