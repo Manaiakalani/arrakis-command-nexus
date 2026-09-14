@@ -20,6 +20,22 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 const LOGIN_PATH = '/login';
+const HSTS_VALUE = 'max-age=31536000; includeSubDomains';
+
+function requestIsHttps(request: NextRequest): boolean {
+  const forwarded = request.headers.get('x-forwarded-proto');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim().toLowerCase() === 'https';
+  }
+  return request.nextUrl.protocol === 'https:';
+}
+
+function withHttpsHeaders(request: NextRequest, response: NextResponse): NextResponse {
+  if (requestIsHttps(request)) {
+    response.headers.set('Strict-Transport-Security', HSTS_VALUE);
+  }
+  return response;
+}
 
 const API_ORIGIN = process.env.DUNE_DASHBOARD_API_URL || 'http://dashboard-api:8080';
 
@@ -90,7 +106,7 @@ export async function proxy(request: NextRequest) {
   const isPublicPage = !pathname.startsWith('/api') && PUBLIC_PAGES.some((p) => pathname.startsWith(p));
 
   if (isPublicApi) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return withHttpsHeaders(request, NextResponse.next({ request: { headers: requestHeaders } }));
   }
 
   const { authEnabled, authenticated } = await sessionCheck(request);
@@ -102,18 +118,18 @@ export async function proxy(request: NextRequest) {
       const token = process.env.DUNE_ADMIN_TOKEN;
       if (token) requestHeaders.set('X-Admin-Token', token);
     }
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return withHttpsHeaders(request, NextResponse.next({ request: { headers: requestHeaders } }));
   }
 
   if (!authEnabled || authenticated || isPublicPage) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return withHttpsHeaders(request, NextResponse.next({ request: { headers: requestHeaders } }));
   }
 
   const loginUrl = new URL(LOGIN_PATH, request.url);
   if (pathname !== '/') {
     loginUrl.searchParams.set('next', `${pathname}${search}`);
   }
-  return NextResponse.redirect(loginUrl);
+  return withHttpsHeaders(request, NextResponse.redirect(loginUrl));
 }
 
 export const config = {

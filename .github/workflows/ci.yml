@@ -90,6 +90,17 @@ jobs:
             echo 'src/middleware.ts must not remain after the Next 16 proxy rename'
             exit 1
           fi
+          # HSTS cannot be a static next.config header: that file cannot see
+          # http vs https, and this stack is commonly served over HTTP.
+          if grep -q 'Strict-Transport-Security' next.config.js; then
+            echo 'next.config.js must not set HSTS statically; apply it in proxy.ts for HTTPS only'
+            exit 1
+          fi
+          grep -q "NODE_ENV === 'development'" next.config.js \
+            && grep -q "'unsafe-eval'" next.config.js \
+            || { echo 'next.config.js must allow unsafe-eval only in development'; exit 1; }
+          grep -q 'function requestIsHttps' src/proxy.ts \
+            || { echo 'src/proxy.ts must gate HSTS on HTTPS'; exit 1; }
           echo 'frontend auth gating ok'
 
   lint-backend:
