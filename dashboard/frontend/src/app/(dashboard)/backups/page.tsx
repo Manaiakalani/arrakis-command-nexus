@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { BackupList } from '@/components/BackupList';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { usePropState } from '@/hooks/usePropState';
 import { apiClient } from '@/lib/api';
 import type { BackupSchedule } from '@/lib/types';
@@ -25,8 +25,8 @@ function formatDate(value?: string | null, fallback = 'Never') {
 
 export default function BackupsPage() {
   const { toast } = useToast();
-  const backups = useApi(() => apiClient.getBackups(), { refreshInterval: 15000, initialData: [] });
-  const scheduleApi = useApi(() => apiClient.getBackupSchedule(), { refreshInterval: 15000, initialData: DEFAULT_SCHEDULE });
+  const backups = useApiSWR('api/backups', () => apiClient.getBackups(), { refreshInterval: 15000, initialData: [] });
+  const scheduleApi = useApiSWR('api/backups/schedule', () => apiClient.getBackupSchedule(), { refreshInterval: 15000, initialData: DEFAULT_SCHEDULE });
   const [schedule, setSchedule] = usePropState<BackupSchedule>(scheduleApi.data ?? DEFAULT_SCHEDULE);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);

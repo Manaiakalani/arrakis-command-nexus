@@ -204,13 +204,6 @@ body {
 }
 
 @layer utilities {
-  .text-gradient {
-    background: linear-gradient(135deg, #fde68a 0%, #f59e0b 40%, #fb923c 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
   .sand-glow {
     box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1), 0 0 30px rgba(245, 158, 11, 0.15);
   }

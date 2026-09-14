@@ -162,7 +162,7 @@ export default function AuditClient({
         <div className="flex items-center gap-3">
           <FileSearch aria-hidden="true" className="h-7 w-7 text-amber-400" />
           <div>
-            <h1 className="text-2xl font-bold text-th-text">Audit Trail</h1>
+            <h2 className="text-2xl font-bold text-th-text">Audit Trail</h2>
             <p className="text-sm text-th-text-m">
               Track all admin actions, config changes, and player events
             </p>

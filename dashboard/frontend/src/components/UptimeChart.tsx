@@ -3,7 +3,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 import { getTooltipStyles, CHART_GRID_STROKE, CHART_AXIS_STROKE } from '@/lib/utils';
 
@@ -48,10 +48,9 @@ function formatTick(timestamp: string, range: string) {
 export const UptimeChart = memo(function UptimeChart() {
   const [range, setRange] = useState('24h');
   const tooltipStyles = getTooltipStyles();
-  const uptime = useApi(() => apiClient.getUptimeData(range), {
+  const uptime = useApiSWR(`api/system/uptime/${range}`, () => apiClient.getUptimeData(range), {
     refreshInterval: 30000,
     initialData: { range, availabilityPercent: 0, totalUpSeconds: 0, totalDownSeconds: 0, events: [] },
-    deps: [range],
   });
 
   const chartData = useMemo(

@@ -109,21 +109,21 @@ function LoginForm() {
   );
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12">
+    <main className="dark flex min-h-screen items-center justify-center bg-th-bg px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/30">
             <ShieldCheck className="h-7 w-7 text-amber-400" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-semibold text-slate-100">Arrakis Command Nexus</h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <h1 className="text-2xl font-semibold text-th-text">Arrakis Command Nexus</h1>
+          <p className="mt-2 text-sm text-th-text-s">
             {isSetup ? 'Create the first administrator account to secure this dashboard.' : 'Sign in to continue.'}
           </p>
         </div>
 
         <form
           onSubmit={submit}
-          className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl backdrop-blur"
+          className="glass-panel space-y-5 p-6"
         >
           {isSetup && (
             <div className="flex gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
@@ -136,7 +136,7 @@ function LoginForm() {
           )}
 
           <div>
-            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-slate-300">
+            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-th-text-s">
               Username
             </label>
             <input
@@ -147,12 +147,12 @@ function LoginForm() {
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              className="dune-input"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-300">
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-th-text-s">
               Password
             </label>
             <input
@@ -163,16 +163,16 @@ function LoginForm() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              className="dune-input"
             />
             {isSetup && (
-              <p className="mt-1.5 text-xs text-slate-500">At least {MIN_PASSWORD_LENGTH} characters.</p>
+              <p className="mt-1.5 text-xs text-th-text-m">At least {MIN_PASSWORD_LENGTH} characters.</p>
             )}
           </div>
 
           {isSetup && (
             <div>
-              <label htmlFor="confirm" className="mb-1.5 block text-sm font-medium text-slate-300">
+              <label htmlFor="confirm" className="mb-1.5 block text-sm font-medium text-th-text-s">
                 Confirm password
               </label>
               <input
@@ -183,14 +183,14 @@ function LoginForm() {
                 required
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                className="dune-input"
               />
             </div>
           )}
 
           {needsTotp && !isSetup && (
             <div>
-              <label htmlFor="totp" className="mb-1.5 block text-sm font-medium text-slate-300">
+              <label htmlFor="totp" className="mb-1.5 block text-sm font-medium text-th-text-s">
                 Authentication code
               </label>
               <input
@@ -204,9 +204,9 @@ function LoginForm() {
                 placeholder="000000"
                 value={totp}
                 onChange={(e) => setTotp(e.target.value.replace(/\D/g, ''))}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono tracking-[0.3em] text-slate-100 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                className="dune-input font-mono tracking-[0.3em]"
               />
-              <p className="mt-1.5 text-xs text-slate-500">From your authenticator app.</p>
+              <p className="mt-1.5 text-xs text-th-text-m">From your authenticator app.</p>
             </div>
           )}
 
@@ -219,7 +219,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={busy || status === null}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 font-medium text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="dune-button w-full disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -230,8 +230,8 @@ function LoginForm() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-slate-600">
-          Locked out? Remove the account rows from <code className="text-slate-500">admin_users</code> in the dashboard
+        <p className="mt-6 text-center text-xs text-th-text-m">
+          Locked out? Remove the account rows from <code className="text-th-text-s">admin_users</code> in the dashboard
           database to return to shared-token access.
         </p>
       </div>
@@ -241,7 +241,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-slate-950" />}>
+    <Suspense fallback={<main className="dark min-h-screen bg-th-bg" />}>
       <LoginForm />
     </Suspense>
   );

@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 import type { ConfigField } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -123,7 +123,7 @@ function useActiveSection(ids: SectionId[]) {
 
 export default function GameSettingsPage() {
   const { toast } = useToast();
-  const config = useApi(() => apiClient.getConfig(GAME_CONFIG), { initialData: null });
+  const config = useApiSWR(`api/config/${GAME_CONFIG}`, () => apiClient.getConfig(GAME_CONFIG), { initialData: null });
   const [drafts, setDrafts] = useState<Record<string, DraftValue>>({});
   const [openSections, setOpenSections] = useState<Record<SectionId, boolean>>({
     combat: true,
@@ -353,7 +353,7 @@ export default function GameSettingsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="section-title">Curated gameplay controls</p>
-            <h1 className="mt-1 text-2xl font-semibold text-th-text">Game Settings</h1>
+            <h2 className="mt-1 text-2xl font-semibold text-th-text">Game Settings</h2>
             <p className="mt-2 max-w-3xl text-sm text-th-text-m">
               Fast access to the highest-impact Arrakis gameplay knobs. Every setting here has been verified against the shipped server binary and is applied on save. The raw .ini editor remains available under Configuration for power users; see <code className="rounded bg-th-surface-s/60 px-1.5 py-0.5 text-xs">docs/CONFIG_KEYS.md</code> for the full cross-source audit covering claimed-but-unverified keys.
             </p>

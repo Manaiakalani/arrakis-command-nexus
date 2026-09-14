@@ -13,6 +13,7 @@ import {
   Gauge,
   Globe,
   Home,
+  KeyRound,
   Map,
   Megaphone,
   MessageSquare,
@@ -25,15 +26,14 @@ import {
   Users,
   Worm,
   X,
-  Zap,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { asDisplayHealth, healthDotClass, healthLabel } from '@/lib/health';
 import type { HealthState, SystemVersion } from '@/lib/types';
 
 const navigationSections = [
   {
-    // Core navigation - most frequent actions
     items: [
       { href: '/', label: 'Overview', icon: Home },
       { href: '/players', label: 'Players', icon: Users },
@@ -41,7 +41,7 @@ const navigationSections = [
     ],
   },
   {
-    header: 'Management',
+    header: 'People',
     items: [
       { href: '/characters', label: 'Characters', icon: UserCog },
       { href: '/economy', label: 'Economy', icon: Coins },
@@ -49,44 +49,32 @@ const navigationSections = [
     ],
   },
   {
-    header: 'Server Control',
+    header: 'Keep running',
+    items: [
+      { href: '/backups', label: 'Backups', icon: Database },
+      { href: '/announcements', label: 'Announcements', icon: Megaphone },
+      { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
+      { href: '/updates', label: 'Updates', icon: Download },
+    ],
+  },
+  {
+    header: 'Console',
     items: [
       { href: '/config', label: 'Configuration', icon: Settings },
       { href: '/game-settings', label: 'Game settings', icon: SlidersHorizontal },
       { href: '/resources', label: 'Resources', icon: Gauge },
       { href: '/system', label: 'System', icon: Cpu },
       { href: '/logs', label: 'Logs', icon: Terminal },
-    ],
-  },
-  {
-    header: 'Automation',
-    items: [
-      { href: '/backups', label: 'Backups', icon: Database },
-      { href: '/announcements', label: 'Announcements', icon: Megaphone },
-      { href: '/watchdog', label: 'Watchdog', icon: ShieldAlert },
-      { href: '/incidents', label: 'Incidents', icon: Zap },
-    ],
-  },
-  {
-    header: 'System',
-    items: [
-      { href: '/discord', label: 'Discord', icon: MessageSquare },
-      { href: '/updates', label: 'Updates', icon: Download },
-      { href: '/audit', label: 'Audit trail', icon: ClipboardList },
-      { href: '/settings', label: 'Settings', icon: SlidersHorizontal },
-      { href: '/public', label: 'Public status', icon: Globe },
+      { href: '/settings', label: 'Settings', icon: KeyRound },
     ],
   },
 ];
 
-const statusMap: Record<HealthState, string> = {
-  healthy: 'bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.85)]',
-  degraded: 'bg-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.85)]',
-  offline: 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.75)]',
-  starting: 'bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.75)]',
-  stopped: 'bg-stone-400 dark:bg-slate-500',
-  completed: 'bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.5)]',
-};
+const footerLinks = [
+  { href: '/discord', label: 'Discord', icon: MessageSquare },
+  { href: '/audit', label: 'Audit', icon: ClipboardList },
+  { href: '/public', label: 'Public status', icon: Globe },
+];
 
 interface SidebarProps {
   collapsed: boolean;
@@ -98,19 +86,23 @@ interface SidebarProps {
   closeRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
-export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'healthy', version, closeRef }: SidebarProps) {
+export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, version, closeRef }: SidebarProps) {
   const pathname = usePathname();
   const environmentLabel = version?.environment === 'beta' ? 'PTC' : 'Live';
+  const clusterHealth = asDisplayHealth(status);
 
   return (
     <>
-      {/* Mobile backdrop */}
       <div
         className={cn(
           'fixed inset-0 z-40 bg-th-bg/70 backdrop-blur-sm transition-opacity duration-200 lg:hidden',
           mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
         )}
         onClick={onClose}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') onClose();
+        }}
+        role="presentation"
         data-testid="sidebar-backdrop"
         aria-hidden="true"
       />
@@ -127,7 +119,6 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 max-lg:invisible',
         )}
       >
-        {/* Header */}
         <div className={cn('flex items-center border-b border-th-border-m/50 px-3 py-4', collapsed ? 'justify-center' : 'justify-between')}>
           <div className={cn(
             'flex items-center overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent',
@@ -137,17 +128,16 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
               'flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-th-accent shadow-dune',
               collapsed ? 'h-9 w-9' : 'h-12 w-12',
             )}>
-              <Worm className={cn(collapsed ? 'h-5 w-5' : 'h-6 w-6')} />
+              <Worm className={cn(collapsed ? 'h-5 w-5' : 'h-6 w-6')} aria-hidden="true" />
             </div>
             {!collapsed && (
               <div className="overflow-hidden whitespace-nowrap">
-                <p className="text-xs uppercase tracking-[0.26em] text-amber-700 dark:text-amber-200">Arrakis</p>
-                <h2 className="text-lg font-semibold leading-tight text-th-text">Command Nexus</h2>
+                <p className="text-lg font-semibold leading-tight text-th-text">Command Nexus</p>
+                <p className="text-xs text-th-text-m">Arrakis</p>
               </div>
             )}
           </div>
 
-          {/* Desktop collapse toggle */}
           <button
             type="button"
             onClick={onToggle}
@@ -162,7 +152,6 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
             {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
           </button>
 
-          {/* Mobile close button */}
           <button
             ref={closeRef}
             type="button"
@@ -175,21 +164,23 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
           </button>
         </div>
 
-        {/* Cluster status */}
         <div className={cn('mx-3 mt-4 glass-panel', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
           <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
-            <span className={cn('h-3 w-3 shrink-0 rounded-full', statusMap[status])} />
+            <span
+              className={cn('h-3 w-3 shrink-0 rounded-full', healthDotClass[clusterHealth])}
+              aria-label={`Cluster ${healthLabel[clusterHealth]}`}
+              role="img"
+            />
             {!collapsed && (
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Cluster status</p>
-                <p className="text-sm font-medium capitalize text-th-text">{status}</p>
+                <p className="text-sm font-medium capitalize text-th-text">{healthLabel[clusterHealth]}</p>
+                <p className="text-xs text-th-text-m">Cluster</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="mx-3 mt-4 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
+        <nav className="mx-3 mt-4 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin" aria-label="Dashboard">
           {navigationSections.map((section, index) => (
             <div key={section.header ?? `core-${index}`} className={cn(index > 0 && collapsed && 'mt-4')}>
               {section.header && !collapsed && (
@@ -209,8 +200,9 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
                       href={item.href}
                       onClick={onClose}
                       title={collapsed ? item.label : undefined}
+                      aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group flex items-center rounded-xl border text-sm font-medium',
+                        'group flex min-h-11 items-center rounded-xl border text-sm font-medium',
                         'transition-[color,background-color,border-color,box-shadow,padding] duration-200',
                         collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
                         active
@@ -233,32 +225,53 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status = 'he
           ))}
         </nav>
 
-        {/* Footer info panel */}
-        <div className={cn('mx-3 mb-4 mt-3 glass-panel overflow-hidden border-amber-500/10 bg-gradient-to-br from-amber-500/10 to-transparent', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
-          {collapsed ? (
-            <div className="flex justify-center text-amber-700 dark:text-amber-200">
-              <Worm className="h-5 w-5 animate-float" />
-            </div>
-          ) : (
-            <>
-              <p className="text-xs uppercase tracking-[0.24em] text-amber-700 dark:text-amber-200">Spice forecast</p>
-              <p className="mt-2 text-sm text-th-text-s">Live map, player, and service intelligence.</p>
-              <div className="mt-3 space-y-2 border-t border-amber-500/10 pt-3 text-xs text-th-text-m">
+        <div className={cn('mx-3 mb-4 mt-3 space-y-3', collapsed && 'px-0')}>
+          <div className={cn('flex', collapsed ? 'flex-col items-center gap-1' : 'flex-wrap gap-2 px-1')}>
+            {footerLinks.map((link) => {
+              const Icon = link.icon;
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={onClose}
+                  title={link.label}
+                  target={link.href === '/public' ? '_blank' : undefined}
+                  rel={link.href === '/public' ? 'noreferrer' : undefined}
+                  className={cn(
+                    'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-th-text-m hover:text-th-text',
+                    active && 'text-amber-700 dark:text-amber-200',
+                    collapsed && 'justify-center px-0',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  {!collapsed && link.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div className={cn('glass-panel overflow-hidden border-amber-500/10', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
+            {collapsed ? (
+              <div className="flex justify-center text-amber-700 dark:text-amber-200">
+                <Worm className="h-5 w-5" aria-hidden="true" />
+              </div>
+            ) : (
+              <div className="space-y-2 text-xs text-th-text-m">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-th-text-m">Version</span>
+                  <span>Version</span>
                   <span className="font-medium text-th-text">{version?.version ?? 'unknown'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-th-text-m">Profile</span>
+                  <span>Profile</span>
                   <span className="font-medium capitalize text-th-text">{version?.profile ?? 'basic'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="uppercase tracking-[0.18em] text-th-text-m">Env</span>
+                  <span>Env</span>
                   <span className="font-medium text-th-text">{environmentLabel}</span>
                 </div>
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </aside>
     </>

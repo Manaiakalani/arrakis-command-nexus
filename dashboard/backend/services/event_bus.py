@@ -15,6 +15,8 @@ import os
 import time
 from typing import Any
 
+from services.health_status import readiness_to_health, service_to_frontend
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,59 +127,18 @@ class ChangeDetector:
                 and docker._map_role(getattr(s, "name", "")) in map_roles
             )
 
-            status_lookup = {"ok": "healthy", "warn": "degraded", "fail": "offline"}
-            health_map = {
-                "running": "healthy",
-                "stopped": "stopped",
-                "completed": "completed",
-                "error": "offline",
-            }
-            init_names = {"db-init", "db_init", "dbinit"}
-
-            def _is_init(name: str) -> bool:
-                short = name.replace("dune-awakening-", "").replace("-1", "").lower()
-                return any(tag in short for tag in init_names)
-
-            def _svc_fe(svc: Any) -> dict:
-                name = getattr(svc, "name", "")
-                raw_status = getattr(svc, "status", "stopped")
-                health = getattr(svc, "health", None)
-                fe_status = health_map.get(raw_status, "offline")
-                if health == "unhealthy":
-                    fe_status = "degraded"
-                is_init = _is_init(name)
-                if is_init and raw_status in ("completed", "exited"):
-                    fe_status = "completed"
-                label = (
-                    name.replace("dune-awakening-", "")
-                    .replace("-1", "")
-                    .replace("_", " ")
-                    .title()
-                )
-                message = health or raw_status
-                if is_init and fe_status == "completed":
-                    message = "Finished successfully"
-                return {
-                    "name": name,
-                    "label": label,
-                    "status": fe_status,
-                    "latencyMs": getattr(svc, "latency_ms", 0),
-                    "message": message,
-                    "isInit": is_init,
-                }
-
             status_data = {
                 "serverName": read_env_var("WORLD_NAME")
                 or os.getenv("WORLD_NAME")
                 or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
                 "region": os.getenv("WORLD_REGION", "North America"),
-                "status": status_lookup.get(readiness["status"], "offline"),
+                "status": readiness_to_health(readiness["status"]),
                 "uptimeSeconds": uptime or 0,
                 "playersOnline": len(players),
                 "mapsActive": maps_active,
                 "maxPlayers": int(os.getenv("DUNE_MAX_PLAYERS", "70")),
                 "version": os.getenv("DUNE_IMAGE_TAG", "1979201-0-shipping"),
-                "services": [_svc_fe(s) for s in services],
+                "services": [service_to_frontend(s) for s in services],
             }
             await self._push_if_changed("status-update", status_data)
         except Exception:

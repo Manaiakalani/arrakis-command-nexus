@@ -3,7 +3,7 @@
 import { Flame, LocateFixed, Minus, Plus, RotateCcw, Users } from 'lucide-react';
 import { useMemo } from 'react';
 
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { useMapZoom } from '@/hooks/useMapZoom';
 import { apiClient } from '@/lib/api';
 import {
@@ -77,10 +77,11 @@ function clamp(v: number, lo: number, hi: number) {
 }
 
 export function PlayerHeatmap({ players, refreshIntervalMs = 10_000 }: PlayerHeatmapProps) {
-  const { data: polledPlayers } = useApi(() => apiClient.getPlayerPositions(), {
-    enabled: refreshIntervalMs > 0,
-    refreshInterval: refreshIntervalMs || undefined,
-  });
+  const { data: polledPlayers } = useApiSWR(
+    refreshIntervalMs > 0 ? 'api/players/positions' : null,
+    () => apiClient.getPlayerPositions(),
+    { refreshInterval: refreshIntervalMs || undefined },
+  );
   const zoom = useMapZoom();
 
   const normalizedPlayers = useMemo(() => normalizePlayerMapData(polledPlayers ?? players), [players, polledPlayers]);

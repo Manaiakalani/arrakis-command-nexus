@@ -26,15 +26,17 @@ These use RGB channel format for Tailwind alpha support (`rgb(var(--token) / alp
 
 | Token | Dark Value | Light Value | Usage |
 |-------|-----------|-------------|-------|
-| `--th-bg` | slate-950 `2 6 23` | slate-50 `248 250 252` | Page background |
-| `--th-bg-s` | slate-900 `15 23 42` | slate-100 `241 245 249` | Secondary background |
-| `--th-surface` | slate-800 `30 41 59` | white `255 255 255` | Card/panel surface |
-| `--th-surface-s` | slate-900 `15 23 42` | slate-100 `241 245 249` | Recessed surface |
-| `--th-border` | slate-700 `51 65 85` | slate-300 `203 213 225` | Primary border |
-| `--th-border-m` | slate-800 `30 41 59` | slate-200 `226 232 240` | Muted border |
-| `--th-text` | slate-50 `248 250 252` | slate-900 `15 23 42` | Primary text |
-| `--th-text-s` | slate-300 `203 213 225` | slate-600 `71 85 105` | Secondary text |
-| `--th-text-m` | slate-400 `148 163 184` | slate-500 `100 116 139` | Muted text |
+| `--th-bg` | slate-950 `2 6 23` | parchment `253 251 247` | Page background |
+| `--th-bg-s` | slate-900 `15 23 42` | warm sand `247 243 235` | Secondary background |
+| `--th-surface` | slate-800 `30 41 59` | warm white `255 253 250` | Card/panel surface |
+| `--th-surface-s` | slate-900 `15 23 42` | warm sand `247 243 235` | Recessed surface |
+| `--th-border` | slate-700 `51 65 85` | sand border `214 204 186` | Primary border |
+| `--th-border-m` | slate-800 `30 41 59` | light sand `232 224 210` | Muted border |
+| `--th-text` | slate-50 `248 250 252` | warm brown-black `41 32 18` | Primary text |
+| `--th-text-s` | slate-300 `203 213 225` | warm brown `92 76 52` | Secondary text |
+| `--th-text-m` | slate-400 `148 163 184` | muted brown `105 89 63` | Muted text |
+
+Light mode is parchment, not slate. Source of truth is `dashboard/frontend/src/app/globals.css`.
 
 ### Brand Colors (Tailwind)
 
@@ -68,10 +70,10 @@ dune-muted:      #94a3b8     Subdued text
 ## 3. Typography
 
 - **Font family:** Inter (variable), system-ui fallback
-- **Headings:** `text-2xl font-bold text-sand-100` (page title), `text-lg font-semibold` (section)
-- **Section labels:** `.section-title` - `text-sm font-semibold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-300/80`
+- **Headings:** `text-2xl font-semibold text-th-text` (page title). The shell already renders the server name as the document `h1`; page titles should be `h2`.
+- **Section labels:** `.section-title` uses `--th-accent`. Prefer a real heading over an eyebrow when the heading can carry the meaning.
 - **Body:** `text-sm text-th-text-s`
-- **Muted:** `text-sm text-th-text-m` or `text-sand-400`
+- **Muted:** `text-sm text-th-text-m`
 
 ---
 
@@ -122,7 +124,7 @@ Variant colors follow the action palette (red for destructive, green for positiv
 ## 5. Layout
 
 ### Sidebar Navigation
-- Collapsible rail (`w-16` collapsed, `w-64` expanded)
+- Collapsible rail (`w-[4.5rem]` collapsed, `w-80` expanded)
 - Icons from `lucide-react`
 - Active link: `bg-amber-500/15 text-amber-500`
 - Server health indicator dot in the logo area
@@ -135,8 +137,8 @@ Variant colors follow the action palette (red for destructive, green for positiv
     <div className="flex items-center gap-3">
       <Icon className="h-7 w-7 text-amber-400" />
       <div>
-        <h1 className="text-2xl font-bold text-sand-100">Page Title</h1>
-        <p className="text-sm text-sand-400">Description</p>
+        <h2 className="text-2xl font-semibold text-th-text">Page Title</h2>
+        <p className="text-sm text-th-text-m">Description</p>
       </div>
     </div>
     <button className="...">Action</button>

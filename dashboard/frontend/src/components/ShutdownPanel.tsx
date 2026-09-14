@@ -3,6 +3,7 @@
 import { Power } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/ToastProvider';
 import { apiClient } from '@/lib/api';
 
@@ -16,6 +17,7 @@ export function ShutdownPanel() {
   const [phase, setPhase] = useState<string>('idle');
   const [details, setDetails] = useState<Array<{ ts: string; msg: string }>>([]);
   const [polling, setPolling] = useState(false);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     if (!polling) return;
@@ -43,11 +45,6 @@ export function ShutdownPanel() {
 
   async function handleSubmit() {
     if (submitting) return;
-    const message =
-      warningMinutes === 0
-        ? 'Trigger IMMEDIATE shutdown? Players will be disconnected NOW.'
-        : `Begin shutdown sequence with ${warningMinutes} minute warning?`;
-    if (!window.confirm(message)) return;
     setSubmitting(true);
     try {
       await apiClient.prepareShutdown({
@@ -120,11 +117,11 @@ export function ShutdownPanel() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={handleSubmit}
+          onClick={() => setPending(true)}
           disabled={submitting || isRunning}
           className="dune-button bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 disabled:opacity-50"
         >
-          {submitting ? 'Starting...' : isRunning ? 'In progress...' : 'Begin shutdown sequence'}
+          {submitting ? 'Starting…' : isRunning ? 'In progress…' : 'Begin shutdown sequence'}
         </button>
         <span className="text-sm text-th-text/70">
           Current phase: <code className="px-1 rounded bg-th-surface/60">{phase}</code>
@@ -155,6 +152,22 @@ export function ShutdownPanel() {
           </ul>
         </details>
       )}
+      <ConfirmDialog
+        open={pending}
+        title={warningMinutes === 0 ? 'Immediate host shutdown?' : `Warn for ${warningMinutes} minute${warningMinutes === 1 ? '' : 's'}, then shut down?`}
+        message={
+          warningMinutes === 0
+            ? 'Players will be disconnected now. Phase 1 stops game containers; you still run ./dune shutdown-host on the box to power off.'
+            : 'Players get in-game warnings, then a backup, then game containers stop. You still run ./dune shutdown-host on the box to power off.'
+        }
+        confirmLabel="Begin shutdown"
+        variant="danger"
+        onCancel={() => setPending(false)}
+        onConfirm={() => {
+          setPending(false);
+          void handleSubmit();
+        }}
+      />
     </section>
   );
 }
