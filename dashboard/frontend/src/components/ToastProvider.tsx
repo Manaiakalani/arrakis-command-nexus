@@ -66,7 +66,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 'pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur-sm animate-in slide-in-from-right-5 duration-300',
                 styles[t.variant],
               )}
-              role="alert"
+              role={t.variant === 'error' || t.variant === 'warning' ? 'alert' : 'status'}
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{t.message}</span>

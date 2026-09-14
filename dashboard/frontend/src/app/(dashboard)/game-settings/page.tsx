@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 import type { ConfigField } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -123,7 +123,7 @@ function useActiveSection(ids: SectionId[]) {
 
 export default function GameSettingsPage() {
   const { toast } = useToast();
-  const config = useApi(() => apiClient.getConfig(GAME_CONFIG), { initialData: null });
+  const config = useApiSWR(`api/config/${GAME_CONFIG}`, () => apiClient.getConfig(GAME_CONFIG), { initialData: null });
   const [drafts, setDrafts] = useState<Record<string, DraftValue>>({});
   const [openSections, setOpenSections] = useState<Record<SectionId, boolean>>({
     combat: true,

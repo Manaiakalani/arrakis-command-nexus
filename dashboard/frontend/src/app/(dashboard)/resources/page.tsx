@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 
 interface ResourceEntry {
@@ -33,7 +33,7 @@ const CATEGORY_META: Record<string, { title: string; subtitle: string; icon: typ
 
 export default function ResourcesPage() {
   const { toast } = useToast();
-  const resources = useApi(() => apiClient.getResourceLimits(), { initialData: null });
+  const resources = useApiSWR('api/resources', () => apiClient.getResourceLimits(), { initialData: null });
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);

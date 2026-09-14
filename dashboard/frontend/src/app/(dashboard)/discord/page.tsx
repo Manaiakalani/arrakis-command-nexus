@@ -6,11 +6,11 @@ import { useMemo } from 'react';
 import { ApiError } from '@/components/ApiError';
 import { DiscordSettings } from '@/components/DiscordSettings';
 import { Skeleton } from '@/components/Skeleton';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 
 export default function DiscordPage() {
-  const webhooks = useApi(() => apiClient.getDiscordWebhooks(), { refreshInterval: 20000, initialData: [] });
+  const webhooks = useApiSWR('api/discord/webhooks', () => apiClient.getDiscordWebhooks(), { refreshInterval: 20000, initialData: [] });
 
   const eventHistory = useMemo(() => {
     return (webhooks.data ?? [])
@@ -43,15 +43,15 @@ export default function DiscordPage() {
         webhooks={webhooks.data ?? []}
         onAdd={async (data) => {
           await apiClient.addWebhook(data);
-          await webhooks.forceRefetch();
+          await webhooks.refetch();
         }}
         onUpdate={async (id, data) => {
           await apiClient.updateWebhook(id, data);
-          await webhooks.forceRefetch();
+          await webhooks.refetch();
         }}
         onDelete={async (id) => {
           await apiClient.deleteWebhook(id);
-          await webhooks.forceRefetch();
+          await webhooks.refetch();
         }}
         onTest={async () => {
           await apiClient.testWebhook();

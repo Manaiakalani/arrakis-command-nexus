@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 
 const preRestartOptions = [1, 2, 5, 10, 15] as const;
@@ -42,8 +42,8 @@ export default function AnnouncementsPage() {
   const [scheduleEnabled, setScheduleEnabled] = useState(true);
   const [scheduling, setScheduling] = useState(false);
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
-  const history = useApi(() => apiClient.getAnnouncementHistory(), { refreshInterval: 15000, initialData: [] });
-  const scheduled = useApi(() => apiClient.getScheduledAnnouncements(), { refreshInterval: 15000, initialData: [] });
+  const history = useApiSWR('api/announcements/history', () => apiClient.getAnnouncementHistory(), { refreshInterval: 15000, initialData: [] });
+  const scheduled = useApiSWR('api/announcements/scheduled', () => apiClient.getScheduledAnnouncements(), { refreshInterval: 15000, initialData: [] });
 
   const [wisdomInterval, setWisdomInterval] = useState(45);
   const [wisdomSender, setWisdomSender] = useState("Muad'Dib");

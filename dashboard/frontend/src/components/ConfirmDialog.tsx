@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -13,9 +13,10 @@ export interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   variant?: 'danger' | 'default';
+  children?: ReactNode;
 }
 
-export function ConfirmDialog({ open, onConfirm, onCancel, title, message, confirmLabel = 'Confirm', variant = 'default' }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onConfirm, onCancel, title, message, confirmLabel = 'Confirm', variant = 'default', children }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -71,6 +72,7 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, message, confi
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-message"
       onKeyDown={handleKeyDown}
     >
       <div
@@ -92,7 +94,8 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, message, confi
             {title}
           </h3>
         </div>
-        <p className="mt-4 text-sm leading-relaxed text-th-text-m">{message}</p>
+        <p className="mt-4 text-sm leading-relaxed text-th-text-m" id="confirm-dialog-message">{message}</p>
+        {children ? <div className="mt-4">{children}</div> : null}
         <div className="mt-6 flex justify-end gap-3">
           <button type="button" className="dune-button-muted" onClick={onCancel}>
             Cancel

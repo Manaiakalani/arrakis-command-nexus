@@ -4,6 +4,7 @@ import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Database, Download, Lo
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/ToastProvider';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
   const [updatePhase, setUpdatePhase] = useState<UpdatePhase>('idle');
   const [preUpdateBackupId, setPreUpdateBackupId] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
+  const [pending, setPending] = useState<'update' | 'rollback' | 'autoupdate' | null>(null);
 
   // Steam account settings state
   const [steamSettingsOpen, setSteamSettingsOpen] = useState(false);
@@ -211,7 +213,6 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
   };
 
   const triggerUpdate = async () => {
-    if (!window.confirm('This will create a full backup, download the latest server files, load new Docker images, and restart game containers. Continue?')) return;
     setTriggering(true);
     setUpdatePhase('backup');
     try {
@@ -276,7 +277,6 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
       toast('No pre-update backup available for rollback', 'error');
       return;
     }
-    if (!window.confirm('Restore the pre-update backup? This will revert all changes made during the update.')) return;
     setRollingBack(true);
     try {
       await apiClient.restoreBackup(preUpdateBackupId);
@@ -293,7 +293,6 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
   const toggleAutoUpdate = async () => {
     if (!status) return;
     const newValue = !status.auto_update_enabled;
-    if (newValue && !window.confirm('Enabling auto-update will automatically download server files and restart containers when a new build is detected. Continue?')) return;
     try {
       const result = await apiClient.setAutoUpdate(newValue);
       setStatus((prev) => prev ? { ...prev, auto_update_enabled: result.auto_update_enabled } : prev);
@@ -344,7 +343,7 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void triggerUpdate()}
+                  onClick={() => setPending('update')}
                   disabled={triggering || updateRunning || loading}
                   className="dune-button bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
                 >
@@ -402,7 +401,7 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => void handleRollback()}
+                  onClick={() => setPending('rollback')}
                   disabled={rollingBack}
                   className="dune-button-muted inline-flex items-center gap-1.5"
                 >
@@ -613,7 +612,10 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
           </div>
           <button
             type="button"
-            onClick={() => void toggleAutoUpdate()}
+            onClick={() => {
+              if (!status?.auto_update_enabled) setPending('autoupdate');
+              else void toggleAutoUpdate();
+            }}
             disabled={loading || !status}
             className={cn(
               'flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors',
@@ -708,6 +710,42 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
           </p>
         </div>
       </details>
+      <ConfirmDialog
+        open={pending === 'update'}
+        title="Apply server update?"
+        message="This creates a full backup, downloads the latest server files, loads new Docker images, and restarts game containers. Players will be disconnected."
+        confirmLabel="Apply update"
+        variant="danger"
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          setPending(null);
+          void triggerUpdate();
+        }}
+      />
+      <ConfirmDialog
+        open={pending === 'rollback'}
+        title="Restore the pre-update backup?"
+        message="This reverts every change made during the update, including game files and the image tag."
+        confirmLabel="Restore backup"
+        variant="danger"
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          setPending(null);
+          void handleRollback();
+        }}
+      />
+      <ConfirmDialog
+        open={pending === 'autoupdate'}
+        title="Enable auto-update?"
+        message="The dashboard will download server files and restart containers when a new Steam build is detected. A backup is created first."
+        confirmLabel="Enable auto-update"
+        variant="danger"
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          setPending(null);
+          void toggleAutoUpdate();
+        }}
+      />
     </div>
   );
 }

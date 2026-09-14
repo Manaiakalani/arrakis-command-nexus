@@ -4,9 +4,10 @@ import { Archive, Building2, Car, Info, Map, MapPin, RefreshCcw, Square, Users }
 import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MapCardSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
-import { useApi } from '@/hooks/useApi';
+import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
 import type { BaseRecord, VehicleRecord, PlayerPosition } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -23,14 +24,16 @@ const MapCard = dynamic(() => import('@/components/MapCard').then((mod) => mod.M
 
 export default function MapsPage() {
   const { toast } = useToast();
-  const { data: maps = [], loading, refetch } = useApi(() => apiClient.getMaps(), { refreshInterval: 15000, initialData: [] });
-  const { data: players = [] } = useApi(() => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
-  const bases = useApi(() => apiClient.getBases(), { refreshInterval: 30000, initialData: [] });
+  const { data: maps = [], loading, refetch } = useApiSWR('api/maps', () => apiClient.getMaps(), { refreshInterval: 15000, initialData: [] });
+  const { data: players = [] } = useApiSWR('api/players/positions', () => apiClient.getPlayerPositions(), { refreshInterval: 10000, initialData: [] });
+  const bases = useApiSWR('api/bases', () => apiClient.getBases(), { refreshInterval: 30000, initialData: [] });
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [selectedMapVehicles, setSelectedMapVehicles] = useState<string | null>(null);
-  const vehicles = useApi(
+  const [pendingBulk, setPendingBulk] = useState<'restart' | 'stop' | null>(null);
+  const vehicles = useApiSWR(
+    selectedMapVehicles ? `api/vehicles/${selectedMapVehicles}` : null,
     () => selectedMapVehicles ? apiClient.getVehicles(selectedMapVehicles) : Promise.resolve([]),
-    { refreshInterval: 30000, initialData: [], enabled: !!selectedMapVehicles, deps: [selectedMapVehicles] },
+    { refreshInterval: 30000, initialData: [] },
   );
 
   const totals = useMemo(() => {
@@ -52,8 +55,13 @@ export default function MapsPage() {
   }, [refetch, toast]);
 
   const handleBulk = useCallback(async (action: 'restart' | 'stop') => {
+    const targets = maps.filter((map) => map.status === 'running');
+    if (targets.length === 0) {
+      toast('No running maps to act on.', 'info');
+      return;
+    }
     try {
-      await Promise.all(maps.map((map) => (action === 'restart' ? apiClient.restartMap(map.name) : apiClient.stopMap(map.name))));
+      await Promise.all(targets.map((map) => (action === 'restart' ? apiClient.restartMap(map.name) : apiClient.stopMap(map.name))));
       await refetch();
       toast(`${action === 'restart' ? 'Restart' : 'Stop'} all completed`, 'success');
     } catch (err) {
@@ -78,14 +86,13 @@ export default function MapsPage() {
       <div className="glass-panel p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="section-title">Map orchestration</p>
-            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Map fleet</h2>
+            <h2 className="inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Map fleet</h2>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => void handleBulk('restart')} className="dune-button">
+            <button type="button" onClick={() => setPendingBulk('restart')} className="dune-button">
               <RefreshCcw aria-hidden="true" className="mr-2 h-4 w-4" /> Restart all
             </button>
-            <button type="button" onClick={() => void handleBulk('stop')} className="dune-button-muted">
+            <button type="button" onClick={() => setPendingBulk('stop')} className="dune-button-muted">
               <Square aria-hidden="true" className="mr-2 h-4 w-4" /> Stop all
             </button>
           </div>
@@ -100,7 +107,7 @@ export default function MapsPage() {
           </div>
         </div>
         {backupMessage ? (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm text-sky-200">
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm text-sky-800 dark:text-sky-200">
             <Archive aria-hidden="true" className="h-4 w-4 shrink-0" />
             {backupMessage}
           </div>
@@ -203,6 +210,23 @@ export default function MapsPage() {
       </div>
 
       <HaggaBasinMap players={players} refreshIntervalMs={0} />
+      <ConfirmDialog
+        open={pendingBulk !== null}
+        title={pendingBulk === 'stop' ? 'Stop every running map?' : 'Restart every running map?'}
+        message={
+          maps.filter((map) => map.status === 'running').length
+            ? `This will ${pendingBulk} ${maps.filter((map) => map.status === 'running').map((map) => map.name).join(', ')}. Connected players will be disconnected.`
+            : 'No running maps to act on.'
+        }
+        confirmLabel={pendingBulk === 'stop' ? 'Stop maps' : 'Restart maps'}
+        variant="danger"
+        onCancel={() => setPendingBulk(null)}
+        onConfirm={() => {
+          const action = pendingBulk;
+          setPendingBulk(null);
+          if (action) void handleBulk(action);
+        }}
+      />
     </div>
   );
 }

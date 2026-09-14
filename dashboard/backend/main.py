@@ -54,7 +54,8 @@ from services.postgres_service import PostgresService  # noqa: E402
 from services.restart_scheduler import RestartScheduler  # noqa: E402
 from services.update_scheduler import get_update_scheduler  # noqa: E402
 from services.watchdog_service import WatchdogService  # noqa: E402
-from services.event_bus import ChangeDetector, EventBus  # noqa: E402
+from services.event_bus import ChangeDetector, EventBus
+from services.player_tracker import diff_online_players  # noqa: E402
 
 
 class RedactingFilter(logging.Filter):
@@ -129,15 +130,13 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                 mname = getattr(p, "map_name", None) or "Unknown"
                 known_players[p.steam_id] = (pname, mname)
 
+            joined, left, next_ids = diff_online_players(previous_ids, current_ids, first_poll=first_poll)
             if first_poll:
                 tracker_log.info("Initial poll: %d player(s) online", len(current_ids))
                 first_poll = False
-                previous_ids = current_ids
+                previous_ids = next_ids
                 await asyncio.sleep(15)
                 continue
-
-            joined = current_ids - previous_ids
-            left = previous_ids - current_ids
 
             if joined or left:
                 tracker_log.info(
@@ -194,7 +193,7 @@ async def _track_player_connections(postgres_service: PostgresService, discord_s
                         )
                         tracker_log.info("Discord leave notification queued to %d webhook(s)", count)
 
-            previous_ids = current_ids
+            previous_ids = next_ids
             # Evict disconnected players from cache to prevent unbounded growth
             for sid in left:
                 known_players.pop(sid, None)

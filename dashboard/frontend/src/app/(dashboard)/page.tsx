@@ -5,10 +5,10 @@ import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ResourceGauge } from '@/components/ResourceGauge';
 import { StatusCard } from '@/components/StatusCard';
 import { useToast } from '@/components/ToastProvider';
-import { useDashboardSSE } from '@/hooks/useDashboardSSE';
 import { apiClient } from '@/lib/api';
 import { useNow } from '@/lib/now';
 import { cn } from '@/lib/utils';
@@ -39,30 +39,11 @@ function formatUptime(seconds = 0) {
 export default function OverviewPage() {
   const { toast } = useToast();
   const now = useNow(60_000);
-  const { data: overviewData, error: overviewError, isLoading: overviewLoading, mutate: overviewMutate } = useSWR('api/overview', () => apiClient.getOverview(), { refreshInterval: 30_000 });
-  // SSE real-time updates — merges into overview state, polling is fallback
-  const handleSSEUpdate = useCallback(
-    (patch: Partial<NonNullable<typeof overviewData>>) => {
-      void overviewMutate((prev) => {
-        if (!prev) return prev;
-        const next = { ...prev };
-        if (patch.status) {
-          next.status = { ...prev.status, ...patch.status };
-        }
-        if (patch.maps) next.maps = patch.maps;
-        if (patch.metrics) next.metrics = patch.metrics;
-        if (patch.readiness) next.readiness = patch.readiness;
-        return next;
-      }, { revalidate: false });
-    },
-    [overviewMutate],
+  const { data: overviewData, error: overviewError, isLoading: overviewLoading, mutate: overviewMutate } = useSWR(
+    'api/overview',
+    () => apiClient.getOverview(),
+    { refreshInterval: 0 },
   );
-
-  const { sseStatus } = useDashboardSSE({
-    enabled: !!overviewData,
-    onUpdate: handleSSEUpdate,
-  });
-
 
   const refetchOverview = useCallback(async () => { await overviewMutate(); }, [overviewMutate]);
   const status = useMemo(() => ({ data: overviewData?.status, loading: overviewLoading, error: overviewError, refetch: refetchOverview }), [overviewData?.status, overviewLoading, overviewError, refetchOverview]);
@@ -76,6 +57,13 @@ export default function OverviewPage() {
   const serviceSummary = useMemo(() => status.data?.services ?? [], [status.data?.services]);
 
   const [busyService, setBusyService] = useState<string | null>(null);
+  const [pending, setPending] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant?: 'danger' | 'default';
+    run: () => Promise<void>;
+  } | null>(null);
 
   const handleServiceAction = useCallback(async (name: string, action: 'start' | 'stop' | 'restart') => {
     setBusyService(name);
@@ -148,8 +136,7 @@ export default function OverviewPage() {
           <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
-          <p className="section-title">Overview</p>
-          <h1 className="mt-1 text-2xl font-semibold text-th-text">Dashboard overview</h1>
+          <h2 className="text-2xl font-semibold text-th-text">Overview</h2>
         </div>
       </div>
 
@@ -196,13 +183,33 @@ export default function OverviewPage() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => void handleDirectorNudge()}
+                onClick={() => setPending({
+                  title: 'Restart the Director?',
+                  message: 'This restarts only the Director so FLS declarations re-fire. Players stay connected, but the server listing in the Experimental browser may flicker for about a minute.',
+                  confirmLabel: 'Restart Director',
+                  run: handleDirectorNudge,
+                })}
                 title="Restart only the Director to force FLS re-declaration. Use if the server is not appearing in the in-game Experimental browser."
                 className="dune-button-muted"
               >
                 <Zap aria-hidden="true" className="mr-2 h-4 w-4" /> Director nudge
               </button>
-              <button type="button" onClick={() => void handleRestartAll()} className="dune-button-muted">
+              <button
+                type="button"
+                onClick={() => {
+                  const running = (maps.data ?? []).filter((map) => map.status === 'running').map((map) => map.name);
+                  setPending({
+                    title: 'Restart every running map?',
+                    message: running.length
+                      ? `Players on ${running.join(', ')} will be disconnected while those shards restart.`
+                      : 'No running maps to restart.',
+                    confirmLabel: 'Restart maps',
+                    variant: 'danger',
+                    run: handleRestartAll,
+                  });
+                }}
+                className="dune-button-muted"
+              >
                 <RefreshCcw aria-hidden="true" className="mr-2 h-4 w-4" /> Restart all
               </button>
               <button type="button" onClick={() => void handleBackupNow()} className="dune-button">
@@ -266,7 +273,12 @@ export default function OverviewPage() {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => void handleServiceAction(service.name, 'restart')}
+                              onClick={() => setPending({
+                                title: `Restart ${service.label ?? service.name}?`,
+                                message: 'Anyone using this service will be interrupted until it comes back.',
+                                confirmLabel: 'Restart',
+                                run: () => handleServiceAction(service.name, 'restart'),
+                              })}
                               aria-label={`Restart ${service.label ?? service.name}`}
                               className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200 disabled:opacity-40"
                             >
@@ -275,7 +287,13 @@ export default function OverviewPage() {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => void handleServiceAction(service.name, 'stop')}
+                              onClick={() => setPending({
+                                title: `Stop ${service.label ?? service.name}?`,
+                                message: 'This takes the service offline until you start it again.',
+                                confirmLabel: 'Stop service',
+                                variant: 'danger',
+                                run: () => handleServiceAction(service.name, 'stop'),
+                              })}
                               aria-label={`Stop ${service.label ?? service.name}`}
                               className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-40"
                             >
@@ -429,6 +447,19 @@ export default function OverviewPage() {
           })}
         </div>
       </section>
+      <ConfirmDialog
+        open={!!pending}
+        title={pending?.title ?? ''}
+        message={pending?.message ?? ''}
+        confirmLabel={pending?.confirmLabel}
+        variant={pending?.variant}
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          const run = pending?.run;
+          setPending(null);
+          if (run) void run();
+        }}
+      />
     </div>
   );
 }

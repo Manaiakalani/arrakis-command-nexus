@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Dashboard chrome no longer defaults to “healthy”: header pulse and sidebar cluster dot follow real `HealthState`, including an explicit checking state, and SSE status is shown as Live / Connecting / Polling
+- Overview SWR cache is owned by the shell; SSE patches that cache and polling pauses while the stream is open, so Maps/Players no longer pay for a second overview loop
+- Sidebar is 16 operator destinations (Incidents redirects to Watchdog; Discord, Audit, and Public status moved to footer links) instead of a 20-item catalog
+- Stop all, Restart all, Director nudge, per-service stop/restart, Kick, bulk ban, and character grants go through `ConfirmDialog` and name the target
+- Login uses the same `.dune-input` / `.dune-button` tokens as the rest of the dashboard (forced dark gate)
+- `docs/DESIGN.md` light tokens match the parchment CSS instead of leftover slate-50 values
+- REST `/status` and SSE ChangeDetector share `services.health_status.service_to_frontend`; connection-tracker join/leave math lives in `player_tracker.diff_online_players`
+- Remaining dashboard pages use SWR (`useApi` is gone). Updates, host shutdown, vehicle teleport, and admin password-set use `ConfirmDialog` instead of `window.confirm` / `window.prompt`
+- Character grant buttons live in `grant-catalog.ts`. Live `dune.items` on daspicebox added spawnables: CHOAMSword_3, HarkAr7, AtreLMG5, RocketLauncher_2, SmugDmr4/5, HoltzmanShieldActiveDrain3, Radiation_Suit_T5, Durable Blood Sack Mk4, CHOAM Light Mk5 gloves/boots, 50 Spice Melange on Quick Grants
 - Player bases no longer take sandstorm damage or sand buildup by default: `UserGame.ini` sets `m_bMitigateAllSandstormDamage=True` and `m_SandBuildupMultiplier=0`, `survival-pre-start.sh` patches the same keys in `DefaultGame.ini`, and the standard-lean survival command line repeats the mitigate/buildup overrides. Weather can still be toggled separately; this only stops the decay that eats structures
 - Dashboard frontend Next.js 15.5.21 -> 16.3.x, with matching `eslint-config-next`. Dependabot #74 could not merge: once `eslint-config-next` is 16, the previous FlatCompat `extends('next/core-web-vitals')` path crashes ESLint 9 with "Converting circular structure to JSON", so `npm run lint` never ran and the bump stayed a draft. The config now loads `eslint-config-next/core-web-vitals` as a native flat config. `@eslint/eslintrc` is unused after the native flat config and is gone
 - `src/middleware.ts` renamed to `src/proxy.ts` and the exported function to `proxy`, matching the Next 16 file convention. CI now asserts the auth gating on that path (and refuses a leftover `middleware.ts`)

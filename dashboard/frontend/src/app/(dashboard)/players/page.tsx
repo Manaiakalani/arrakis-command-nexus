@@ -4,6 +4,7 @@ import { Ban, Download, History, LocateFixed, MapPinned, Shield, ShieldAlert, Us
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PlayerTable } from '@/components/PlayerTable';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/ToastProvider';
@@ -50,6 +51,8 @@ export default function PlayersPage() {
   const [selectedSteamIds, setSelectedSteamIds] = useState<Set<string>>(new Set());
   const [bulkBanning, setBulkBanning] = useState(false);
   const [selectedBanIds, setSelectedBanIds] = useState<Set<string>>(new Set());
+  const [pendingKick, setPendingKick] = useState<Player | null>(null);
+  const [pendingBulkBan, setPendingBulkBan] = useState(false);
 
   useEffect(() => {
     if (!kickStatus) {
@@ -200,8 +203,7 @@ export default function PlayersPage() {
           <Users className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
-          <p className="section-title">Player operations</p>
-          <h1 className="mt-1 text-2xl font-semibold text-th-text">Players</h1>
+          <h2 className="text-2xl font-semibold text-th-text">Players</h2>
         </div>
       </div>
 
@@ -245,13 +247,13 @@ export default function PlayersPage() {
               {reasonTemplate === 'Custom' && (
                 <input value={reason} onChange={(e) => setReason(e.target.value)} className="dune-input w-auto text-sm" placeholder="Custom reason…" />
               )}
-              <button type="button" disabled={bulkBanning} onClick={() => void handleBulkBan()} className="dune-button text-sm">
+              <button type="button" disabled={bulkBanning} onClick={() => setPendingBulkBan(true)} className="dune-button text-sm">
                 <Ban aria-hidden="true" className="mr-1.5 h-3.5 w-3.5" /> {bulkBanning ? 'Banning…' : 'Ban selected'}
               </button>
               <button type="button" onClick={() => setSelectedSteamIds(new Set())} className="dune-button-muted text-sm">Clear</button>
             </div>
           )}
-          <PlayerTable players={players.data ?? []} onBan={setSelectedPlayer} onKick={(player) => void handleKick(player)} selectedSteamIds={selectedSteamIds} onToggleSelect={togglePlayerSelection} />
+          <PlayerTable players={players.data ?? []} onBan={setSelectedPlayer} onKick={setPendingKick} selectedSteamIds={selectedSteamIds} onToggleSelect={togglePlayerSelection} />
           <div className="glass-panel overflow-hidden">
             <div className="flex flex-col gap-4 border-b border-th-border-m/80 p-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -469,6 +471,31 @@ export default function PlayersPage() {
           </div>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={!!pendingKick}
+        title={`Kick ${pendingKick?.name ?? 'this player'}?`}
+        message="They will be disconnected immediately. They can rejoin unless they are also banned."
+        confirmLabel="Kick player"
+        variant="danger"
+        onCancel={() => setPendingKick(null)}
+        onConfirm={() => {
+          const player = pendingKick;
+          setPendingKick(null);
+          if (player) void handleKick(player);
+        }}
+      />
+      <ConfirmDialog
+        open={pendingBulkBan}
+        title={`Ban ${selectedSteamIds.size} selected players?`}
+        message={`This applies a ban with reason “${reason}”${duration ? ` for ${duration} hours` : ' until you unban them'}.`}
+        confirmLabel="Ban selected"
+        variant="danger"
+        onCancel={() => setPendingBulkBan(false)}
+        onConfirm={() => {
+          setPendingBulkBan(false);
+          void handleBulkBan();
+        }}
+      />
     </div>
   );
 }
