@@ -97,12 +97,10 @@ function GroupBlock({
 }
 
 export function GrantCatalog(props: GrantCatalogProps) {
-  let lastBanner: string | undefined;
   return (
     <>
       {GRANT_GROUPS.map((group, index) => {
-        const showBanner = Boolean(group.banner) && group.banner !== lastBanner;
-        if (group.banner) lastBanner = group.banner;
+        const showBanner = Boolean(group.banner) && group.banner !== GRANT_GROUPS[index - 1]?.banner;
         return (
           <GroupBlock
             key={`${group.catId}-${group.title}-${index}`}

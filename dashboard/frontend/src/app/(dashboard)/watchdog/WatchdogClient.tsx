@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { ApiError } from '@/components/ApiError';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
 import { useApiSWR } from '@/hooks/useApiSWR';
+import { useNow } from '@/lib/now';
 import { apiClient } from '@/lib/api';
 import type { MapStatus, WatchdogCrashEvent, WatchdogStatus } from '@/lib/types';
 
@@ -21,6 +22,7 @@ export default function WatchdogClient({
   initialMaps,
 }: WatchdogClientProps) {
   const [restarting, setRestarting] = useState<string | null>(null);
+  const now = useNow(60_000);
   const status = useApiSWR('api/watchdog/status', () => apiClient.getWatchdogStatus(), {
     refreshInterval: 15000,
     initialData: initialStatus,
@@ -36,13 +38,13 @@ export default function WatchdogClient({
 
   const services = useMemo(() => [...new Set((maps.data ?? []).map((map) => map.name))].sort(), [maps.data]);
   const last24h = useMemo(() => {
-    const cutoff = Date.now() - 86_400_000;
+    const cutoff = now - 86_400_000;
     const events = crashes.data ?? [];
     return {
       crashes: events.filter((event) => !event.restarted && new Date(event.timestamp).getTime() >= cutoff).length,
       restarts: events.filter((event) => event.restarted && new Date(event.timestamp).getTime() >= cutoff).length,
     };
-  }, [crashes.data]);
+  }, [crashes.data, now]);
 
   const handleRestart = async (service: string) => {
     setRestarting(service);
