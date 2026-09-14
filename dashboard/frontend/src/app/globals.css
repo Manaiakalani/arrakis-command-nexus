@@ -89,13 +89,30 @@ html {
     scroll-behavior: auto;
   }
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  /* Decorative motion only. Keep short color/focus transitions so buttons,
+     inputs, and health pills still communicate state. */
+  .animate-float,
+  .animate-shimmer,
+  .animate-pulse-slow,
+  .animate-pulse,
+  .animate-spin,
+  .animate-in,
+  [class*="fade-in"],
+  [class*="zoom-in"],
+  [class*="slide-in"] {
+    animation: none !important;
+  }
+
+  .dune-button,
+  .dune-button-secondary,
+  .dune-button-muted {
+    transition-property: color, background-color, border-color, box-shadow;
+  }
+
+  .dune-button:active,
+  .dune-button-secondary:active,
+  .dune-button-muted:active {
+    transform: none;
   }
 }
 

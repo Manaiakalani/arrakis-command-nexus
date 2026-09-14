@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from middleware.request_utils import get_client_ip
 from services.cache import invalidate_overview
-from services.env_file import read_env_var
+from services.env_file import funcom_image_tag, live_world_name
 from services.health_status import readiness_to_health, service_to_frontend
 
 logger = logging.getLogger(__name__)
@@ -75,14 +75,14 @@ async def get_status(request: Request) -> dict:
     )
 
     return {
-        "serverName": read_env_var("WORLD_NAME") or os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
+        "serverName": live_world_name(),
         "region": os.getenv("WORLD_REGION", "North America"),
         "status": readiness_to_health(readiness["status"]),
         "uptimeSeconds": uptime or 0,
         "playersOnline": len(players),
         "mapsActive": maps_active,
         "maxPlayers": int(os.getenv("DUNE_MAX_PLAYERS", "70")),
-        "version": os.getenv("DUNE_IMAGE_TAG", "1979201-0-shipping"),
+        "version": funcom_image_tag(),
         "services": [service_to_frontend(s) for s in services],
     }
 
@@ -119,13 +119,13 @@ async def get_public_status(request: Request) -> dict:
     status_map = {"ok": "online", "warn": "degraded", "fail": "offline"}
 
     return {
-        "serverName": read_env_var("WORLD_NAME") or os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
+        "serverName": live_world_name(),
         "status": status_map.get(readiness.get("status"), "unknown"),
         "playersOnline": player_count,
         "maxPlayers": int(os.getenv("DUNE_MAX_PLAYERS", "70")),
         "mapsActive": maps_active,
         "uptimeSeconds": uptime or 0,
-        "version": os.getenv("DUNE_IMAGE_TAG", "unknown"),
+        "version": funcom_image_tag(),
         "region": os.getenv("DUNE_SERVER_REGION", os.getenv("WORLD_REGION", "Self-Hosted")),
         "lastUpdated": datetime.now(timezone.utc).isoformat(),
     }

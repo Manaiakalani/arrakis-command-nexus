@@ -167,6 +167,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
         <div className={cn('mx-3 mt-4 glass-panel', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
           <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
             <span
+              data-testid="cluster-health"
               className={cn('h-3 w-3 shrink-0 rounded-full', healthDotClass[clusterHealth])}
               aria-label={`Cluster ${healthLabel[clusterHealth]}`}
               role="img"

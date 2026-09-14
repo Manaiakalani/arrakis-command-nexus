@@ -384,16 +384,16 @@ test.describe('Interactive features', () => {
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
 
-    const serverNameInput = page.locator('#serverName');
-    await expect(serverNameInput).toBeVisible();
+    const descriptionInput = page.locator('#serverDescription');
+    await expect(descriptionInput).toBeVisible();
 
     // Wait for Save button to confirm page is interactive
     const saveBtn = page.getByRole('button', { name: 'Save general' });
     await expect(saveBtn).toBeVisible();
 
     // Fill and save
-    await serverNameInput.click();
-    await serverNameInput.fill('Test Nexus');
+    await descriptionInput.click();
+    await descriptionInput.fill('Test Nexus');
     await saveBtn.click();
 
     // Wait for save to complete
@@ -531,5 +531,30 @@ test.describe('Interactive features', () => {
 
     // Should show service logs heading and filter
     await expect(page.getByText('Service logs')).toBeVisible({ timeout: 10000 });
+  });
+});
+
+test.describe('Honest chrome and confirms', () => {
+  test('cluster health starts as Checking… until overview arrives', async ({ page }) => {
+    await page.route('**/api/v1/dashboard/overview**', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 8_000));
+      await route.abort();
+    });
+
+    await page.goto('/');
+    await expect(page.getByTestId('cluster-health').first()).toContainText('Checking…');
+  });
+
+  test('Stop all opens a confirm dialog and cancel dismisses it', async ({ page }) => {
+    await page.goto('/maps');
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.getByRole('button', { name: 'Stop all' }).click();
+    const dialog = page.getByTestId('confirm-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: /Stop every running map/i })).toBeVisible();
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toBeHidden();
   });
 });

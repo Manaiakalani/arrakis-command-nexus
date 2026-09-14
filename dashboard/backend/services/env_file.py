@@ -29,6 +29,31 @@ def _validate_value(value: str) -> None:
         raise ValueError("Value contains invalid characters (newline/CR/null)")
 
 
+def live_world_name() -> str:
+    """In-game server name from ``.env``, then process env, then the stock label.
+
+    Read at call time so a dashboard edit of ``WORLD_NAME`` is visible without
+    restarting the API process.
+    """
+    return (
+        read_env_var("WORLD_NAME")
+        or os.getenv("WORLD_NAME")
+        or os.getenv("DUNE_WORLD_NAME")
+        or "Dune Awakening Server"
+    )
+
+
+def funcom_image_tag() -> str:
+    """Funcom game image tag, or ``unknown`` when neither file nor env has one.
+
+    Prefer the ``.env`` file so a just-written ``DUNE_IMAGE_TAG`` shows up on
+    status/SSE before the API container is recreated. Never invent a historical
+    shipping tag as a default.
+    """
+    tag = read_env_var("DUNE_IMAGE_TAG") or os.getenv("DUNE_IMAGE_TAG")
+    return tag.strip() if tag else "unknown"
+
+
 def read_env_var(key: str, default: str | None = None) -> str | None:
     """Return the value of ``key`` from the .env file, or ``default`` if absent."""
     try:
