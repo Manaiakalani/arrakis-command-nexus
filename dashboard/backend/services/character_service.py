@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from services.grant_resolution import classify_grant_template, recipe_tail
+
 logger = logging.getLogger(__name__)
 
 # Known Dune Awakening character stats
@@ -314,64 +316,54 @@ class CharacterService:
             # slot in-game. Resolve such names to the real item template. This
             # runs for catalog entries too, because the curated catalog contains
             # several tier-prefixed recipe names that would otherwise ghost.
-            template_note: str | None = None
             item_exists = await connection.fetchval(
                 "SELECT 1 FROM dune.items WHERE template_id = $1 LIMIT 1",
                 template_id,
             )
+            tail_match = None
             if not item_exists:
-                # Resolve a recipe/tier-style name to its item template by
-                # matching the trailing segment (T2_Material_Silicone ->
-                # Silicone) against templates the game already renders.
-                tail = template_id.rsplit("_", 1)[-1]
-                resolved = None
-                if tail and tail != template_id:
-                    resolved = await connection.fetchval(
+                tail = recipe_tail(template_id)
+                if tail:
+                    tail_match = await connection.fetchval(
                         "SELECT template_id FROM dune.items "
                         "WHERE template_id ILIKE $1 ORDER BY template_id LIMIT 1",
                         tail,
                     )
-                if resolved:
-                    template_note = (
-                        f"Resolved '{template_id}' to item template '{resolved}'. "
-                        "(The original is a crafting-recipe/tier name, which the "
-                        "game does not render directly as an item.)"
+            decision = classify_grant_template(
+                template_id,
+                in_items_exact=bool(item_exists),
+                tail_match=tail_match,
+                in_known=template_id in self.KNOWN_TEMPLATES,
+            )
+            template_note = decision.note
+            if decision.outcome == "recipe_tail":
+                logger.info(
+                    "grant_item resolved recipe-style template %s -> %s",
+                    template_id, decision.template_id,
+                )
+            if decision.outcome == "unknown":
+                recipe_only = await connection.fetchval("""
+                    SELECT EXISTS(
+                        SELECT 1 FROM dune.actors,
+                            jsonb_array_elements(
+                                properties->'CraftingRecipesLibraryActorComponent'->'m_KnownItemRecipes'
+                            ) recipe
+                        WHERE properties ? 'CraftingRecipesLibraryActorComponent'
+                          AND recipe->'BaseRecipeId'->>'Name' ILIKE '%' || $1 || '%'
                     )
-                    logger.info(
-                        "grant_item resolved recipe-style template %s -> %s",
-                        template_id, resolved,
-                    )
-                    template_id = resolved
-                elif template_id in self.KNOWN_TEMPLATES:
-                    # Curated catalog entry we cannot confirm against live items
-                    # (e.g. an item no current player happens to hold). Trust the
-                    # catalog and grant as-is.
-                    pass
-                else:
-                    # Unknown free-text name. It may exist purely as a recipe
-                    # name -- which does NOT render in-game -- so reject with
-                    # clear guidance.
-                    recipe_only = await connection.fetchval("""
-                        SELECT EXISTS(
-                            SELECT 1 FROM dune.actors,
-                                jsonb_array_elements(
-                                    properties->'CraftingRecipesLibraryActorComponent'->'m_KnownItemRecipes'
-                                ) recipe
-                            WHERE properties ? 'CraftingRecipesLibraryActorComponent'
-                              AND recipe->'BaseRecipeId'->>'Name' ILIKE '%' || $1 || '%'
-                        )
-                    """, template_id)
-                    if recipe_only:
-                        raise ValueError(
-                            f"'{template_id}' is a crafting-recipe name, not an item "
-                            "template. Items render by item template id (e.g. "
-                            "'Silicone', not 'T2_Material_Silicone'). Use the item "
-                            "search to find the correct template id."
-                        )
+                """, template_id)
+                if recipe_only:
                     raise ValueError(
-                        f"Unknown template '{template_id}'. "
-                        "Use the item search to find valid template IDs."
-                        )
+                        f"'{template_id}' is a crafting-recipe name, not an item "
+                        "template. Items render by item template id (e.g. "
+                        "'Silicone', not 'T2_Material_Silicone'). Use the item "
+                        "search to find the correct template id."
+                    )
+                raise ValueError(
+                    f"Unknown template '{template_id}'. "
+                    "Use the item search to find valid template IDs."
+                )
+            template_id = decision.template_id
 
             import json
             import time
@@ -861,6 +853,7 @@ class CharacterService:
         "Combat_Nati_ScavengerRags02_Gloves": ("Armor", "Scavenger Gloves"),
         "Combat_Nati_ScavengerRags02_Boots": ("Armor", "Scavenger Boots"),
         # Armor - Stillsuits
+        "Stillsuit_Neut_Leaking01_Boots": ("Armor", "Leaking Stillsuit Boots"),
         "Stillsuit_Neut_Leaking01_Gloves": ("Armor", "Leaking Stillsuit Gloves"),
         "Stillsuit_Neut_Leaking01_Mask": ("Armor", "Leaking Stillsuit Mask"),
         "Stillsuit_Neut_Leaking01_Top": ("Armor", "Leaking Stillsuit Top"),
@@ -1281,7 +1274,10 @@ class CharacterService:
         "HeavyPistol_Unique_Bleed_03_Schematic": ("Schematics", "Bleed Heavy Pistol Schematic"),
         "Stillsuit_Unique_Armored_01_Boots_Schematic": ("Schematics", "Armored Stillsuit Boots Schematic"),
         "Schematic_UniqueBuggyBoost": ("Schematics", "Unique Buggy Booster Schematic"),
+        "Schematic_UniqueLiterjon": ("Schematics", "Unique Literjon Schematic"),
         "Schematic_UniqueMaulaPistol": ("Schematics", "Unique Maula Pistol Schematic"),
+        "Schematic_UniqueSuspensor": ("Schematics", "Unique Suspensor Schematic"),
+        "PowerPack_Unique_Regen_01_Schematic": ("Schematics", "Regen Power Pack Schematic"),
         # Tools
         "MiningTool_1h_Heavy": ("Tools", "Cutteray Mk3 (Heavy 1H)"),
         "MiningTool_1h_Light": ("Tools", "Cutteray Mk2 (Light 1H)"),
@@ -1292,6 +1288,7 @@ class CharacterService:
         "PortableLight": ("Tools", "Portable Light"),
         "Scanner_Base_1": ("Tools", "Scanner Base Mk1"),
         "SurveyProbe_1": ("Tools", "Survey Probe"),
+        "T3_Tool_SurveyProbeAmmo": ("Tools", "Survey Probe Ammo"),
         "SuspensorBelt": ("Tools", "Suspensor Belt"),
         "PartialStabilizationBelt": ("Tools", "Partial Stabilization Belt"),
         "Radiation_Suit": ("Tools", "Radiation Suit"),

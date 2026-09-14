@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Security
+
+- Next no longer sends HSTS `preload`. The dashboard is commonly served over HTTP; `preload` is how a host ends up on the browser preload list. `max-age` matches the API header (`31536000; includeSubDomains`)
+
+### Fixed
+
+- Dashboard-driven compose recreate refuses a partial `COMPOSE_FILE` that would drop `docker-compose.dashboard.yml`, a configured hostnet overlay, or apply the wrong profile overlay (`standard` vs `standard-lean`). When `COMPOSE_FILE` is unset, resolution matches the `dune` CLI (profile + hostnet + dashboard) instead of silently defaulting to `basic` on a lean host
+- REST `/status`, public status, and SSE share `funcom_image_tag()` / `live_world_name()` and no longer invent Funcom tag `1979201-0-shipping` when the env is missing
+- Settings `general.serverName` reads `WORLD_NAME` from `.env` at request time, so an identity edit is visible without restarting the API
+- Dark `viewport.themeColor` is `#020617` (page `--th-bg` / dune-night), not leftover slate-900 `#0f172a`
+- `prefers-reduced-motion` disables decorative animation only; color/focus transitions still run so health pills and buttons communicate state
+- `useNow` caches the clock between interval ticks. `useSyncExternalStore(getSnapshot: () => Date.now())` returned a new value every millisecond and React 19 looped on Overview / System / Logs / Watchdog
+
+### Tests
+
+- Compose-file resolution covers lean + hostnet + dashboard, partial `COMPOSE_FILE`, and a conflicting profile overlay
+- Grant catalog buttons must exist in `KNOWN_TEMPLATES` at exact case and must not include known ghost recipe ids; `classify_grant_template` covers exact / recipe-tail / unknown
+- e2e asserts chrome starts as Checking… while overview is delayed, and Stop all opens `ConfirmDialog`
+
 ## [1.8.0] - 2026-09-13
 
 ### Changed

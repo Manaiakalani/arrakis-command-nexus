@@ -38,6 +38,8 @@ These use RGB channel format for Tailwind alpha support (`rgb(var(--token) / alp
 
 Light mode is parchment, not slate. Source of truth is `dashboard/frontend/src/app/globals.css`.
 
+`viewport.themeColor` follows the page background: light `#fdfbf7`, dark `#020617` (dune-night / `--th-bg`), not panel slate `#0f172a`.
+
 ### Brand Colors (Tailwind)
 
 ```
@@ -210,7 +212,7 @@ Animations:
 - `animate-pulse-slow` - 2s breathing for ambient state
 - `active:scale-[0.97]` - Tactile press on all buttons
 
-Respect `prefers-reduced-motion` by disabling all animations.
+Respect `prefers-reduced-motion` by disabling decorative animation (float, shimmer, pulse, dialog enter). Keep short color and focus transitions so state-change feedback remains.
 
 ---
 

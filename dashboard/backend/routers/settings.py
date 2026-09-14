@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -12,11 +10,10 @@ from sqlalchemy import select
 from db.database import SessionLocal
 from db.models import AdminUser, DashboardSetting
 from services import auth_service
+from services.env_file import live_world_name
 from services.update_service import get_update_service
 
 router = APIRouter(tags=["settings"])
-
-_world_name = os.getenv("WORLD_NAME") or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server")
 
 
 
@@ -63,7 +60,7 @@ class SteamAccountSettingsRequest(BaseModel):
 
 DEFAULTS: dict[str, dict] = {
     "general": {
-        "serverName": _world_name,
+        "serverName": "Dune Awakening Server",
         "serverDescription": "Self-hosted Dune Awakening server fleet",
         "motd": "",
         "timezone": "UTC",
@@ -84,6 +81,14 @@ DEFAULTS: dict[str, dict] = {
 }
 
 # Keys that must never be exposed via the generic settings catch-all or import
+def _section_defaults(key: str) -> dict:
+    """Defaults for a settings section, with live ``WORLD_NAME`` on general."""
+    defaults = dict(DEFAULTS.get(key, {}))
+    if key == "general":
+        defaults["serverName"] = live_world_name()
+    return defaults
+
+
 _PROTECTED_KEYS = frozenset({"steam_account", "server_password_stored"})
 
 # Values inside otherwise-readable sections that are credentials in their own
@@ -152,9 +157,9 @@ async def _get_setting(key: str) -> dict:
     async with SessionLocal() as session:
         row = await session.get(DashboardSetting, key)
         if row and row.value is not None:
-            merged = {**DEFAULTS.get(key, {}), **row.value}
+            merged = {**_section_defaults(key), **row.value}
             return merged
-        return dict(DEFAULTS.get(key, {}))
+        return _section_defaults(key)
 
 
 async def _put_setting(key: str, value: dict) -> dict:
