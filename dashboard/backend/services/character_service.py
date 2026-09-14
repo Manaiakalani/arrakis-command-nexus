@@ -1277,6 +1277,9 @@ class CharacterService:
         # Schematics
         "Combat_Light_Unique_DewReap_Gloves_03_Schematic": ("Schematics", "Dew Reaper Light Gloves Schematic"),
         "Combat_Neut_SmugglerDeserterUnique02_Bottom_Schematic": ("Schematics", "Smuggler Deserter Pants Schematic"),
+        "Combat_Neut_AtreidesDeserterUnique03_Top_Schematic": ("Schematics", "Atreides Deserter Chest Schematic"),
+        "HeavyPistol_Unique_Bleed_03_Schematic": ("Schematics", "Bleed Heavy Pistol Schematic"),
+        "Stillsuit_Unique_Armored_01_Boots_Schematic": ("Schematics", "Armored Stillsuit Boots Schematic"),
         "Schematic_UniqueBuggyBoost": ("Schematics", "Unique Buggy Booster Schematic"),
         "Schematic_UniqueMaulaPistol": ("Schematics", "Unique Maula Pistol Schematic"),
         # Tools

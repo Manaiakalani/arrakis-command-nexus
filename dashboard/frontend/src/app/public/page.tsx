@@ -112,10 +112,8 @@ export default function PublicStatusPage() {
           </div>
           <div className="glass-panel px-6 py-7 text-center">
             <Shield className="mx-auto h-7 w-7 text-amber-600 dark:text-amber-300" />
-            <p className="mt-4 text-4xl font-bold tabular-nums text-th-text">
-              {status === 'online' ? '100%' : status === 'degraded' ? 'Partial' : '--'}
-            </p>
-            <p className="mt-2 text-sm font-medium text-th-text-s">Availability</p>
+            <p className="mt-4 text-2xl font-bold text-th-text break-all">{data?.version ?? '--'}</p>
+            <p className="mt-2 text-sm font-medium text-th-text-s">Build</p>
           </div>
         </div>
 

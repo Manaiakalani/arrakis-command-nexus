@@ -55,7 +55,7 @@ from services.restart_scheduler import RestartScheduler  # noqa: E402
 from services.update_scheduler import get_update_scheduler  # noqa: E402
 from services.watchdog_service import WatchdogService  # noqa: E402
 from services.event_bus import ChangeDetector, EventBus
-from services.player_tracker import diff_online_players  # noqa: E402
+from services.player_tracker import track_player_connections  # noqa: E402
 
 
 class RedactingFilter(logging.Filter):
@@ -104,110 +104,6 @@ def _cors_origins() -> list[str]:
 def _frontend_dir() -> Path | None:
     candidate = Path(os.getenv("DUNE_ADMIN_FRONTEND_DIR", str(Path(__file__).resolve().parents[1] / "frontend" / "dist")))
     return candidate if candidate.exists() else None
-
-
-async def _track_player_connections(postgres_service: PostgresService, discord_service=None) -> None:
-    """Poll online players every 15s and log connect/disconnect events."""
-    from db.database import SessionLocal
-    from db.models import AuditLog, ConnectionLog
-
-    tracker_log = logging.getLogger("player_tracker")
-    tracker_log.info("Connection tracker started (discord_service=%s)", "enabled" if discord_service else "disabled")
-
-    previous_ids: set[str] = set()
-    # Cache steam_id -> (name, map) so disconnect messages show player names
-    known_players: dict[str, tuple[str, str]] = {}
-    first_poll = True
-    failures = 0
-    while True:
-        try:
-            current_players = await postgres_service.get_online_players()
-            current_ids = {p.steam_id for p in current_players}
-
-            # Always update the name cache with current data
-            for p in current_players:
-                pname = getattr(p, "name", None) or p.steam_id
-                mname = getattr(p, "map_name", None) or "Unknown"
-                known_players[p.steam_id] = (pname, mname)
-
-            joined, left, next_ids = diff_online_players(previous_ids, current_ids, first_poll=first_poll)
-            if first_poll:
-                tracker_log.info("Initial poll: %d player(s) online", len(current_ids))
-                first_poll = False
-                previous_ids = next_ids
-                await asyncio.sleep(15)
-                continue
-
-            if joined or left:
-                tracker_log.info(
-                    "Player change detected: +%d joined, -%d left (total: %d)",
-                    len(joined), len(left), len(current_ids),
-                )
-                async with SessionLocal() as session:
-                    for sid in joined:
-                        pname, mname = known_players.get(sid, (sid, "Unknown"))
-                        session.add(ConnectionLog(
-                            steam_id=sid,
-                            player_name=pname,
-                            event="connect",
-                            map_name=mname,
-                        ))
-                        session.add(AuditLog(
-                            action="player_login",
-                            details={"steam_id": sid, "player_name": pname, "map": mname},
-                            performed_by="system",
-                        ))
-                        tracker_log.info("Player connected: %s (%s) on %s", pname, sid, mname)
-                    for sid in left:
-                        pname, mname = known_players.get(sid, (sid, "Unknown"))
-                        session.add(ConnectionLog(
-                            steam_id=sid,
-                            player_name=pname,
-                            event="disconnect",
-                            map_name=mname,
-                        ))
-                        session.add(AuditLog(
-                            action="player_logout",
-                            details={"steam_id": sid, "player_name": pname, "map": mname},
-                            performed_by="system",
-                        ))
-                        tracker_log.info("Player disconnected: %s (%s) from %s", pname, sid, mname)
-                    await session.commit()
-
-                # Send Discord notifications outside the DB session
-                if discord_service is not None:
-                    for sid in joined:
-                        pname, mname = known_players.get(sid, (sid, "Unknown"))
-                        count = await discord_service.enqueue(
-                            "player_join",
-                            f"**{pname}** connected to **{mname}** ({len(current_ids)} online)",
-                            title="Player Connected",
-                        )
-                        tracker_log.info("Discord join notification queued to %d webhook(s)", count)
-                    for sid in left:
-                        pname, mname = known_players.get(sid, (sid, "Unknown"))
-                        count = await discord_service.enqueue(
-                            "player_leave",
-                            f"**{pname}** disconnected from **{mname}** ({len(current_ids)} online)",
-                            title="Player Disconnected",
-                        )
-                        tracker_log.info("Discord leave notification queued to %d webhook(s)", count)
-
-            previous_ids = next_ids
-            # Evict disconnected players from cache to prevent unbounded growth
-            for sid in left:
-                known_players.pop(sid, None)
-            failures = 0
-        except Exception:  # noqa: BLE001
-            logging.getLogger("player_tracker").warning(
-                "Failed to track player connections", exc_info=True
-            )
-            # Exponential backoff on repeated failures (cap at 120s)
-            failures += 1
-            # Exponential backoff on repeated failures (cap at 120s)
-            await asyncio.sleep(min(120, 15 * (2 ** min(failures, 4))))
-            continue
-        await asyncio.sleep(15)
 
 
 @asynccontextmanager
@@ -287,7 +183,7 @@ async def lifespan(app: FastAPI):
 
     # Background task: track player connections
     connection_tracker_task = asyncio.create_task(
-        _track_player_connections(postgres_service, discord_service), name="connection-tracker"
+        track_player_connections(postgres_service, discord_service), name="connection-tracker"
     )
 
     # Security warnings for weak defaults

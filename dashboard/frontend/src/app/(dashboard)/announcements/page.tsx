@@ -260,7 +260,7 @@ export default function AnnouncementsPage() {
           </div>
           <div>
             <p className="section-title">Broadcast console</p>
-            <h1 className="mt-1 text-2xl font-semibold text-th-text">In-Game Announcements</h1>
+            <h2 className="mt-1 text-2xl font-semibold text-th-text">In-Game Announcements</h2>
           </div>
         </div>
 

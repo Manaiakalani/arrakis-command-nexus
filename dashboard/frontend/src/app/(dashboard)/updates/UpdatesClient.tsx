@@ -321,7 +321,7 @@ export default function UpdatesClient({ initialStatus }: UpdatesClientProps) {
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="inline-flex items-center gap-3 text-3xl font-bold text-th-text"><Download aria-hidden="true" className="h-7 w-7 text-amber-600 dark:text-amber-300" /> Server updates</h1>
+        <h2 className="inline-flex items-center gap-3 text-3xl font-bold text-th-text"><Download aria-hidden="true" className="h-7 w-7 text-amber-600 dark:text-amber-300" /> Server updates</h2>
         <p className="mt-1 text-sm text-th-text-m">Check for and manage Dune Awakening server updates</p>
       </div>
 

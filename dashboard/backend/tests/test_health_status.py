@@ -77,6 +77,14 @@ class KnownTemplateAdditionsTests(unittest.TestCase):
             "SmugDmr4",
             "Radiation_Suit_T5",
             "MelangeSpice",
+            "HarkAr6",
+            "AtreLMG4",
+            "RocketLauncher_3",
+            "Combat_Choam_Light06_Helmet",
+            "Stillsuit_Unique_Efficient_05_Top",
+            "Combat_Neut_AtreidesDeserterUnique03_Top_Schematic",
+            "HeavyPistol_Unique_Bleed_03_Schematic",
+            "Stillsuit_Unique_Armored_01_Boots_Schematic",
         ):
             self.assertIn(template_id, CharacterService.KNOWN_TEMPLATES)
 
