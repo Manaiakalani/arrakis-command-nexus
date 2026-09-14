@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-09-13
+
 ### Changed
 
 - Dashboard chrome no longer defaults to “healthy”: header pulse and sidebar cluster dot follow real `HealthState`, including an explicit checking state, and SSE status is shown as Live / Connecting / Polling
