@@ -140,7 +140,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                     <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Players</p>
                     <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{overview?.status.playersOnline ?? '—'}</p>
                   </div>
-                  <div className={cn('flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold', healthPillClass[clusterHealth])}>
+                  <div
+                    data-testid="cluster-health"
+                    className={cn('flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold', healthPillClass[clusterHealth])}
+                  >
                     <span
                       className={cn('h-2 w-2 rounded-full', healthDotClass[clusterHealth])}
                       aria-hidden="true"

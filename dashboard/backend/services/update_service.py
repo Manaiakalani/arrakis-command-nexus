@@ -791,8 +791,31 @@ class UpdateService:
         found = shutil.which("steamcmd")
         return found
 
+    _PROFILE_OVERLAYS = ("basic", "standard", "standard-lean", "full")
+
+    def _active_compose_profile(self, dotenv_values: dict[str, str]) -> str | None:
+        profile = (
+            os.getenv("DEPLOYMENT_PROFILE")
+            or os.getenv("DUNE_COMPOSE_OVERLAY")
+            or dotenv_values.get("DEPLOYMENT_PROFILE")
+            or dotenv_values.get("DUNE_COMPOSE_OVERLAY")
+            or ""
+        ).strip()
+        return profile or None
+
+    def _compose_overlay_path(self, compose_dir: Path, value: str) -> Path:
+        path = Path(value)
+        return path if path.is_absolute() else compose_dir / value
+
     def _resolve_compose_files(self, compose_dir: Path, env_file: Path) -> tuple[list[Path], list[str]]:
-        """Resolve the compose files that represent the active deployment."""
+        """Resolve the compose files that represent the active deployment.
+
+        ``COMPOSE_FILE``, when set, is treated as an exact list and must already
+        include every overlay the live stack uses. A partial list plus
+        ``--remove-orphans`` can drop host networking or the dashboard. When
+        ``COMPOSE_FILE`` is unset, the list matches ``dune``
+        (``scripts/lib/common.sh`` ``compose_file_paths``).
+        """
         compose_file_env = os.getenv("COMPOSE_FILE", "").strip()
         compose_files: list[Path] = []
         errors: list[str] = []
@@ -801,34 +824,31 @@ class UpdateService:
         if not compose_file_env and dotenv_values.get("COMPOSE_FILE"):
             compose_file_env = dotenv_values.get("COMPOSE_FILE", "").strip()
 
+        hostnet = (os.getenv("DUNE_HOSTNET_OVERLAY") or dotenv_values.get("DUNE_HOSTNET_OVERLAY", "")).strip()
+        profile = self._active_compose_profile(dotenv_values)
+        dashboard = compose_dir / "docker-compose.dashboard.yml"
+
         if compose_file_env:
             logger.info("Resolving compose files from COMPOSE_FILE=%s", compose_file_env)
             for cf in compose_file_env.split(":"):
                 cf = cf.strip()
                 if not cf:
                     continue
-                path = Path(cf) if Path(cf).is_absolute() else compose_dir / cf
-                compose_files.append(path)
+                compose_files.append(self._compose_overlay_path(compose_dir, cf))
         else:
-            profile = (
-                os.getenv("DEPLOYMENT_PROFILE")
-                or os.getenv("DUNE_COMPOSE_OVERLAY")
-                or dotenv_values.get("DEPLOYMENT_PROFILE")
-                or dotenv_values.get("DUNE_COMPOSE_OVERLAY")
-                or "basic"
-            )
+            fallback_profile = profile or "basic"
             logger.warning(
                 "COMPOSE_FILE is not set; falling back to DEPLOYMENT_PROFILE/DUNE_COMPOSE_OVERLAY=%s",
-                profile,
+                fallback_profile,
             )
             compose_files.extend([
                 compose_dir / "docker-compose.yml",
-                compose_dir / f"docker-compose.{profile}.yml",
+                compose_dir / f"docker-compose.{fallback_profile}.yml",
             ])
-
-        hostnet = os.getenv("DUNE_HOSTNET_OVERLAY") or dotenv_values.get("DUNE_HOSTNET_OVERLAY", "")
-        if hostnet:
-            compose_files.append(Path(hostnet) if Path(hostnet).is_absolute() else compose_dir / hostnet)
+            if hostnet:
+                compose_files.append(self._compose_overlay_path(compose_dir, hostnet))
+            if dashboard.is_file():
+                compose_files.append(dashboard)
 
         # Keep first occurrence only while preserving compose override order.
         deduped: list[Path] = []
@@ -838,6 +858,40 @@ class UpdateService:
             if key not in seen:
                 deduped.append(path)
                 seen.add(key)
+
+        names = {path.name for path in deduped}
+
+        if compose_file_env:
+            if dashboard.is_file() and dashboard.name not in names:
+                errors.append(
+                    "COMPOSE_FILE is incomplete: missing docker-compose.dashboard.yml. "
+                    "Refusing recreate so --remove-orphans cannot drop the dashboard."
+                )
+            if hostnet:
+                hostnet_name = Path(hostnet).name
+                if hostnet_name not in names:
+                    errors.append(
+                        f"COMPOSE_FILE is incomplete: missing {hostnet_name} "
+                        "(DUNE_HOSTNET_OVERLAY is set). Refusing recreate so host "
+                        "networking is not dropped."
+                    )
+            if profile:
+                expected = f"docker-compose.{profile}.yml"
+                if (compose_dir / expected).is_file() and expected not in names:
+                    errors.append(
+                        f"COMPOSE_FILE is incomplete: missing {expected} for "
+                        f"DEPLOYMENT_PROFILE={profile}."
+                    )
+                for other in self._PROFILE_OVERLAYS:
+                    if other == profile:
+                        continue
+                    other_name = f"docker-compose.{other}.yml"
+                    if other_name in names:
+                        errors.append(
+                            f"COMPOSE_FILE includes {other_name} but "
+                            f"DEPLOYMENT_PROFILE={profile}. Refusing recreate so "
+                            "the wrong map overlay is not applied."
+                        )
 
         for path in deduped:
             if not path.exists():

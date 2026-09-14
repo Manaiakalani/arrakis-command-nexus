@@ -117,7 +117,7 @@ class ChangeDetector:
             readiness = docker.evaluate_readiness(services)
             uptime = docker.calculate_uptime(services)
 
-            from services.env_file import read_env_var
+            from services.env_file import funcom_image_tag, live_world_name
 
             map_roles = {"overmap", "survival"}
             maps_active = sum(
@@ -128,16 +128,14 @@ class ChangeDetector:
             )
 
             status_data = {
-                "serverName": read_env_var("WORLD_NAME")
-                or os.getenv("WORLD_NAME")
-                or os.getenv("DUNE_WORLD_NAME", "Dune Awakening Server"),
+                "serverName": live_world_name(),
                 "region": os.getenv("WORLD_REGION", "North America"),
                 "status": readiness_to_health(readiness["status"]),
                 "uptimeSeconds": uptime or 0,
                 "playersOnline": len(players),
                 "mapsActive": maps_active,
                 "maxPlayers": int(os.getenv("DUNE_MAX_PLAYERS", "70")),
-                "version": os.getenv("DUNE_IMAGE_TAG", "1979201-0-shipping"),
+                "version": funcom_image_tag(),
                 "services": [service_to_frontend(s) for s in services],
             }
             await self._push_if_changed("status-update", status_data)

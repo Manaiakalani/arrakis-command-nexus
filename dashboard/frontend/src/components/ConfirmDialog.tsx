@@ -70,6 +70,7 @@ export function ConfirmDialog({ open, onConfirm, onCancel, title, message, confi
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-th-bg/80 p-4 backdrop-blur-sm animate-in fade-in duration-150"
       role="dialog"
+      data-testid="confirm-dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-message"
