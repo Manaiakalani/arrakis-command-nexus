@@ -6,13 +6,14 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from middleware.tls import HSTS_VALUE, is_https_request
+
 _HEADERS = {
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "X-Permitted-Cross-Domain-Policies": "none",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     "Cross-Origin-Opener-Policy": "same-origin",
     "Cross-Origin-Resource-Policy": "same-origin",
     "Content-Security-Policy": (
@@ -34,4 +35,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         for key, value in _HEADERS.items():
             response.headers.setdefault(key, value)
+        forwarded = request.headers.get("x-forwarded-proto")
+        if is_https_request(request.url.scheme, forwarded):
+            response.headers.setdefault("Strict-Transport-Security", HSTS_VALUE)
         return response

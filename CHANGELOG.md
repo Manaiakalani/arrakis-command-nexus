@@ -8,7 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Security
 
-- Next no longer sends HSTS `preload`. The dashboard is commonly served over HTTP; `preload` is how a host ends up on the browser preload list. `max-age` matches the API header (`31536000; includeSubDomains`)
+- Next no longer sends HSTS on HTTP, and never sends `preload`. When the request is HTTPS (or `X-Forwarded-Proto: https`), Next (`src/proxy.ts`) and the API send `max-age=31536000; includeSubDomains`
+- Next CSP allows `unsafe-eval` only when `NODE_ENV=development`, so `next dev` can reconstruct stacks. Production / `next start` / the image stay without eval
 
 ### Fixed
 
