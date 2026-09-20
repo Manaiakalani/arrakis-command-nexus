@@ -3,10 +3,11 @@
 Uses a sliding-window counter per client IP. Configurable via environment
 variables:
 
-    DUNE_RATE_LIMIT_RPM   - max requests per minute (default 120)
-    DUNE_RATE_LIMIT_BURST  - max burst within a 5s window (default 30)
+    DUNE_RATE_LIMIT_RPM   - max requests per minute (default 300)
+    DUNE_RATE_LIMIT_BURST  - max burst within a 5s window (default 80)
 
-Health and readiness endpoints are exempt.
+Health, readiness, and auth session-check/status are exempt. Signed-in GET
+requests are also skipped so paging the dashboard does not 429 the operator.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from middleware.request_utils import get_client_ip
+from services.auth_service import SESSION_COOKIE
 
 _EXEMPT_PATHS = frozenset({
     "/health",
@@ -34,8 +36,8 @@ _EXEMPT_PATHS = frozenset({
     "/api/auth/status",
 })
 
-_RPM = int(os.getenv("DUNE_RATE_LIMIT_RPM", "120"))
-_BURST = int(os.getenv("DUNE_RATE_LIMIT_BURST", "30"))
+_RPM = int(os.getenv("DUNE_RATE_LIMIT_RPM", "300"))
+_BURST = int(os.getenv("DUNE_RATE_LIMIT_BURST", "80"))
 _WINDOW = 60.0
 _BURST_WINDOW = 5.0
 
@@ -69,6 +71,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: object) -> object:
         if request.url.path in _EXEMPT_PATHS:
+            return await call_next(request)  # type: ignore[misc]
+
+        # One Overview load fires several GETs. Counting those against the
+        # anonymous burst dumps a signed-in operator into "Rate limit exceeded".
+        if request.method in {"GET", "HEAD", "OPTIONS"} and request.cookies.get(SESSION_COOKIE):
             return await call_next(request)  # type: ignore[misc]
 
         client_ip = get_client_ip(request)

@@ -524,12 +524,21 @@ export default function CharactersPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
+          <UserCog className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-semibold text-th-text">Characters</h2>
+          <p className="text-sm text-th-text-m">Inspect and edit player characters from the game database.</p>
+        </div>
+      </div>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="metric-card">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Roster</p>
-              <h2 className="mt-1 text-3xl font-semibold text-th-text">{characters.data?.length ?? 0}</h2>
+              <p className="mt-1 text-3xl font-semibold text-th-text">{characters.data?.length ?? 0}</p>
               <p className="mt-2 text-sm text-th-text-m">Detected characters from the game DB or the safe mock fallback.</p>
             </div>
             <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
@@ -541,7 +550,7 @@ export default function CharactersPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Editable stats</p>
-              <h2 className="mt-1 text-3xl font-semibold text-th-text">{schema.data?.summary.editableStats ?? 0}</h2>
+              <p className="mt-1 text-3xl font-semibold text-th-text">{schema.data?.summary.editableStats ?? 0}</p>
               <p className="mt-2 text-sm text-th-text-m">Organized into {availableCategories.length} category views.</p>
             </div>
             <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
@@ -553,7 +562,7 @@ export default function CharactersPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Mutation mode</p>
-              <h2 className="mt-1 text-3xl font-semibold text-th-text">{mutationsEnabled ? 'Live' : 'Safe'}</h2>
+              <p className="mt-1 text-3xl font-semibold text-th-text">{mutationsEnabled ? 'Live' : 'Safe'}</p>
               <p className="mt-2 text-sm text-th-text-m">Writes require DUNE_ADMIN_MUTATIONS_ENABLED=true.</p>
             </div>
             <div className={cn('rounded-2xl p-3', mutationsEnabled ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/15 text-amber-600 dark:text-amber-300')}>
@@ -565,7 +574,7 @@ export default function CharactersPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="section-title">Selected source</p>
-              <h2 className="mt-1 text-3xl font-semibold text-th-text capitalize">{selectedSource}</h2>
+              <p className="mt-1 text-3xl font-semibold capitalize text-th-text">{selectedSource}</p>
               <p className="mt-2 text-sm text-th-text-m">Showing {selectedCharacter?.table ?? 'no active character yet'}.</p>
             </div>
             <div className="rounded-2xl bg-th-surface-s/70 p-3 text-th-text-s">

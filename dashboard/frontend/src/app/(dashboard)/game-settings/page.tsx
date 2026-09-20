@@ -374,7 +374,7 @@ export default function GameSettingsPage() {
       <nav
         aria-label="Game settings sections"
         role="tablist"
-        className="sticky top-4 z-20 -mx-1 flex gap-2 overflow-x-auto rounded-2xl border border-th-border/70 bg-th-bg/90 p-2 shadow-lg shadow-black/5 backdrop-blur-xl dark:shadow-black/30"
+        className="sticky top-4 z-20 -mx-1 flex flex-wrap gap-2 rounded-2xl border border-th-border/70 bg-th-bg/90 p-2 shadow-lg shadow-black/5 backdrop-blur-xl dark:shadow-black/30"
       >
         {groupedSections.map((section) => {
           const Icon = section.icon;
@@ -389,7 +389,7 @@ export default function GameSettingsPage() {
               aria-controls={section.id}
               onClick={() => jumpToSection(section.id)}
               className={cn(
-                'inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors dune-focus',
+                'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors dune-focus',
                 selected
                   ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200'
                   : 'border-transparent text-th-text-m hover:border-th-border hover:bg-th-surface-s/70 hover:text-th-text',
@@ -536,9 +536,10 @@ function SettingRow({ field, value, onChange }: { field: ConfigField; value: Dra
             type="button"
             role="switch"
             aria-checked={Boolean(value)}
+            aria-label={`${field.label}: ${Boolean(value) ? 'on' : 'off'}`}
             onClick={() => onChange(field, !Boolean(value))}
             className={cn(
-              'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-transparent transition-colors dune-focus',
+              'relative inline-flex h-11 w-[3.25rem] shrink-0 items-center rounded-full border border-transparent transition-colors dune-focus',
               Boolean(value) ? 'bg-amber-500' : 'bg-stone-400/70 dark:bg-slate-500/70',
             )}
           >

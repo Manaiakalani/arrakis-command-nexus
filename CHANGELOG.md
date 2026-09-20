@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Next session-check waits 8s instead of 3s before failing closed to `/login`, so a busy API no longer dumps an already-signed-in operator back to the gate on reload or in-app navigation
 - `/api/v1/auth/session-check` is exempt from the API rate limit. Next calls it on every page from the frontend container IP, so a burst of navigations used to 429 the check and bounce a signed-in operator to the login gate
 - Header health labels use sentence case (`Healthy`, not `healthy`) so the pill matches the other chips
+- Light-mode metric cards use `--th-text` instead of `emerald-50` / `amber-50`, which washed out “Live host load” on parchment
+- Mobile header keeps region, operator, Players, and health chips instead of hiding everything except Polling
+- Signed-in GET traffic is not counted against the API burst limit (defaults 300/min, 80/5s), so paging the dashboard no longer 429s Overview
+- Collapse, theme, sign-out, Overview Restart/Stop, Game Settings toggles, Players tabs, and Logs chips meet the 44px touch target
+- Characters and Watchdog have real page `h2`s; metric values are `<p>`. Maps/Logs show friendly names (`Harko Village`, not `dune-awakening-harko_village-1`). Game Settings tabs wrap. Logs keep a single search box
+- Dashboard API mounts `./VERSION` at `/app/VERSION` so the sidebar reads the repo release, not a leftover Funcom image tag
 
 ## [1.8.1] - 2026-09-20
 

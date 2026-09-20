@@ -7,9 +7,9 @@ type Variant = 'default' | 'success' | 'warning' | 'error';
 
 const variantClasses: Record<Variant, string> = {
   default: 'border-th-border/70 bg-th-surface/70 text-th-text',
-  success: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-50',
-  warning: 'border-amber-500/20 bg-amber-500/10 text-amber-50',
-  error: 'border-red-500/20 bg-red-500/10 text-red-50',
+  success: 'border-emerald-500/20 bg-emerald-500/10 text-th-text',
+  warning: 'border-amber-500/20 bg-amber-500/10 text-th-text',
+  error: 'border-red-500/20 bg-red-500/10 text-th-text',
 };
 
 interface StatusCardProps {

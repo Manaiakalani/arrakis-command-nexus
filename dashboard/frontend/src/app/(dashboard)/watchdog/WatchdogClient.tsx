@@ -64,6 +64,15 @@ export default function WatchdogClient({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
+          <Activity aria-hidden="true" className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-semibold text-th-text">Watchdog</h2>
+          <p className="text-sm text-th-text-m">Crash detection and automatic recovery for map services.</p>
+        </div>
+      </div>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="glass-panel p-5">
           <div className="flex items-center gap-3">
@@ -72,24 +81,24 @@ export default function WatchdogClient({
             </div>
             <div>
               <p className="section-title">Watchdog state</p>
-              <h2 className="mt-1 text-xl font-semibold text-th-text">{status.data?.enabled ? 'Enabled' : 'Disabled'}</h2>
+              <p className="mt-1 text-xl font-semibold text-th-text">{status.data?.enabled ? 'Enabled' : 'Disabled'}</p>
               <p className="mt-2 text-sm text-th-text-m">{last24h.crashes} crashes · {last24h.restarts} auto-restarts in 24h</p>
             </div>
           </div>
         </div>
         <div className="glass-panel p-5">
           <p className="section-title">Monitored containers</p>
-          <h2 className="mt-1 text-3xl font-semibold text-th-text">{status.data?.monitoredContainers ?? 0}</h2>
+          <p className="mt-1 text-3xl font-semibold text-th-text">{status.data?.monitoredContainers ?? 0}</p>
           <p className="mt-2 text-sm text-th-text-m">Active map services under supervision.</p>
         </div>
         <div className="glass-panel p-5">
           <p className="section-title">Auto restart</p>
-          <h2 className="mt-1 text-3xl font-semibold text-th-text">{status.data?.autoRestart ? 'On' : 'Off'}</h2>
+          <p className="mt-1 text-3xl font-semibold text-th-text">{status.data?.autoRestart ? 'On' : 'Off'}</p>
           <p className="mt-2 text-sm text-th-text-m">Crashes trigger automatic recovery when enabled.</p>
         </div>
         <div className="glass-panel p-5">
           <p className="section-title">Poll interval</p>
-          <h2 className="mt-1 text-3xl font-semibold text-th-text">{status.data?.intervalSeconds ?? 0}s</h2>
+          <p className="mt-1 text-3xl font-semibold text-th-text">{status.data?.intervalSeconds ?? 0}s</p>
           <p className="mt-2 text-sm text-th-text-m">Docker crash checks cadence.</p>
         </div>
       </section>

@@ -5,6 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Docker compose names (`dune-awakening-harko_village-1`) → operator labels. */
+export function friendlyServiceName(name: string): string {
+  const stripped = name.replace(/^dune-awakening-/, '').replace(/-1$/, '').replaceAll('_', ' ');
+  return stripped.replace(/\b([a-z])/g, (char) => char.toUpperCase());
+}
+
 /** Returns Recharts-compatible tooltip styles that respect the current theme. */
 export function getTooltipStyles(): {
   contentStyle: React.CSSProperties;

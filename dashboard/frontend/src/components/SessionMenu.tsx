@@ -4,6 +4,8 @@ import { LogOut, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { cn } from '@/lib/utils';
+
 interface SessionUser {
   username: string;
   role: string;
@@ -50,10 +52,10 @@ export function SessionMenu() {
 
   return (
     <div className="flex items-center gap-2" data-testid="session-menu">
-      <div className="header-chip hidden sm:inline-flex" title={`${user.username} (${user.role})`}>
+      <div className="header-chip" title={`${user.username} (${user.role})`}>
         <UserRound className="h-3.5 w-3.5 text-th-text-m" aria-hidden="true" />
         <span className="font-medium text-th-text">{user.username}</span>
-        <span className="text-th-text-m">{user.role}</span>
+        <span className="hidden text-th-text-m sm:inline">{user.role}</span>
       </div>
       <button
         type="button"
@@ -61,7 +63,7 @@ export function SessionMenu() {
         disabled={busy}
         title="Sign out"
         aria-label="Sign out"
-        className="header-chip px-2.5 text-th-text-m transition hover:text-th-text disabled:opacity-50"
+        className={cn('header-chip h-11 w-11 justify-center px-0 text-th-text-m transition hover:text-th-text disabled:opacity-50')}
       >
         <LogOut className="h-4 w-4" aria-hidden="true" />
       </button>
