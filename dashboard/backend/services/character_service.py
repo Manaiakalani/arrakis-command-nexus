@@ -66,7 +66,7 @@ class CharacterService:
                     SELECT
                         CAST(ea.id AS TEXT) AS id,
                         ea."user" AS funcom_id,
-                        encode(eps.encrypted_character_name, 'escape') AS character_name,
+                        convert_from(eps.encrypted_character_name, 'UTF8') AS character_name,
                         eps.online_status::text AS online_status,
                         eps.life_state::text AS life_state,
                         eps.server_id,
@@ -85,14 +85,14 @@ class CharacterService:
                     LEFT JOIN dune.actors a ON a.id = eps.player_pawn_id
                     LEFT JOIN dune.player_virtual_currency_balances pvcb
                         ON pvcb.player_controller_id = eps.player_controller_id
-                        AND pvcb.currency_id = 1
+                        AND pvcb.currency_id = 'Solaris'
                     ORDER BY eps.last_login_time DESC NULLS LAST
                     LIMIT 250
                 """)
                 if rows:
                     return [self._funcom_row_to_character(row) for row in rows]
             except Exception as exc:  # noqa: BLE001
-                logger.debug("Funcom schema query failed, falling back: %s", exc)
+                logger.warning("Funcom schema query failed, falling back: %s", exc)
 
             # Fallback to generic table discovery
             rows = await connection.fetch(
@@ -188,6 +188,8 @@ class CharacterService:
             metadata["life_state"] = row["life_state"]
         if row.get("platform_name"):
             metadata["platform"] = row["platform_name"]
+        if row.get("funcom_id"):
+            metadata["funcom_id"] = row["funcom_id"]
         if map_name:
             metadata["map"] = map_name
         if pos:
@@ -1453,6 +1455,10 @@ class CharacterService:
 
         id_column = self._pick_column(normalized, self.ID_COLUMNS)
         name_column = self._pick_column(normalized, self.NAME_COLUMNS)
+        if table.lower() == "encrypted_player_state":
+            id_column = normalized.get("account_id") or id_column
+            if "encrypted_character_name" in normalized:
+                name_column = normalized["encrypted_character_name"]
         timestamp_column = self._pick_column(normalized, self.TIMESTAMP_COLUMNS)
         stat_columns = {stat["key"]: normalized[stat["key"]] for stat in EDITABLE_STATS if stat["key"] in normalized}
         metadata_columns = {
@@ -1475,7 +1481,14 @@ class CharacterService:
             if column:
                 aliases.append((alias, column))
 
-        select_clause = ", ".join(f"{self._quote_ident(column)} AS {self._quote_ident(alias)}" for alias, column in aliases)
+        select_parts: list[str] = []
+        for alias, column in aliases:
+            quoted = self._quote_ident(column)
+            if alias == "name" and column.lower() == "encrypted_character_name":
+                select_parts.append(f"convert_from({quoted}, 'UTF8') AS {self._quote_ident(alias)}")
+            else:
+                select_parts.append(f"{quoted} AS {self._quote_ident(alias)}")
+        select_clause = ", ".join(select_parts)
         order_clause = f" ORDER BY {self._quote_ident(timestamp_column)} DESC NULLS LAST" if timestamp_column else ""
         query = f"SELECT {select_clause} FROM {self._table_ref(schema, table)}{order_clause} LIMIT 250"
         rows = await connection.fetch(query)
