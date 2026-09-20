@@ -15,6 +15,7 @@ import psycopg2
 from funcomdb.config import Connection, Credentials
 from ToolsDB.settings import Settings
 from ToolsDB.setupdb import setupdb
+from ToolsDB import updatedb as tools_updatedb
 
 HOST = os.environ.get("DB_HOST", "postgres")
 PORT = int(os.environ.get("DB_PORT", "5432"))
@@ -112,6 +113,40 @@ def seed_world_partitions(log: logging.Logger) -> None:
             log.info("Seeded %d world_partition rows", len(WORLD_PARTITIONS))
 
 
+def _tools_settings() -> Settings:
+    return Settings(
+        bin_path=pathlib.Path("/usr/bin"),
+        connection=Connection(host=HOST, port=PORT, timeout=30),
+        user_credentials=Credentials(user=USER, password=PASSWORD, database=DATABASE),
+        admin_credentials=Credentials(
+            user=USER, password=PASSWORD, database=ADMIN_DATABASE
+        ),
+        schema_name=SCHEMA,
+        module_path=SCHEMA_PATH,
+        tables_to_dump=["applied_patches"],
+        extra_schema_names=["ext"],
+    )
+
+
+def apply_pending_schema_patches(log: logging.Logger) -> None:
+    """Apply Funcom Upgrade/*.sql files not yet recorded in applied_patches.
+
+    Funcom's CLI `updatedb.py` tries to unzip a platform Postgres installer;
+    the db-utils image has no linux installer. Call ToolsDB.updatedb directly,
+    skip the pg_dump schema-diff (the image has no pg_dump), and run unattended.
+    """
+    settings = _tools_settings()
+    log.info("Applying pending Funcom schema patches (if any)")
+    tools_updatedb.updatedb(
+        log,
+        settings,
+        unattended=True,
+        unattended_disallow_diff=False,
+        skip_patch_check=True,
+        check_only=False,
+    )
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     log = logging.getLogger("dune-db-bootstrap")
@@ -130,20 +165,11 @@ def main() -> int:
                 cur.execute(
                     f'ALTER DATABASE "{DATABASE}" SET search_path TO {SCHEMA}, public'
                 )
+        apply_pending_schema_patches(log)
+        seed_world_partitions(log)
         return 0
 
-    settings = Settings(
-        bin_path=pathlib.Path("/usr/bin"),
-        connection=Connection(host=HOST, port=PORT, timeout=30),
-        user_credentials=Credentials(user=USER, password=PASSWORD, database=DATABASE),
-        admin_credentials=Credentials(
-            user=USER, password=PASSWORD, database=ADMIN_DATABASE
-        ),
-        schema_name=SCHEMA,
-        module_path=SCHEMA_PATH,
-        tables_to_dump=["applied_patches"],
-        extra_schema_names=["ext"],
-    )
+    settings = _tools_settings()
 
     if not setupdb(log, settings):
         return 1
