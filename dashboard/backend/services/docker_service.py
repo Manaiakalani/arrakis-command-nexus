@@ -344,6 +344,16 @@ class DockerService:
                 return role
         return "service"
 
+    def is_map_service(self, name: str) -> bool:
+        return self._map_role(name) in self._map_roles
+
+    def count_running_maps(self, services: list[ServiceStatus]) -> int:
+        return sum(
+            1
+            for service in services
+            if getattr(service, "status", "") == "running" and self.is_map_service(getattr(service, "name", ""))
+        )
+
     def _format_ports(self, ports: dict[str, Any]) -> list[str]:
         rendered: list[str] = []
         for container_port, bindings in ports.items():

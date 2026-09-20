@@ -119,13 +119,7 @@ class ChangeDetector:
 
             from services.env_file import funcom_image_tag, live_world_name
 
-            map_roles = {"overmap", "survival"}
-            maps_active = sum(
-                1
-                for s in services
-                if getattr(s, "status", "") == "running"
-                and docker._map_role(getattr(s, "name", "")) in map_roles
-            )
+            maps_active = docker.count_running_maps(services)
 
             status_data = {
                 "serverName": live_world_name(),
