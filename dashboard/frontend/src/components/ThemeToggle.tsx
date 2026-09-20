@@ -4,8 +4,6 @@ import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
 
-import { cn } from '@/lib/utils';
-
 const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
@@ -13,9 +11,7 @@ export function ThemeToggle() {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   if (!mounted) {
-    return (
-      <div className="header-chip h-11 w-11 px-0" />
-    );
+    return <div className="header-chip-icon" />;
   }
 
   const isDark = theme === 'dark';
@@ -24,10 +20,10 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className={cn('header-chip h-11 w-11 justify-center px-0')}
+      className="header-chip-icon"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {isDark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
     </button>
   );
 }

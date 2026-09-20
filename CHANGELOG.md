@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Collapse, theme, sign-out, Overview Restart/Stop, Game Settings toggles, Players tabs, and Logs chips meet the 44px touch target
 - Characters and Watchdog have real page `h2`s; metric values are `<p>`. Maps/Logs show friendly names (`Harko Village`, not `dune-awakening-harko_village-1`). Game Settings tabs wrap. Logs keep a single search box
 - Dashboard API mounts `./VERSION` at `/app/VERSION` so the sidebar reads the repo release, not a leftover Funcom image tag
+- Header chips group as connection / identity / cluster with wider gaps between groups; theme and sign-out use a square `.header-chip-icon` so the glyph is centered
 - Map POI pins, player-table sort headers, and character grant category chips are 44px hit targets
 - Sidebar no longer repeats cluster health as a labeled panel; the header pill stays, and a status dot sits on the logo
 

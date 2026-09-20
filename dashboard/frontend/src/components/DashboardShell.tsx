@@ -157,48 +157,47 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         />
         <div ref={mainRef} className={cn('flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
           <header className="sticky top-0 z-30 border-b border-th-border-m/80 bg-th-bg/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <button
-                  ref={menuButtonRef}
-                  type="button"
-                  className="dune-button-muted shrink-0 lg:hidden"
-                  onClick={openMobile}
-                  aria-label="Open navigation"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-                <h1 className="min-w-0 truncate text-lg font-semibold text-th-text sm:text-2xl">
-                  {overview?.status.serverName ?? 'Loading…'}
-                </h1>
-              </div>
-              <ThemeToggle />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <div data-testid="region-chip" className="header-chip max-sm:max-w-[9.5rem]">
-                <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
-                <span className="truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
-              </div>
-              <div
-                data-testid="sse-status"
-                className={cn('header-chip', liveTone)}
-                title="Event stream from the dashboard API"
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                ref={menuButtonRef}
+                type="button"
+                className="dune-button-muted shrink-0 lg:hidden"
+                onClick={openMobile}
+                aria-label="Open navigation"
               >
-                <span
-                  className={cn(
-                    'h-2 w-2 rounded-full',
-                    sseStatus === 'open'
-                      ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.85)]'
-                      : sseStatus === 'connecting'
-                        ? 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.85)]'
-                        : 'bg-stone-400 dark:bg-slate-500',
-                  )}
-                  aria-hidden="true"
-                />
-                <span>{liveLabel}</span>
+                <Menu className="h-5 w-5" />
+              </button>
+              <h1 className="min-w-0 truncate text-lg font-semibold text-th-text sm:text-2xl">
+                {overview?.status.serverName ?? 'Loading…'}
+              </h1>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex items-center gap-1.5">
+                <div data-testid="region-chip" className="header-chip max-sm:max-w-[9.5rem]">
+                  <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
+                  <span className="truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
+                </div>
+                <div
+                  data-testid="sse-status"
+                  className={cn('header-chip', liveTone)}
+                  title="Event stream from the dashboard API"
+                >
+                  <span
+                    className={cn(
+                      'h-2 w-2 rounded-full',
+                      sseStatus === 'open'
+                        ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.85)]'
+                        : sseStatus === 'connecting'
+                          ? 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.85)]'
+                          : 'bg-stone-400 dark:bg-slate-500',
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span>{liveLabel}</span>
+                </div>
               </div>
               <SessionMenu />
-              <div className="flex items-center gap-2" data-testid="header-cluster">
+              <div className="flex items-center gap-1.5" data-testid="header-cluster">
                 <div className="header-chip">
                   <span className="text-th-text-m">Players</span>
                   <span className="font-semibold tabular-nums text-th-text">{overview?.status.playersOnline ?? '—'}</span>
@@ -213,6 +212,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   />
                   <span>{healthLabel[clusterHealth]}</span>
                 </div>
+              </div>
+              <div className="ml-auto">
+                <ThemeToggle />
               </div>
             </div>
           </header>
