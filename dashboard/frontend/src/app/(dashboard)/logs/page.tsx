@@ -124,7 +124,7 @@ export default function LogsPage() {
                   type="button"
                   onClick={() => setTimeRange(range.ms)}
                   className={cn(
-                    'px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors dune-focus',
+                    'inline-flex min-h-11 items-center px-3 text-xs font-semibold uppercase tracking-wider transition-colors dune-focus',
                     timeRange === range.ms
                       ? 'bg-amber-500/15 text-amber-700 dark:text-amber-200'
                       : 'bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',

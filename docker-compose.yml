@@ -664,6 +664,7 @@ services:
       # Mount entire repo so all compose overlays (standard-lean, hostnet-lean,
       # cpupin, etc.) are available for update-time compose recreate
       - .:/workspace/compose:ro
+      - ./VERSION:/app/VERSION:ro
     depends_on:
       postgres:
         condition: service_healthy

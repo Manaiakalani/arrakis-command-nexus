@@ -214,7 +214,7 @@ export default function PlayersPage() {
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'rounded-full border px-4 py-2 text-sm font-medium capitalize transition-[color,background-color,border-color] dune-focus',
+              'inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium capitalize transition-[color,background-color,border-color] dune-focus',
               activeTab === tab ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200' : 'border-th-border bg-th-surface-s/70 text-th-text-m',
             )}
           >

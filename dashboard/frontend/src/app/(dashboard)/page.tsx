@@ -11,6 +11,7 @@ import { StatusCard } from '@/components/StatusCard';
 import { useToast } from '@/components/ToastProvider';
 import { apiClient } from '@/lib/api';
 import { useNow } from '@/lib/now';
+import { asDisplayHealth, healthLabel } from '@/lib/health';
 import { cn } from '@/lib/utils';
 
 const readinessStyles = {
@@ -141,7 +142,7 @@ export default function OverviewPage() {
       </div>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatusCard icon={Server} title="Server status" value={status.data?.status ?? 'Loading…'} subtitle={status.data?.serverName ?? 'Contacting cluster'} variant="default" />
+        <StatusCard icon={Server} title="Server status" value={status.data ? healthLabel[asDisplayHealth(status.data.status)] : 'Loading…'} subtitle={status.data?.serverName ?? 'Contacting cluster'} variant="default" />
         <StatusCard icon={Users} title="Players online" value={status.data?.playersOnline ?? 0} subtitle="Across active maps" variant="success">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-th-text-m">
@@ -280,7 +281,7 @@ export default function OverviewPage() {
                                 run: () => handleServiceAction(service.name, 'restart'),
                               })}
                               aria-label={`Restart ${service.label ?? service.name}`}
-                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200 disabled:opacity-40"
+                              className="dune-focus flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 text-xs text-th-text-s transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200 disabled:opacity-40"
                             >
                               <RefreshCcw aria-hidden="true" className={cn('h-3 w-3', isBusy && 'animate-spin')} /> Restart
                             </button>
@@ -295,7 +296,7 @@ export default function OverviewPage() {
                                 run: () => handleServiceAction(service.name, 'stop'),
                               })}
                               aria-label={`Stop ${service.label ?? service.name}`}
-                              className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-40"
+                              className="dune-focus flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 text-xs text-th-text-s transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-40"
                             >
                               <Square aria-hidden="true" className="h-3 w-3" /> Stop
                             </button>
@@ -306,7 +307,7 @@ export default function OverviewPage() {
                             disabled={isBusy}
                             onClick={() => void handleServiceAction(service.name, 'start')}
                             aria-label={`Start ${service.label ?? service.name}`}
-                            className="dune-focus flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 py-1.5 text-xs text-th-text-s transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300 disabled:opacity-40"
+                            className="dune-focus flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-th-border/60 bg-th-surface/60 px-2.5 text-xs text-th-text-s transition hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300 disabled:opacity-40"
                           >
                             <Play aria-hidden="true" className="h-3 w-3" /> Start
                           </button>
@@ -328,7 +329,7 @@ export default function OverviewPage() {
               </div>
               <div>
                 <p className="section-title">Readiness</p>
-                <h2 className="mt-1 text-2xl font-semibold uppercase">{readiness.data?.status ?? 'warn'}</h2>
+                <p className="mt-1 text-2xl font-semibold uppercase">{readiness.data?.status ?? 'warn'}</p>
               </div>
             </div>
             <div className="mt-5 space-y-3 text-sm">

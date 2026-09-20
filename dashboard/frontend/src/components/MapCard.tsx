@@ -4,7 +4,7 @@ import { Archive, ChevronDown, ChevronUp, Play, RefreshCcw, Square } from 'lucid
 import { useMemo, useState } from 'react';
 
 import type { MapStatus } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, friendlyServiceName } from '@/lib/utils';
 
 interface MapCardProps {
   map: MapStatus;
@@ -43,7 +43,7 @@ export function MapCard({ map, onAction, onBackup }: MapCardProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-xl font-semibold text-th-text">{map.name}</h3>
+            <h3 className="text-xl font-semibold text-th-text" title={map.name}>{friendlyServiceName(map.name)}</h3>
             <span className={cn('rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]', badgeStyles[map.status])}>
               {map.status}
             </span>

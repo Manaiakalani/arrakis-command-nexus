@@ -465,7 +465,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                   type="button"
                   onClick={() => setViewMode(mode)}
                   className={cn(
-                    'rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-colors',
+                    'inline-flex min-h-11 items-center rounded-full px-3 text-xs font-semibold uppercase tracking-[0.18em] transition-colors',
                     viewMode === mode ? 'bg-amber-500/15 text-amber-700 dark:text-amber-200' : 'text-th-text-m hover:text-th-text-s',
                   )}
                 >

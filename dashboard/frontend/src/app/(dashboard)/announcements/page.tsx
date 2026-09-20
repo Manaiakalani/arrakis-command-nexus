@@ -491,13 +491,13 @@ export default function AnnouncementsPage() {
                           </>
                         ) : (
                           <>
-                            <button type="button" className="dune-button-muted px-3 py-2 text-xs" onClick={() => startEditing(entry)} disabled={isBusy}>
+                            <button type="button" className="dune-button-muted min-h-11 px-3 text-xs" onClick={() => startEditing(entry)} disabled={isBusy} aria-label="Edit scheduled announcement">
                               <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
                             </button>
                             <button type="button" className={entry.enabled ? 'dune-button-muted px-3 py-2 text-xs' : 'dune-button px-3 py-2 text-xs'} onClick={() => void handleToggleScheduled(entry.id)} disabled={isBusy}>
                               {entry.enabled ? 'Disable' : 'Enable'}
                             </button>
-                            <button type="button" className="dune-button-muted px-3 py-2 text-xs" onClick={() => void handleDeleteScheduled(entry.id)} disabled={isBusy}>
+                            <button type="button" className="dune-button-muted min-h-11 px-3 text-xs" onClick={() => void handleDeleteScheduled(entry.id)} disabled={isBusy} aria-label="Delete scheduled announcement">
                               <Trash2 aria-hidden="true" className="h-4 w-4" />
                             </button>
                           </>

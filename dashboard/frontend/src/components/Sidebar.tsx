@@ -146,7 +146,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
             onClick={onToggle}
             data-testid="sidebar-toggle"
             className={cn(
-              'hidden lg:inline-flex items-center justify-center rounded-lg border border-th-border/60 bg-th-surface-s/60 p-1.5 text-th-text-m',
+              'hidden lg:inline-flex h-11 w-11 items-center justify-center rounded-lg border border-th-border/60 bg-th-surface-s/60 text-th-text-m',
               'transition-colors duration-150 hover:border-th-border hover:bg-th-surface hover:text-th-text-s',
             )}
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}

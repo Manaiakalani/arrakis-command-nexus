@@ -175,9 +175,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               <ThemeToggle />
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <div data-testid="region-chip" className="header-chip hidden sm:inline-flex">
+              <div data-testid="region-chip" className="header-chip max-sm:max-w-[9.5rem]">
                 <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
-                <span className="max-w-[12rem] truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
+                <span className="truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
               </div>
               <div
                 data-testid="sse-status"
@@ -198,7 +198,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <span>{liveLabel}</span>
               </div>
               <SessionMenu />
-              <div className="hidden items-center gap-2 sm:flex" data-testid="header-cluster">
+              <div className="flex items-center gap-2" data-testid="header-cluster">
                 <div className="header-chip">
                   <span className="text-th-text-m">Players</span>
                   <span className="font-semibold tabular-nums text-th-text">{overview?.status.playersOnline ?? '—'}</span>

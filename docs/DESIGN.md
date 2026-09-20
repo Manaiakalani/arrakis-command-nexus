@@ -229,21 +229,21 @@ Respect `prefers-reduced-motion` by disabling decorative animation (float, shimm
 ```tsx
 <table className="w-full text-sm">
   <thead>
-    <tr className="border-b border-sand-700/50 text-sand-400">
+    <tr className="border-b border-th-border-m text-th-text-m">
       <th className="px-4 py-3 text-left font-medium">Column</th>
     </tr>
   </thead>
-  <tbody className="divide-y divide-sand-800/50">
-    <tr className="hover:bg-sand-800/30 cursor-pointer transition-colors">
-      <td className="px-4 py-3 text-sand-300">Value</td>
+  <tbody className="divide-y divide-th-border-m/80">
+    <tr className="cursor-pointer transition-colors hover:bg-th-surface-s/70">
+      <td className="px-4 py-3 text-th-text-s">Value</td>
     </tr>
   </tbody>
 </table>
 ```
 
-- No zebra striping; use `hover:bg-sand-800/30` for row highlight
+- No zebra striping; use `hover:bg-th-surface-s/70` for row highlight
 - Clickable rows use `cursor-pointer`
-- Wrap in `rounded-xl border border-sand-700/50 bg-sand-900/40 overflow-hidden`
+- Wrap in `overflow-hidden rounded-xl border border-th-border bg-th-surface/70`
 
 ---
 

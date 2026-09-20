@@ -4,6 +4,8 @@ import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
 
+import { cn } from '@/lib/utils';
+
 const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
@@ -22,7 +24,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="header-chip justify-center px-2.5"
+      className={cn('header-chip h-11 w-11 justify-center px-0')}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

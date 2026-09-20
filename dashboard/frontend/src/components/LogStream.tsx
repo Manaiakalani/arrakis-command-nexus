@@ -9,7 +9,7 @@ import { apiClient } from '@/lib/api';
 import { useSSE } from '@/hooks/useSSE';
 import { useNow } from '@/lib/now';
 import type { LogEvent, Severity } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, friendlyServiceName } from '@/lib/utils';
 
 const severityClasses: Record<Severity, string> = {
   ERROR: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300',
@@ -67,7 +67,7 @@ function LogRow({ index, style, messages, ariaAttributes }: RowComponentProps<Lo
       <span className="w-[4.5rem] shrink-0 px-1">
         <span className={cn('inline-block w-[3.5rem] text-center rounded border px-1 py-0.5 text-[10px] font-bold uppercase', severityClasses[entry.level])}>{entry.level}</span>
       </span>
-      <span className="w-[8rem] shrink-0 truncate whitespace-nowrap text-th-text-m">{entry.service.replace('dune-awakening-', '').replace(/-1$/, '')}</span>
+      <span className="w-[8rem] shrink-0 truncate whitespace-nowrap text-th-text-m">{friendlyServiceName(entry.service)}</span>
       <span className="min-w-0 flex-1 truncate text-th-text-s">{entry.message}</span>
     </div>
   );
@@ -184,21 +184,23 @@ export function LogStream({ endpoint, selectedService: controlledService, onServ
                 type="button"
                 onClick={() => setService(service)}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-[color,background-color,border-color] dune-focus',
+                  'inline-flex min-h-11 items-center rounded-full border px-3 text-xs font-semibold transition-[color,background-color,border-color] dune-focus',
                   selectedService === service
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200'
                     : 'border-th-border bg-th-surface-s/70 text-th-text-m hover:text-th-text-s',
                 )}
               >
-                {service}
+                {service === 'all' ? 'All' : friendlyServiceName(service)}
               </button>
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            {externalSearch == null ? (
             <div className="relative w-full sm:min-w-[260px] sm:flex-1">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-th-text-m" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} className="dune-input pl-11" placeholder="Search logs&#x2026;" aria-label="Search logs" name="log-search" autoComplete="off" spellCheck={false} />
             </div>
+            ) : null}
             <label className="inline-flex items-center gap-2 rounded-full border border-th-border bg-th-surface-s/70 px-3 py-2 text-xs text-th-text-s">
               <input type="checkbox" checked={autoScroll} onChange={(event) => setAutoScroll(event.target.checked)} className="accent-amber-400" />
               Auto-scroll

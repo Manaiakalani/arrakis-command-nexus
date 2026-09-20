@@ -86,7 +86,8 @@ export default function MapsPage() {
       <div className="glass-panel p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Map fleet</h2>
+            <p className="section-title">Maps</p>
+            <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Map aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Map fleet</h2>
           </div>
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => setPendingBulk('restart')} className="dune-button">
