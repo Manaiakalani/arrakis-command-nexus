@@ -167,9 +167,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <h1 className="min-w-0 truncate text-lg font-semibold text-th-text sm:text-2xl">
+              <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-th-text sm:text-2xl">
                 {overview?.status.serverName ?? 'Loading…'}
               </h1>
+              <div className="flex shrink-0 items-center gap-2">
+                <SessionMenu />
+                <ThemeToggle />
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex items-center gap-1.5">
@@ -196,7 +200,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   <span>{liveLabel}</span>
                 </div>
               </div>
-              <SessionMenu />
               <div className="flex items-center gap-1.5" data-testid="header-cluster">
                 <div className="header-chip">
                   <span className="text-th-text-m">Players</span>
@@ -212,9 +215,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   />
                   <span>{healthLabel[clusterHealth]}</span>
                 </div>
-              </div>
-              <div className="ml-auto">
-                <ThemeToggle />
               </div>
             </div>
           </header>

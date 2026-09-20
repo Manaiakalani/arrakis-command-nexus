@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Public status and overview `mapsActive` count Arrakeen, Harko Village, Deep Desert, and story maps, not only Survival + Overmap
 - Character roster reads `currency_id = 'Solaris'` (1.5 enum) instead of integer `1`, so Funcom names like Manaiakalani show again instead of fallback `Character 1`
 - Characters page uses more space between roster, editor, and grant groups; grant category chips wrap
+- Operator chip (`Max · operator`), sign-out, and theme sit top-right of the title bar; region / Live / Players / health stay on the status row
 - Header chips group as connection / identity / cluster with wider gaps between groups; theme and sign-out use a square `.header-chip-icon` so the glyph is centered
 - Map POI pins, player-table sort headers, and character grant category chips are 44px hit targets
 - Sidebar no longer repeats cluster health as a labeled panel; the header pill stays, and a status dot sits on the logo
