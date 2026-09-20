@@ -866,7 +866,7 @@ export default function CharactersPage() {
                           aria-current={active ? 'true' : undefined}
                           onClick={() => handleGrantCatJump(cat.id)}
                           className={cn(
-                            'whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60',
+                            'inline-flex min-h-11 items-center whitespace-nowrap rounded-xl px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60',
                             active
                               ? 'bg-amber-500/20 text-amber-800 dark:text-amber-100'
                               : 'text-th-text-m hover:bg-th-border-m/30 hover:text-th-text',

@@ -838,7 +838,7 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                   <button
                     key={`poi-${poi.name}`}
                     type="button"
-                    className="group absolute -translate-x-1/2 -translate-y-1/2"
+                    className="group absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
                     style={{ left: `${poi.left}%`, top: `${poi.top}%` }}
                     aria-label={poi.name}
                     onClick={(e) => {
@@ -847,8 +847,8 @@ export function HaggaBasinMap({ players, refreshIntervalMs = 10_000 }: HaggaBasi
                       setTeleportResult(null);
                     }}
                   >
-                    <span className={cn('absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full blur-sm', styles.ring)} />
-                    <span className={cn('relative block h-2.5 w-2.5 rounded-full border border-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] transition-transform group-hover:scale-150', styles.dot)} />
+                    <span className={cn('absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full blur-sm', styles.ring)} />
+                    <span className={cn('relative block h-3.5 w-3.5 rounded-full border border-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] transition-transform group-hover:scale-125', styles.dot)} />
                     <span className={cn('pointer-events-none absolute left-1/2 top-[calc(100%+2px)] hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-white/10 bg-th-bg/85 px-1.5 py-0.5 text-[9px] font-medium drop-shadow-md sm:block', styles.label)}>
                       {poi.name}
                     </span>
