@@ -4,9 +4,12 @@ from pathlib import Path
 
 from services.character_service import CharacterService
 from services.grant_resolution import (
+    DEFAULT_ITEM_STATS,
     GHOST_RECIPE_IDS,
     classify_grant_template,
+    family_token,
     recipe_tail,
+    sibling_prefix,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -62,6 +65,13 @@ class GrantResolutionTests(unittest.TestCase):
     def test_recipe_tail_helper(self):
         self.assertEqual(recipe_tail("T2_Material_Silicone"), "Silicone")
         self.assertIsNone(recipe_tail("Silicone"))
+
+    def test_sibling_prefix_and_family_for_vehicle_parts(self):
+        self.assertEqual(sibling_prefix("SandbikeLocomotion_6"), "SandbikeLocomotion_")
+        self.assertEqual(sibling_prefix("BuggyLocomotion_3"), "BuggyLocomotion_")
+        self.assertIsNone(sibling_prefix("Kindjal"))
+        self.assertEqual(family_token("SandbikeLocomotion_6"), "Locomotion")
+        self.assertIn("FCustomizationStats", DEFAULT_ITEM_STATS)
 
 
 class GrantCatalogInvariantTests(unittest.TestCase):
