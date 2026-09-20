@@ -67,12 +67,7 @@ async def get_status(request: Request) -> dict:
     readiness = docker_service.evaluate_readiness(services)
     uptime = docker_service.calculate_uptime(services)
 
-    map_roles = {"overmap", "survival"}
-    maps_active = sum(
-        1 for s in services
-        if getattr(s, "status", "") == "running"
-        and docker_service._map_role(getattr(s, "name", "")) in map_roles
-    )
+    maps_active = docker_service.count_running_maps(services)
 
     return {
         "serverName": live_world_name(),
@@ -104,15 +99,7 @@ async def get_public_status(request: Request) -> dict:
     readiness = docker_service.evaluate_readiness(services)
     uptime = docker_service.calculate_uptime(services)
 
-    maps_active = sum(
-        1
-        for service in services
-        if getattr(service, "status", "") == "running"
-        and (
-            docker_service._map_role(getattr(service, "name", "")) in {"survival", "overmap"}
-            or "deepdesert" in getattr(service, "name", "").lower()
-        )
-    )
+    maps_active = docker_service.count_running_maps(services)
 
     player_count = len(players_result) if isinstance(players_result, list) else 0
 
@@ -189,8 +176,6 @@ async def service_action(name: str, action: str, request: Request) -> dict:
     return {"service": name, "action": action, **result}
 
 
-# Game-server roles that should be targeted by bulk stop/start
-_GAME_SERVER_ROLES = {"overmap", "survival"}
 # Infrastructure roles are also stoppable but separated so the UI can differentiate
 _INFRA_ROLES = {"gateway", "director", "rabbitmq", "postgres", "text-router", "auth-shim"}
 
@@ -207,10 +192,9 @@ async def server_bulk_action(action: str, request: Request) -> dict:
         raise HTTPException(status_code=500, detail=f"Docker service missing '{action}_container' method")
 
     services = await docker_service.list_containers()
-    target_roles = _GAME_SERVER_ROLES | _INFRA_ROLES
     targets = [
         svc for svc in services
-        if docker_service._map_role(svc.name) in target_roles
+        if docker_service.is_map_service(svc.name) or docker_service._map_role(svc.name) in _INFRA_ROLES
     ]
 
     results: list[dict] = []
