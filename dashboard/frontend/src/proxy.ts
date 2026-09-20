@@ -70,7 +70,7 @@ async function sessionCheck(request: NextRequest): Promise<SessionCheck> {
     const res = await fetch(`${API_ORIGIN}/api/v1/auth/session-check`, {
       headers: cookie ? { accept: 'application/json', cookie } : { accept: 'application/json' },
       cache: 'no-store',
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
     const body = (await res.json()) as Partial<SessionCheck>;

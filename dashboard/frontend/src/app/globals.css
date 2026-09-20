@@ -128,23 +128,38 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* Overlay-style scrollbars: thin, transparent until the overflowing surface is
+   hovered or focused. Windows otherwise paints a 16px classic bar that fights
+   the glass chrome (region / Live / operator / Players). */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+*:focus-within {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 9999px;
+  width: 8px;
+  height: 8px;
 }
 
 *::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
 }
 
 @layer components {
@@ -204,6 +219,10 @@ body {
 
   .dune-focus {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-th-bg;
+  }
+
+  .header-chip {
+    @apply inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-th-border/80 bg-th-surface-s/70 px-3 text-xs font-medium text-th-text-s;
   }
 }
 

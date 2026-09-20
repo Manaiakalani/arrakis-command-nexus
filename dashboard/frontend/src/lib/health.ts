@@ -24,12 +24,12 @@ export const healthPillClass: Record<DisplayHealth, string> = {
 
 export const healthLabel: Record<DisplayHealth, string> = {
   unknown: 'Checking…',
-  healthy: 'healthy',
-  degraded: 'degraded',
-  offline: 'offline',
-  starting: 'starting',
-  stopped: 'stopped',
-  completed: 'completed',
+  healthy: 'Healthy',
+  degraded: 'Degraded',
+  offline: 'Offline',
+  starting: 'Starting',
+  stopped: 'Stopped',
+  completed: 'Completed',
 };
 
 export function asDisplayHealth(value: HealthState | undefined | null): DisplayHealth {

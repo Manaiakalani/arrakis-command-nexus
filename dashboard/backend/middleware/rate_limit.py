@@ -21,7 +21,18 @@ from starlette.responses import JSONResponse
 
 from middleware.request_utils import get_client_ip
 
-_EXEMPT_PATHS = frozenset({"/health", "/api/health", "/ready", "/api/ready"})
+_EXEMPT_PATHS = frozenset({
+    "/health",
+    "/api/health",
+    "/ready",
+    "/api/ready",
+    # Next calls session-check on every page from the frontend container IP.
+    # Rate-limiting that loop dumps a signed-in operator to /login (429 -> fail closed).
+    "/api/v1/auth/session-check",
+    "/api/auth/session-check",
+    "/api/v1/auth/status",
+    "/api/auth/status",
+})
 
 _RPM = int(os.getenv("DUNE_RATE_LIMIT_RPM", "120"))
 _BURST = int(os.getenv("DUNE_RATE_LIMIT_BURST", "30"))

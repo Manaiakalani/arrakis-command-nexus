@@ -12,7 +12,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="h-9 w-9 rounded-xl border border-th-border bg-th-surface-s/70" />
+      <div className="header-chip h-11 w-11 px-0" />
     );
   }
 
@@ -22,7 +22,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="dune-button-muted p-2.5"
+      className="header-chip justify-center px-2.5"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

@@ -1,7 +1,7 @@
 'use client';
 
 import { Menu, Signal } from 'lucide-react';
-import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import useSWR from 'swr';
 
 import { Sidebar } from '@/components/Sidebar';
@@ -14,8 +14,37 @@ import { asDisplayHealth, healthDotClass, healthLabel, healthPillClass } from '@
 import type { DashboardOverview } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
+const SIDEBAR_KEY = 'arrakis-sidebar-collapsed';
+const SIDEBAR_EVENT = 'arrakis-sidebar';
+
+function subscribeSidebar(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange);
+  window.addEventListener(SIDEBAR_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener('storage', onStoreChange);
+    window.removeEventListener(SIDEBAR_EVENT, onStoreChange);
+  };
+}
+
+function readSidebarCollapsed() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeSidebarCollapsed(next: boolean) {
+  try {
+    window.localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0');
+  } catch {
+    /* private mode */
+  }
+  window.dispatchEvent(new Event(SIDEBAR_EVENT));
+}
+
 export function DashboardShell({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useSyncExternalStore(subscribeSidebar, readSidebarCollapsed, () => false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const sseOpenRef = useRef(false);
   const { data: overview, mutate: overviewMutate } = useSWR(
@@ -50,8 +79,20 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }, [sseStatus]);
 
   const toggleSidebar = useCallback(() => {
-    setCollapsed((current) => !current);
+    writeSidebarCollapsed(!readSidebarCollapsed());
   }, []);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== '[' || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      event.preventDefault();
+      toggleSidebar();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleSidebar]);
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const sidebarCloseRef = useRef<HTMLButtonElement>(null);
@@ -88,6 +129,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   const clusterHealth = asDisplayHealth(overview?.status.status);
   const liveLabel = sseStatus === 'open' ? 'Live' : sseStatus === 'connecting' ? 'Connecting…' : 'Polling';
+  const liveTone =
+    sseStatus === 'open'
+      ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+      : sseStatus === 'connecting'
+        ? 'border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-200'
+        : 'border-th-border/80 bg-th-surface-s/70 text-th-text-s';
 
   return (
     <div className="relative min-h-screen bg-dune-radial">
@@ -109,7 +156,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           closeRef={sidebarCloseRef}
         />
         <div ref={mainRef} className={cn('flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
-          <header className="sticky top-0 z-30 border-b border-th-border-m/80 bg-th-bg/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 border-b border-th-border-m/80 bg-th-bg/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <button
@@ -121,35 +168,50 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 >
                   <Menu className="h-5 w-5" />
                 </button>
-                <div className="min-w-0 flex-1">
-                  <h1 className="truncate text-lg font-semibold text-th-text sm:text-2xl">{overview?.status.serverName ?? 'Loading…'}</h1>
-                  <div className="mt-1 flex items-center gap-3">
-                    <div className="hidden items-center gap-2 rounded-full border border-th-border/80 bg-th-surface-s/70 px-3 py-1 text-xs text-th-text-s sm:flex">
-                      <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
-                      {overview?.status.region ?? 'Self-hosted cluster'}
-                    </div>
-                    <p className="text-xs text-th-text-m">{liveLabel}</p>
-                  </div>
-                </div>
+                <h1 className="min-w-0 truncate text-lg font-semibold text-th-text sm:text-2xl">
+                  {overview?.status.serverName ?? 'Loading…'}
+                </h1>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <SessionMenu />
-                <ThemeToggle />
-                <div className="glass-panel hidden min-w-[220px] items-center justify-between px-4 py-3 sm:flex">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-th-text-m">Players</p>
-                    <p className="mt-1 text-sm font-medium tabular-nums text-th-text">{overview?.status.playersOnline ?? '—'}</p>
-                  </div>
-                  <div
-                    data-testid="cluster-health"
-                    className={cn('flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold', healthPillClass[clusterHealth])}
-                  >
-                    <span
-                      className={cn('h-2 w-2 rounded-full', healthDotClass[clusterHealth])}
-                      aria-hidden="true"
-                    />
-                    <span>{healthLabel[clusterHealth]}</span>
-                  </div>
+              <ThemeToggle />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div data-testid="region-chip" className="header-chip hidden sm:inline-flex">
+                <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
+                <span className="max-w-[12rem] truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
+              </div>
+              <div
+                data-testid="sse-status"
+                className={cn('header-chip', liveTone)}
+                title="Event stream from the dashboard API"
+              >
+                <span
+                  className={cn(
+                    'h-2 w-2 rounded-full',
+                    sseStatus === 'open'
+                      ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.85)]'
+                      : sseStatus === 'connecting'
+                        ? 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.85)]'
+                        : 'bg-stone-400 dark:bg-slate-500',
+                  )}
+                  aria-hidden="true"
+                />
+                <span>{liveLabel}</span>
+              </div>
+              <SessionMenu />
+              <div className="hidden items-center gap-2 sm:flex" data-testid="header-cluster">
+                <div className="header-chip">
+                  <span className="text-th-text-m">Players</span>
+                  <span className="font-semibold tabular-nums text-th-text">{overview?.status.playersOnline ?? '—'}</span>
+                </div>
+                <div
+                  data-testid="header-health"
+                  className={cn('header-chip font-semibold', healthPillClass[clusterHealth])}
+                >
+                  <span
+                    className={cn('h-2 w-2 rounded-full', healthDotClass[clusterHealth])}
+                    aria-hidden="true"
+                  />
+                  <span>{healthLabel[clusterHealth]}</span>
                 </div>
               </div>
             </div>

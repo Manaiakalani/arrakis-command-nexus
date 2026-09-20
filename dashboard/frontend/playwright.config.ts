@@ -10,6 +10,7 @@ export default defineConfig({
   reporter: 'html',
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:18080',
+    storageState: process.env.STORAGE_STATE || undefined,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 10000,
