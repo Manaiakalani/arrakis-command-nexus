@@ -131,7 +131,7 @@ Variant colors follow the action palette (red for destructive, green for positiv
 - Minimize control at the bottom of the rail in addition to the header chevron
 - Icons from `lucide-react`
 - Active link: `bg-amber-500/15 text-amber-500`
-- Server health indicator dot in the logo area
+- Server health indicator dot in the logo area (not a second labeled Healthy panel; the header chip is the readable status)
 
 ### Header chrome
 Region, Live/Polling, operator, Players, and cluster health share `.header-chip` (`h-11`, pill, same border/background) on one wrapping row under the world name. Do not mix a two-line operator stack or an uppercase Players panel with those pills.

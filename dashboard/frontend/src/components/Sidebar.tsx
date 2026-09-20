@@ -128,10 +128,16 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
             collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-3',
           )}>
             <div className={cn(
-              'flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-th-accent shadow-dune',
+              'relative flex shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-th-accent shadow-dune',
               collapsed ? 'h-9 w-9' : 'h-12 w-12',
             )}>
               <Worm className={cn(collapsed ? 'h-5 w-5' : 'h-6 w-6')} aria-hidden="true" />
+              <span
+                data-testid="cluster-health"
+                className={cn('absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-th-bg', healthDotClass[clusterHealth])}
+                aria-label={`Cluster ${healthLabel[clusterHealth]}`}
+                role="img"
+              />
             </div>
             {!collapsed && (
               <div className="overflow-hidden whitespace-nowrap">
@@ -165,23 +171,6 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
-
-        <div className={cn('mx-3 mt-4 glass-panel', collapsed ? 'px-2 py-2' : 'px-4 py-3')}>
-          <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
-            <span
-              data-testid="cluster-health"
-              className={cn('h-3 w-3 shrink-0 rounded-full', healthDotClass[clusterHealth])}
-              aria-label={`Cluster ${healthLabel[clusterHealth]}`}
-              role="img"
-            />
-            {!collapsed && (
-              <div>
-                <p className="text-sm font-medium text-th-text">{healthLabel[clusterHealth]}</p>
-                <p className="text-xs text-th-text-m">Cluster</p>
-              </div>
-            )}
-          </div>
         </div>
 
         <nav className="mx-3 mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain" aria-label="Dashboard">
