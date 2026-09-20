@@ -6,7 +6,13 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from services.grant_resolution import classify_grant_template, recipe_tail
+from services.grant_resolution import (
+    DEFAULT_ITEM_STATS,
+    classify_grant_template,
+    family_token,
+    recipe_tail,
+    sibling_prefix,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +328,15 @@ class CharacterService:
                 "SELECT 1 FROM dune.items WHERE template_id = $1 LIMIT 1",
                 template_id,
             )
+            if not item_exists:
+                case_hit = await connection.fetchval(
+                    "SELECT template_id FROM dune.items "
+                    "WHERE lower(template_id) = lower($1) LIMIT 1",
+                    template_id,
+                )
+                if case_hit:
+                    template_id = str(case_hit)
+                    item_exists = True
             tail_match = None
             if not item_exists:
                 tail = recipe_tail(template_id)
@@ -431,84 +446,142 @@ class CharacterService:
                     "Grant stack_size %d exceeds observed max %d for %s (account %d)",
                     stack_size, observed_max, template_id, account_id,
                 )
-            warning = " ".join(warnings) if warnings else None
+            async with connection.transaction():
+                item_stats = await self._stats_for_template(connection, template_id)
 
-            # Copy stats from an existing item of the same type if available
-            existing_stats = await connection.fetchval("""
-                SELECT stats::text FROM dune.items
-                WHERE template_id = $1 AND stats IS NOT NULL
-                LIMIT 1
-            """, template_id)
+                # Bind to the live pawn backpack (type 0), not a stale actor.
+                inv = await connection.fetchrow("""
+                    SELECT i.id AS inventory_id, i.max_item_count
+                    FROM dune.encrypted_player_state eps
+                    JOIN dune.inventories i ON i.actor_id = eps.player_pawn_id
+                    WHERE eps.account_id = $1
+                      AND i.inventory_type = 0
+                    ORDER BY i.id
+                    LIMIT 1
+                """, account_id)
+                if inv is None:
+                    inv = await connection.fetchrow("""
+                        SELECT i.id AS inventory_id, i.max_item_count
+                        FROM dune.inventories i
+                        WHERE i.actor_id IN (
+                            SELECT id FROM dune.actors WHERE owner_account_id = $1
+                        )
+                        AND i.inventory_type = 0
+                        LIMIT 1
+                    """, account_id)
+                if inv is None:
+                    raise KeyError(character_id)
 
-            if existing_stats:
-                item_stats = json.loads(existing_stats)
-            else:
-                item_stats = {"FItemStackAndDurabilityStats": [[], {"DecayedMaxDurability": 0.0}]}
-
-            # Find the player's backpack inventory (type 0)
-            inv = await connection.fetchrow("""
-                SELECT i.id AS inventory_id, i.max_item_count
-                FROM dune.inventories i
-                WHERE i.actor_id IN (
-                    SELECT id FROM dune.actors WHERE owner_account_id = $1
+                inventory_id = inv["inventory_id"]
+                await connection.execute(
+                    "SELECT id FROM dune.inventories WHERE id = $1 FOR UPDATE",
+                    inventory_id,
                 )
-                AND i.inventory_type = 0
-                LIMIT 1
-            """, account_id)
-            if inv is None:
-                raise KeyError(character_id)
+                # max_item_count is the number of slots the game renders (e.g. 35).
+                # Items at position_index >= max_item_count never appear in-game.
+                slot_cap = int(inv["max_item_count"] or 35)
+                used_slots = await connection.fetch("""
+                    SELECT position_index
+                    FROM dune.items WHERE inventory_id = $1
+                    FOR UPDATE
+                """, inventory_id)
+                occupied = {int(r["position_index"]) for r in used_slots}
+                free_slot: int | None = None
+                for candidate in range(slot_cap):
+                    if candidate not in occupied:
+                        free_slot = candidate
+                        break
+                if free_slot is None:
+                    slot_cap = slot_cap + 10
+                    await connection.execute(
+                        "UPDATE dune.inventories SET max_item_count = $2 WHERE id = $1",
+                        inventory_id,
+                        slot_cap,
+                    )
+                    for candidate in range(slot_cap):
+                        if candidate not in occupied:
+                            free_slot = candidate
+                            break
+                    warnings.append(
+                        f"Backpack was full; expanded visible slots to {slot_cap}."
+                    )
+                if free_slot is None:
+                    raise ValueError(
+                        f"Backpack is full ({len(occupied)}/{slot_cap} slots used). "
+                        "Free up a slot in-game before granting more items."
+                    )
+                max_pos = free_slot
 
-            inventory_id = inv["inventory_id"]
-            # max_item_count is the number of slots the game renders for this
-            # inventory (e.g. 35 for a default backpack). Items placed at a
-            # position_index >= max_item_count live in the database but are
-            # never shown in-game, which is why naive MAX(position_index)+1
-            # grants silently fail to appear. Find the FIRST FREE slot within
-            # the valid [0, max_item_count) range instead.
-            slot_cap = inv["max_item_count"] or 35
-            used_slots = await connection.fetch("""
-                SELECT position_index
-                FROM dune.items WHERE inventory_id = $1
-            """, inventory_id)
-            occupied = {int(r["position_index"]) for r in used_slots}
-            free_slot: int | None = None
-            for candidate in range(slot_cap):
-                if candidate not in occupied:
-                    free_slot = candidate
-                    break
-            if free_slot is None:
-                raise ValueError(
-                    f"Backpack is full ({len(occupied)}/{slot_cap} slots used). "
-                    "Free up a slot in-game before granting more items."
+                new_item_id = await connection.fetchval("""
+                    INSERT INTO dune.items
+                        (inventory_id, template_id, stack_size, position_index,
+                         quality_level, is_new, acquisition_time, stats)
+                    VALUES ($1, $2, $3, $4, $5, true, $6, $7::jsonb)
+                    RETURNING id
+                """, inventory_id, template_id, stack_size, max_pos,
+                    quality_level, int(time.time()), json.dumps(item_stats))
+
+                logger.info(
+                    "Granted item %s (x%d) to account %d, item_id=%d, inventory=%d, pos=%d",
+                    template_id, stack_size, account_id, new_item_id,
+                    inventory_id, max_pos,
                 )
-            max_pos = free_slot
+                warning = " ".join(warnings) if warnings else None
+                result: dict[str, Any] = {
+                    "success": True,
+                    "item_id": int(new_item_id),
+                    "template_id": template_id,
+                    "stack_size": stack_size,
+                    "inventory_type": "backpack",
+                    "position_index": int(max_pos),
+                    "player_online": player_online,
+                }
+                if warning:
+                    result["warning"] = warning
+                return result
 
-            new_item_id = await connection.fetchval("""
-                INSERT INTO dune.items
-                    (inventory_id, template_id, stack_size, position_index,
-                     quality_level, is_new, acquisition_time, stats)
-                VALUES ($1, $2, $3, $4, $5, true, $6, $7::jsonb)
-                RETURNING id
-            """, inventory_id, template_id, stack_size, max_pos,
-                quality_level, int(time.time()), json.dumps(item_stats))
+    async def _stats_for_template(self, connection: Any, template_id: str) -> dict[str, Any]:
+        """Clone a live stats blob so the dedicated server can instantiate the row.
 
-            logger.info(
-                "Granted item %s (x%d) to account %d, item_id=%d, inventory=%d, pos=%d",
-                template_id, stack_size, account_id, new_item_id,
-                inventory_id, max_pos,
+        Never-seen catalog ids used to get a durability-only blob. Vehicle parts
+        (and most equipment) need ``FCustomizationStats`` or they stay invisible.
+        """
+        import json
+
+        async def _load(sql: str, *args: Any) -> dict[str, Any] | None:
+            raw = await connection.fetchval(sql, *args)
+            if not raw:
+                return None
+            parsed = json.loads(raw)
+            if "FCustomizationStats" not in parsed:
+                parsed["FCustomizationStats"] = [[], {}]
+            if "FItemStackAndDurabilityStats" not in parsed:
+                parsed["FItemStackAndDurabilityStats"] = [[], {"DecayedMaxDurability": 0.0}]
+            return parsed
+
+        exact = await _load(
+            "SELECT stats::text FROM dune.items WHERE template_id = $1 AND stats IS NOT NULL LIMIT 1",
+            template_id,
+        )
+        if exact:
+            return exact
+        prefix = sibling_prefix(template_id)
+        if prefix:
+            sibling = await _load(
+                "SELECT stats::text FROM dune.items WHERE template_id ILIKE $1 AND stats IS NOT NULL LIMIT 1",
+                f"{prefix}%",
             )
-            result: dict[str, Any] = {
-                "success": True,
-                "item_id": int(new_item_id),
-                "template_id": template_id,
-                "stack_size": stack_size,
-                "inventory_type": "backpack",
-                "position_index": int(max_pos),
-                "player_online": player_online,
-            }
-            if warning:
-                result["warning"] = warning
-            return result
+            if sibling:
+                return sibling
+        token = family_token(template_id)
+        if token:
+            family = await _load(
+                "SELECT stats::text FROM dune.items WHERE template_id ILIKE $1 AND stats IS NOT NULL LIMIT 1",
+                f"%{token}%",
+            )
+            if family:
+                return family
+        return dict(DEFAULT_ITEM_STATS)
 
     async def grant_solari(self, character_id: str, amount: int) -> dict[str, Any]:
         """Add solari coins to a character's backpack as SolarisCoin items."""

@@ -7,6 +7,7 @@ the client cannot render. Callers do the lookups; this module decides.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -18,6 +19,41 @@ GHOST_RECIPE_IDS = frozenset({
     "T2_Material_Silicone",
     "T3_Material_CopperBar",
 })
+
+DEFAULT_ITEM_STATS = {
+    "FCustomizationStats": [[], {}],
+    "FItemStackAndDurabilityStats": [[], {"DecayedMaxDurability": 0.0}],
+}
+
+_TIER_SUFFIX = re.compile(r"_\d+$")
+_FAMILY_TOKENS = (
+    "Locomotion",
+    "Chassis",
+    "Engine",
+    "Hull",
+    "Boost",
+    "Generator",
+    "Inventory",
+    "Launcher",
+    "Scanner",
+    "Seat",
+    "Mining",
+)
+
+
+def sibling_prefix(template_id: str) -> str | None:
+    """``SandbikeLocomotion_6`` → ``SandbikeLocomotion_`` for ILIKE sibling lookup."""
+    if not _TIER_SUFFIX.search(template_id):
+        return None
+    return _TIER_SUFFIX.sub("_", template_id)
+
+
+def family_token(template_id: str) -> str | None:
+    for token in _FAMILY_TOKENS:
+        if token in template_id:
+            return token
+    return None
+
 
 RECIPE_NOTE = (
     "Resolved '{requested}' to item template '{resolved}'. "
