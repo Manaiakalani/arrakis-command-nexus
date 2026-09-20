@@ -374,8 +374,20 @@ trap cleanup EXIT INT TERM
 ) &
 SCANNER_PID=$!
 
-# Run game, tee to both stdout (container logs) and the FIFO scanner
-/home/dune/run.sh "$@" 2>&1 | tee "$FIFO" &
+# Funcom run.sh joins "$@" then evals via `su dune -c`. Unquoted spaces in
+# -FarmRegion=North America / DatacenterId / DisplayName become extra argv and
+# UE5 treats "America" as the map URL (Failed to enter Survival_1 / Overmap,
+# then SIGSEGV). Quote only args that contain spaces so -MultiHome=$POD_IP is
+# still substituted by run.sh.
+quoted_args=()
+for _arg in "$@"; do
+  if [[ "$_arg" == *" "* ]]; then
+    quoted_args+=("$(printf '%q' "$_arg")")
+  else
+    quoted_args+=("$_arg")
+  fi
+done
+/home/dune/run.sh "${quoted_args[@]}" 2>&1 | tee "$FIFO" &
 GAME_PID=$!
 GAME_PGID="$(ps -o pgid= -p "$GAME_PID" | tr -d '[:space:]')"
 

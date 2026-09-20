@@ -413,10 +413,29 @@ docker compose ps
 > same steps in their own diagnostic context — if this procedure ever changes, update it
 > here first and keep those sections in sync.
 
-When the Funcom server image changes to a **new major version** (e.g. `1973075` to `1979201`),
-the game schema changes and the existing database must be recreated. `bootstrap_db.py` has an
-early-exit guard that skips initialization if the schema already exists, so you must drop and
-recreate the database manually.
+When the Funcom server image changes, two different schema problems show up:
+
+1. **Pending SQL patches (common on 1.5.x / `2117304+`).** `db-init` now applies Funcom
+   `Upgrade/*.sql` files that are not yet in `applied_patches`. Recreate it after
+   `./dune update` so the director's `QueryPlayerOnlineStates` query matches the live
+   schema. World data is kept.
+   ```bash
+   docker compose rm -f db-init
+   docker compose up db-init --force-recreate
+   docker compose restart director
+   ```
+   If `db-init` fails with `could not create unique index "actor_spawner_actors_pkey"`,
+   the live table has duplicate `(spawner_id, actor_id)` rows. Deduplicate exact copies
+   and re-run db-init:
+   ```sql
+   DELETE FROM dune.actor_spawner_actors a
+   USING dune.actor_spawner_actors b
+   WHERE a.ctid > b.ctid AND a.spawner_id = b.spawner_id;
+   ```
+
+2. **Game-side `Database version mismatch` (true major break).** The game binary refuses
+   the existing schema. Then you must drop and recreate the database as below.
+   `bootstrap_db.py` still skips *initial* `setupdb` if schema `dune` already exists.
 
 > **Warning:** This destroys all world data. Take a full backup first.
 >

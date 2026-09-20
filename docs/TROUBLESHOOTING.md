@@ -26,6 +26,79 @@ docker exec dune-awakening-director-1 grep AllowGroupTravel /etc/app/conf.d/dire
 > If `docker exec ... grep` shows the *old* value after a `git pull`, the bind
 > mount is still pointing at the original inode. Restart the container.
 
+## Funcom 1.5.x image update recovery
+
+After `./dune update` to Funcom dedicated-server image `2117304-0-shipping` (game
+1.5.3.x) the Linux host stays up, but the battlegroup looks dead.
+
+### Director crash-loop: `QueryPlayerOnlineStates` / `PlayerOnlineState`
+
+**Symptom:** `dune-awakening-director-1` restarts every few seconds. Logs:
+
+```
+Unhandled exception: System.InvalidOperationException:
+A parameterless default constructor or one matching signature
+(..., demo_playtime_seconds, ...)
+is required for BattlegroupDirector.Database.PlayerOnlineState materialization
+   at DirectorDbApi.QueryPlayerOnlineStates()
+```
+
+**Cause:** Funcom added SQL patches under `DuneSandbox/Database/Upgrade/`. `db-init`
+used to exit as soon as schema `dune` existed, so those patches never ran.
+The new director queries `get_player_online_state_within_grace_period_for_each_server()`,
+which now returns `demo_playtime interval` instead of `demo_playtime_seconds int`.
+
+**Fix (keeps world data):**
+
+```bash
+bash scripts/backup.sh --scope db
+docker compose stop director survival_1 overmap arrakeen harko_village gateway
+docker compose rm -f db-init
+docker compose up db-init --force-recreate
+docker compose up -d
+```
+
+`bootstrap_db.py` now calls Funcom ToolsDB `updatedb` on an existing schema.
+If `db-init` fails with `could not create unique index "actor_spawner_actors_pkey"`,
+deduplicate exact copies and re-run:
+
+```sql
+DELETE FROM dune.actor_spawner_actors a
+USING dune.actor_spawner_actors b
+WHERE a.ctid > b.ctid AND a.spawner_id = b.spawner_id;
+```
+
+Drop/recreate the database only when game logs `Database version mismatch`.
+
+### Map SIGSEGV: `Can't Find URL: America:` / `Failed to enter Survival_1`
+
+**Symptom:** `survival_1` / `overmap` exit 139 (`SIGSEGV`) in a tight loop. Logs:
+
+```
+LogLongPackageNames: Warning: Can't Find URL: America: . Invalidating and reverting to Default URL.
+LogDuneGameInstance: Error: Failed to enter '/Game/Dune/Maps/Arrakis/SOC_1/Survival_1'
+Unhandled Exception: SIGSEGV
+```
+
+**Cause:** Funcom `run.sh` joins argv and re-parses via `su dune -c`. A region or
+display name with a space (`-FarmRegion=North America`) becomes a positional map
+URL. Watchdog restart-count alerts from *before* a recreate with the quoting fix
+are stale; confirm with `docker inspect` `RestartCount` and `StartedAt`.
+
+**Fix:** `scripts/survival-pre-start.sh` quotes arguments that contain spaces.
+Recreate the map containers after pulling the fix:
+
+```bash
+docker compose up -d --force-recreate --no-deps survival_1 overmap arrakeen harko_village
+```
+
+### Director: `Failed to parse instancing mode PolarCap_1`
+
+Non-fatal. Funcom 1.5 ships `PolarCap_1=Dimension` and
+`CB_Dungeon_TheFacility=ClassicalInstancing` in the image `director_config.ini`.
+Shipped `config/director.ini` now declares the same keys. Restart director after
+pulling.
+
 > ⚠️ **Restarting the director is NOT enough for some settings.** The director
 > publishes settings to game-server containers via an RMQ exchange, but a few
 > settings  -  most notably `AllowGroupTravel`  -  appear to be read by the UE5

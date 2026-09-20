@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-09-20
+
 ### Security
 
 - Next no longer sends HSTS on HTTP, and never sends `preload`. When the request is HTTPS (or `X-Forwarded-Proto: https`), Next (`src/proxy.ts`) and the API send `max-age=31536000; includeSubDomains`
@@ -13,6 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **Funcom 1.5.x dedicated-server image updates left the battlegroup down.** `db-init` exited as soon as schema `dune` existed, so Funcom `Upgrade/*.sql` patches never ran. The new director then crash-looped on `QueryPlayerOnlineStates` (Dapper could not map `PlayerOnlineState`). `scripts/bootstrap_db.py` now applies pending Funcom patches on an existing database (ToolsDB `updatedb`, unattended, skip pg_dump schema-diff — the db-utils image has no linux Postgres installer and no `pg_dump`). Drop/recreate remains the path only when game logs `Database version mismatch`
+- **Map servers SIGSEGV'd on boot when `WORLD_REGION` or the display name contained spaces.** Funcom `run.sh` joins argv and re-parses via `su dune -c`, so `-FarmRegion=North America` became a fake map URL `America:`. `scripts/survival-pre-start.sh` now shell-quotes only arguments that contain spaces, leaving `-MultiHome=$POD_IP` for `run.sh` to substitute
+- `partition-repair` no longer overlays Funcom 1.5's `load_world_partition` (return type `partitiondefinitioncomposite`) with the older `RETURNS TABLE(...)` definition, which failed with `cannot change return type of existing function`
+- Shipped `config/director.ini` declares Funcom 1.5 maps `PolarCap_1` and `CB_Dungeon_TheFacility` so director no longer logs `Failed to parse instancing mode` for those keys
 - Dashboard-driven compose recreate refuses a partial `COMPOSE_FILE` that would drop `docker-compose.dashboard.yml`, a configured hostnet overlay, or apply the wrong profile overlay (`standard` vs `standard-lean`). When `COMPOSE_FILE` is unset, resolution matches the `dune` CLI (profile + hostnet + dashboard) instead of silently defaulting to `basic` on a lean host
 - REST `/status`, public status, and SSE share `funcom_image_tag()` / `live_world_name()` and no longer invent Funcom tag `1979201-0-shipping` when the env is missing
 - Settings `general.serverName` reads `WORLD_NAME` from `.env` at request time, so an identity edit is visible without restarting the API

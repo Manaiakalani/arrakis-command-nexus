@@ -200,8 +200,17 @@ def fix_load_world_partition(log, quiet=False):
     with get_connection() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
-            cur.execute("SELECT prosrc FROM pg_proc WHERE proname = 'load_world_partition' LIMIT 1")
+            cur.execute(
+                "SELECT pg_get_function_result(oid), prosrc "
+                "FROM pg_proc WHERE proname = 'load_world_partition' LIMIT 1"
+            )
             row = cur.fetchone()
+            if row and "partitiondefinitioncomposite" in (row[0] or "").lower():
+                (log.debug if quiet else log.info)(
+                    "load_world_partition is Funcom 1.5 composite type, skipping TABLE() overlay"
+                )
+                return
+            row = (row[1],) if row else None
             # Positive sentinel: our patch adds an "Overmap" fallback containing
             # the literal "wp.map = 'Overmap'", which the stock definition never
             # has. An earlier guard keyed off the stock primary filter
