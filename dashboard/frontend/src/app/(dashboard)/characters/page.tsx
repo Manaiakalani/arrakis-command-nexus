@@ -523,7 +523,7 @@ export default function CharactersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center gap-3">
         <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-300">
           <UserCog className="h-5 w-5" aria-hidden="true" />
@@ -533,7 +533,7 @@ export default function CharactersPage() {
           <p className="text-sm text-th-text-m">Inspect and edit player characters from the game database.</p>
         </div>
       </div>
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <div className="metric-card">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -596,7 +596,7 @@ export default function CharactersPage() {
         </div>
       ) : null}
 
-      <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <section className="grid gap-8 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="glass-panel overflow-hidden">
           <div className="border-b border-th-border-m/80 p-5">
             <p className="section-title">Character roster</p>
@@ -614,7 +614,7 @@ export default function CharactersPage() {
 
           {characters.error ? <p className="px-5 pt-5 text-sm text-red-700 dark:text-red-300">{characters.error.message}</p> : null}
 
-          <div className="max-h-[720px] space-y-3 overflow-y-auto p-4">
+          <div className="max-h-[720px] space-y-4 overflow-y-auto p-5">
             {characters.loading && (characters.data ?? []).length === 0 ? (
               <div className="flex items-center justify-center gap-3 rounded-3xl border border-th-border-m/80 bg-th-bg/30 px-4 py-12 text-th-text-m">
                 <Loader2 className="h-5 w-5 animate-spin" /> Loading characters\u2026
@@ -656,7 +656,10 @@ export default function CharactersPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-base font-semibold text-th-text">{character.name}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-th-text-m">{character.id}</p>
+                      <p className="mt-1 text-xs text-th-text-m">
+                        {character.metadata?.platform ? `${String(character.metadata.platform)} · ` : ''}
+                        {character.id}
+                      </p>
                     </div>
                     <span className={cn('rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em]', character.source === 'mock' ? 'border-sky-500/20 bg-sky-500/10 text-sky-200' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200')}>
                       {character.source}
@@ -673,7 +676,7 @@ export default function CharactersPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="glass-panel p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -712,7 +715,7 @@ export default function CharactersPage() {
               </div>
             ) : (
               <>
-                <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {availableCategories.map((category) => {
                     const meta = categoryMeta[category];
                     const Icon = meta.icon;
@@ -850,11 +853,10 @@ export default function CharactersPage() {
               ) : null}
 
               <nav
-                className="sticky top-2 z-10 mt-5 -mx-1 overflow-x-auto rounded-2xl border border-th-border-m/40 bg-th-bg/85 px-1 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-th-bg/65"
+                className="sticky top-2 z-10 mt-6 rounded-2xl border border-th-border-m/40 bg-th-bg/85 p-2 backdrop-blur supports-[backdrop-filter]:bg-th-bg/65"
                 aria-label="Grant categories"
-                style={{ scrollbarWidth: 'thin' }}
               >
-                <ul className="flex flex-nowrap items-center gap-1" role="tablist">
+                <ul className="flex flex-wrap items-center gap-1.5" role="tablist">
                   {grantCategories.map((cat) => {
                     const active = activeGrantCat === cat.id;
                     return (

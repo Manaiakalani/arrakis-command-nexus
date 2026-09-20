@@ -88,6 +88,14 @@ class KnownTemplateAdditionsTests(unittest.TestCase):
         ):
             self.assertIn(template_id, CharacterService.KNOWN_TEMPLATES)
 
+    def test_funcom_character_query_casts_solaris_wallet(self):
+        import inspect
+        from services.character_service import CharacterService
+
+        source = inspect.getsource(CharacterService._query_game_characters)
+        self.assertIn("currency_id = 'Solaris'", source)
+        self.assertNotIn("currency_id = 1", source)
+
 
 if __name__ == "__main__":
     unittest.main()

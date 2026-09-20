@@ -49,7 +49,7 @@ class PostgresService:
         query = """
             SELECT
                 CAST(ea."user" AS TEXT) AS steam_id,
-                encode(eps.encrypted_character_name, 'escape') AS name,
+                convert_from(eps.encrypted_character_name, 'UTF8') AS name,
                 eps.online_status::text AS online_status,
                 eps.life_state::text AS life_state,
                 eps.server_id,
@@ -104,7 +104,7 @@ class PostgresService:
         query = """
             SELECT
                 CAST(ea."user" AS TEXT) AS steam_id,
-                encode(eps.encrypted_character_name, 'escape') AS name,
+                convert_from(eps.encrypted_character_name, 'UTF8') AS name,
                 eps.online_status::text AS online_status,
                 eps.life_state::text AS life_state,
                 eps.server_id,
