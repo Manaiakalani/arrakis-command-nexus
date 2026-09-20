@@ -222,7 +222,11 @@ body {
   }
 
   .header-chip {
-    @apply inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-th-border/80 bg-th-surface-s/70 px-3 text-xs font-medium text-th-text-s;
+    @apply inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-th-border/80 bg-th-surface-s/70 px-3 text-xs font-medium leading-none text-th-text-s;
+  }
+
+  .header-chip-icon {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-th-border/80 bg-th-surface-s/70 p-0 text-xs font-medium leading-none text-th-text-s;
   }
 }
 

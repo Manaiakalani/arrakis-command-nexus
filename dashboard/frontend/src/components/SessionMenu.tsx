@@ -55,6 +55,9 @@ export function SessionMenu() {
       <div className="header-chip" title={`${user.username} (${user.role})`}>
         <UserRound className="h-3.5 w-3.5 text-th-text-m" aria-hidden="true" />
         <span className="font-medium text-th-text">{user.username}</span>
+        <span className="hidden text-th-text-m sm:inline" aria-hidden="true">
+          ·
+        </span>
         <span className="hidden text-th-text-m sm:inline">{user.role}</span>
       </div>
       <button
@@ -63,7 +66,7 @@ export function SessionMenu() {
         disabled={busy}
         title="Sign out"
         aria-label="Sign out"
-        className={cn('header-chip h-11 w-11 justify-center px-0 text-th-text-m transition hover:text-th-text disabled:opacity-50')}
+        className={cn('header-chip-icon text-th-text-m transition hover:text-th-text disabled:opacity-50')}
       >
         <LogOut className="h-4 w-4" aria-hidden="true" />
       </button>
