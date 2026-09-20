@@ -226,7 +226,7 @@ body {
   }
 
   .header-chip-icon {
-    @apply header-chip h-11 w-11 justify-center gap-0 p-0;
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-th-border/80 bg-th-surface-s/70 p-0 text-xs font-medium leading-none text-th-text-s;
   }
 }
 
