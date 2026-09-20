@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Collapse, theme, sign-out, Overview Restart/Stop, Game Settings toggles, Players tabs, and Logs chips meet the 44px touch target
 - Characters and Watchdog have real page `h2`s; metric values are `<p>`. Maps/Logs show friendly names (`Harko Village`, not `dune-awakening-harko_village-1`). Game Settings tabs wrap. Logs keep a single search box
 - Dashboard API mounts `./VERSION` at `/app/VERSION` so the sidebar reads the repo release, not a leftover Funcom image tag
+- Full ornithopter kits grant enough wings to assemble: Scout 4, Assault 6, Carrier 8 plus 2 side hulls and 2 tail hulls
 - Public status and overview `mapsActive` count Arrakeen, Harko Village, Deep Desert, and story maps, not only Survival + Overmap
 - Character roster reads `currency_id = 'Solaris'` (1.5 enum) instead of integer `1`, so Funcom names like Manaiakalani show again instead of fallback `Character 1`
 - Characters page uses more space between roster, editor, and grant groups; grant category chips wrap
