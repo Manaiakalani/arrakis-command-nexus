@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Dashboard header chrome (region, Live, operator, Players, health) shares one `.header-chip` row and height instead of mixed pills and a tall Players glass panel
+- Scrollbars are thin overlay thumbs that stay transparent until hover; `scrollbar-gutter: stable` is gone so Windows no longer reserves a dead strip over the shell
+- Sidebar minimize persists across reload (`localStorage`), has a labeled Minimize control, and toggles with `[`. The collapse chevron stays inside the rail instead of overlapping the world name
+- Next session-check waits 8s instead of 3s before failing closed to `/login`, so a busy API no longer dumps an already-signed-in operator back to the gate on reload or in-app navigation
+- `/api/v1/auth/session-check` is exempt from the API rate limit. Next calls it on every page from the frontend container IP, so a burst of navigations used to 429 the check and bounce a signed-in operator to the login gate
+- Header health labels use sentence case (`Healthy`, not `healthy`) so the pill matches the other chips
+
 ## [1.8.1] - 2026-09-20
 
 ### Security

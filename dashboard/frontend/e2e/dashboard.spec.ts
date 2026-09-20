@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Sidebar navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('sidebar')).toBeVisible();
   });
 
   test('sidebar is visible on desktop', async ({ page }) => {
@@ -41,6 +41,20 @@ test.describe('Sidebar navigation', () => {
     const expandedBox = await sidebar.boundingBox();
     expect(expandedBox).toBeTruthy();
     expect(expandedBox!.width).toBeGreaterThanOrEqual(300);
+  });
+
+  test('minimize control collapses the rail and persists across reload', async ({ page }) => {
+    const sidebar = page.getByTestId('sidebar');
+    const minimize = page.getByTestId('sidebar-minimize');
+    await expect(minimize).toBeVisible();
+    await minimize.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect.poll(async () => (await sidebar.boundingBox())?.width ?? 999).toBeLessThan(100);
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('arrakis-sidebar-collapsed'))).toBe('1');
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('sidebar')).toBeVisible({ timeout: 15000 });
+    const stillCollapsed = await page.getByTestId('sidebar').boundingBox();
+    expect(stillCollapsed!.width).toBeLessThan(100);
   });
 
   test('collapsed sidebar shows icon tooltips via title', async ({ page }) => {
@@ -206,6 +220,45 @@ test.describe('Dashboard pages load correctly', () => {
     // Should still have content
     const body = page.locator('body');
     await expect(body).not.toBeEmpty();
+  });
+});
+
+test.describe('Header chrome', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('region, live, players, and health chips share a header row', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('region-chip')).toBeVisible();
+
+    const region = page.getByTestId('region-chip');
+    const live = page.getByTestId('sse-status');
+    const cluster = page.getByTestId('header-cluster');
+    const players = page.getByTestId('header-cluster').locator('.header-chip').first();
+    const health = page.getByTestId('header-health');
+    await expect(region).toBeVisible();
+    await expect(live).toBeVisible();
+    await expect(cluster).toBeVisible();
+    await expect(health).toBeVisible();
+    await expect(live).toContainText(/Live|Connecting|Polling/);
+    await expect(players).toContainText(/Players/i);
+
+    const heights = await Promise.all(
+      [region, live, players, health].map(async (loc) => {
+        const box = await loc.boundingBox();
+        return box?.height ?? 0;
+      }),
+    );
+    for (const height of heights) {
+      expect(height).toBeGreaterThanOrEqual(40);
+      expect(Math.abs(height - heights[0])).toBeLessThanOrEqual(4);
+    }
+
+    const tops = await Promise.all(
+      [region, live, players, health].map(async (loc) => (await loc.boundingBox())?.y ?? 0),
+    );
+    for (const top of tops) {
+      expect(Math.abs(top - tops[0])).toBeLessThanOrEqual(6);
+    }
   });
 });
 
@@ -541,8 +594,8 @@ test.describe('Honest chrome and confirms', () => {
       await route.abort();
     });
 
-    await page.goto('/');
-    await expect(page.getByTestId('cluster-health').first()).toContainText('Checking…');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('header-health')).toContainText('Checking…');
   });
 
   test('Stop all opens a confirm dialog and cancel dismisses it', async ({ page }) => {

@@ -127,9 +127,17 @@ Variant colors follow the action palette (red for destructive, green for positiv
 
 ### Sidebar Navigation
 - Collapsible rail (`w-[4.5rem]` collapsed, `w-80` expanded)
+- Collapse persists in `localStorage` (`arrakis-sidebar-collapsed`); `[` toggles it
+- Minimize control at the bottom of the rail in addition to the header chevron
 - Icons from `lucide-react`
 - Active link: `bg-amber-500/15 text-amber-500`
 - Server health indicator dot in the logo area
+
+### Header chrome
+Region, Live/Polling, operator, Players, and cluster health share `.header-chip` (`h-11`, pill, same border/background) on one wrapping row under the world name. Do not mix a two-line operator stack or an uppercase Players panel with those pills.
+
+### Scrollbars
+Thin overlay bars (`8px`, transparent track). Thumb is invisible until the overflowing surface is hovered or focused so Windows does not paint a 16px classic bar over the glass chrome. Do not set `scrollbar-gutter: stable` — it reserves a dead strip even when the thumb is hidden.
 
 ### Page Structure
 ```tsx

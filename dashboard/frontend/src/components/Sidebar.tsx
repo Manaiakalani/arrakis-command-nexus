@@ -113,13 +113,16 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
         aria-modal={mobileOpen ? true : undefined}
         aria-label={mobileOpen ? 'Navigation' : undefined}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-th-border-m/70 bg-th-bg/95 backdrop-blur-2xl',
+          'fixed inset-y-0 left-0 z-50 flex flex-col overflow-x-hidden border-r border-th-border-m/70 bg-th-bg/95 backdrop-blur-2xl',
           'transition-[width,transform,visibility] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
           collapsed ? 'lg:w-[4.5rem]' : 'w-80',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 max-lg:invisible',
         )}
       >
-        <div className={cn('flex items-center border-b border-th-border-m/50 px-3 py-4', collapsed ? 'justify-center' : 'justify-between')}>
+        <div className={cn(
+          'flex border-b border-th-border-m/50',
+          collapsed ? 'flex-col items-center gap-2 px-2 py-3' : 'items-center justify-between px-3 py-4',
+        )}>
           <div className={cn(
             'flex items-center overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent',
             collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-3',
@@ -145,9 +148,9 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
             className={cn(
               'hidden lg:inline-flex items-center justify-center rounded-lg border border-th-border/60 bg-th-surface-s/60 p-1.5 text-th-text-m',
               'transition-colors duration-150 hover:border-th-border hover:bg-th-surface hover:text-th-text-s',
-              collapsed && 'absolute -right-3 top-6 z-[60] rounded-full border-th-border bg-th-bg-s shadow-lg shadow-black/20 dark:shadow-black/50',
             )}
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+            aria-pressed={collapsed}
           >
             {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
           </button>
@@ -164,7 +167,7 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
           </button>
         </div>
 
-        <div className={cn('mx-3 mt-4 glass-panel', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
+        <div className={cn('mx-3 mt-4 glass-panel', collapsed ? 'px-2 py-2' : 'px-4 py-3')}>
           <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
             <span
               data-testid="cluster-health"
@@ -174,14 +177,14 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
             />
             {!collapsed && (
               <div>
-                <p className="text-sm font-medium capitalize text-th-text">{healthLabel[clusterHealth]}</p>
+                <p className="text-sm font-medium text-th-text">{healthLabel[clusterHealth]}</p>
                 <p className="text-xs text-th-text-m">Cluster</p>
               </div>
             )}
           </div>
         </div>
 
-        <nav className="mx-3 mt-4 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin" aria-label="Dashboard">
+        <nav className="mx-3 mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain" aria-label="Dashboard">
           {navigationSections.map((section, index) => (
             <div key={section.header ?? `core-${index}`} className={cn(index > 0 && collapsed && 'mt-4')}>
               {section.header && !collapsed && (
@@ -251,28 +254,36 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onClose, status, vers
               );
             })}
           </div>
-          <div className={cn('glass-panel overflow-hidden border-amber-500/10', collapsed ? 'px-2 py-3' : 'px-4 py-4')}>
+          <div className={cn('glass-panel overflow-hidden border-amber-500/10', collapsed ? 'px-2 py-2' : 'px-3 py-2.5')}>
             {collapsed ? (
               <div className="flex justify-center text-amber-700 dark:text-amber-200">
                 <Worm className="h-5 w-5" aria-hidden="true" />
               </div>
             ) : (
-              <div className="space-y-2 text-xs text-th-text-m">
-                <div className="flex items-center justify-between gap-3">
-                  <span>Version</span>
-                  <span className="font-medium text-th-text">{version?.version ?? 'unknown'}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>Profile</span>
-                  <span className="font-medium capitalize text-th-text">{version?.profile ?? 'basic'}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>Env</span>
-                  <span className="font-medium text-th-text">{environmentLabel}</span>
-                </div>
-              </div>
+              <p className="truncate text-xs text-th-text-m" title={`Version ${version?.version ?? 'unknown'} · ${version?.profile ?? 'basic'} · ${environmentLabel}`}>
+                <span className="font-medium text-th-text">{version?.version ?? 'unknown'}</span>
+                <span> · </span>
+                <span className="capitalize">{version?.profile ?? 'basic'}</span>
+                <span> · {environmentLabel}</span>
+              </p>
             )}
           </div>
+          <button
+            type="button"
+            onClick={onToggle}
+            data-testid="sidebar-minimize"
+            className={cn(
+              'hidden lg:inline-flex min-h-11 w-full items-center rounded-xl border border-th-border/60 bg-th-surface-s/60 text-th-text-m',
+              'transition-colors duration-150 hover:border-th-border hover:bg-th-surface hover:text-th-text-s',
+              collapsed ? 'justify-center px-0' : 'gap-2 px-3',
+            )}
+            aria-label={collapsed ? 'Expand navigation' : 'Minimize navigation'}
+            aria-pressed={collapsed}
+            title={collapsed ? 'Expand sidebar' : 'Minimize sidebar'}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {!collapsed && <span className="text-xs font-medium">Minimize</span>}
+          </button>
         </div>
       </aside>
     </>

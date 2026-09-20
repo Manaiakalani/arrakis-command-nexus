@@ -49,13 +49,11 @@ export function SessionMenu() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="glass-panel hidden items-center gap-2 px-3 py-2 sm:flex">
-        <UserRound className="h-4 w-4 text-th-text-m" aria-hidden="true" />
-        <div className="leading-tight">
-          <p className="text-sm font-medium text-th-text">{user.username}</p>
-          <p className="text-xs uppercase tracking-wider text-th-text-m">{user.role}</p>
-        </div>
+    <div className="flex items-center gap-2" data-testid="session-menu">
+      <div className="header-chip hidden sm:inline-flex" title={`${user.username} (${user.role})`}>
+        <UserRound className="h-3.5 w-3.5 text-th-text-m" aria-hidden="true" />
+        <span className="font-medium text-th-text">{user.username}</span>
+        <span className="text-th-text-m">{user.role}</span>
       </div>
       <button
         type="button"
@@ -63,7 +61,7 @@ export function SessionMenu() {
         disabled={busy}
         title="Sign out"
         aria-label="Sign out"
-        className="glass-panel flex items-center justify-center px-3 py-2 text-th-text-m transition hover:text-th-text disabled:opacity-50"
+        className="header-chip px-2.5 text-th-text-m transition hover:text-th-text disabled:opacity-50"
       >
         <LogOut className="h-4 w-4" aria-hidden="true" />
       </button>
