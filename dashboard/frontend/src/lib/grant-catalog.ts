@@ -2,6 +2,11 @@
 
 export type GrantItemRef = { templateId: string; quantity: number };
 
+/** Repeat a non-stacking part as separate item rows (ornithopter wings, carrier hulls). */
+export function copies(templateId: string, count: number): GrantItemRef[] {
+  return Array.from({ length: count }, () => ({ templateId, quantity: 1 }));
+}
+
 export type GrantEntry =
   | { kind: 'item'; templateId: string; quantity: number; label: string }
   | { kind: 'batch'; label: string; items: GrantItemRef[] }
@@ -144,15 +149,15 @@ export const GRANT_GROUPS: GrantGroup[] = [
     banner: "Vehicles (Mk6)",
     bannerIcon: "🚜",
     title: "Scout Ornithopter (Mk6)",
-    description: "Light flying vehicle for exploration and Deep Desert travel.",
+    description: "Light flying vehicle for exploration and Deep Desert travel. Assembly needs 4 wings.",
     columns: "grid-cols-2 md:grid-cols-3",
     entries: [
-      { kind: 'batch', label: "Full Scout Mk6 Kit", items: [{ templateId: "OrnithopterLightChassis_6", quantity: 1 }, { templateId: "OrnithopterLightEngine_6", quantity: 1 }, { templateId: "OrnithopterLightHullFront_6", quantity: 1 }, { templateId: "OrnithopterLightHullBack_6", quantity: 1 }, { templateId: "OrnithopterLightLocomotion_6", quantity: 1 }, { templateId: "OrnithopterLightGenerator_6", quantity: 1 }, { templateId: "OrnithopterLightBoost_6", quantity: 1 }, { templateId: "OrnithopterLightInventory_4", quantity: 1 }, { templateId: "OrnithopterLightScanner_4", quantity: 1 }] },
+      { kind: 'batch', label: "Full Scout Mk6 Kit", items: [{ templateId: "OrnithopterLightChassis_6", quantity: 1 }, { templateId: "OrnithopterLightEngine_6", quantity: 1 }, { templateId: "OrnithopterLightHullFront_6", quantity: 1 }, { templateId: "OrnithopterLightHullBack_6", quantity: 1 }, ...copies("OrnithopterLightLocomotion_6", 4), { templateId: "OrnithopterLightGenerator_6", quantity: 1 }, { templateId: "OrnithopterLightBoost_6", quantity: 1 }, { templateId: "OrnithopterLightInventory_4", quantity: 1 }, { templateId: "OrnithopterLightScanner_4", quantity: 1 }] },
       { kind: 'item', templateId: "OrnithopterLightChassis_6", quantity: 1, label: "Chassis Mk6" },
       { kind: 'item', templateId: "OrnithopterLightEngine_6", quantity: 1, label: "Engine Mk6" },
       { kind: 'item', templateId: "OrnithopterLightHullFront_6", quantity: 1, label: "Cockpit Mk6" },
       { kind: 'item', templateId: "OrnithopterLightHullBack_6", quantity: 1, label: "Hull Mk6" },
-      { kind: 'item', templateId: "OrnithopterLightLocomotion_6", quantity: 1, label: "Wing Mk6" },
+      { kind: 'item', templateId: "OrnithopterLightLocomotion_6", quantity: 1, label: "Wing Mk6 (1 of 4)" },
       { kind: 'item', templateId: "OrnithopterLightLocomotion_Unique_Speed_6", quantity: 1, label: "Albatross Wing Mk6" },
       { kind: 'item', templateId: "OrnithopterLightGenerator_6", quantity: 1, label: "Generator Mk6" },
       { kind: 'item', templateId: "OrnithopterLightBoost_6", quantity: 1, label: "Thruster Mk6" },
@@ -166,16 +171,16 @@ export const GRANT_GROUPS: GrantGroup[] = [
     banner: "Vehicles (Mk6)",
     bannerIcon: "🚜",
     title: "Assault Ornithopter (Mk6)",
-    description: "Heavy combat ornithopter with rocket launchers and large cabin.",
+    description: "Heavy combat ornithopter with rocket launchers and large cabin. Assembly needs 6 wings.",
     columns: "grid-cols-2 md:grid-cols-3",
     entries: [
-      { kind: 'batch', label: "Full Assault Mk6 Kit", items: [{ templateId: "OrnithopterMediumChassis_6", quantity: 1 }, { templateId: "OrnithopterMediumEngine_6", quantity: 1 }, { templateId: "OrnithopterMediumHull_6", quantity: 1 }, { templateId: "OrnithopterMediumHullFront_6", quantity: 1 }, { templateId: "OrnithopterMediumHullBack_6", quantity: 1 }, { templateId: "OrnithopterMediumLocomotion_6", quantity: 1 }, { templateId: "OrnithopterMediumGenerator_6", quantity: 1 }, { templateId: "OrnithopterMediumBoost_6", quantity: 1 }, { templateId: "OrnithopterMediumInventory_5", quantity: 1 }] },
+      { kind: 'batch', label: "Full Assault Mk6 Kit", items: [{ templateId: "OrnithopterMediumChassis_6", quantity: 1 }, { templateId: "OrnithopterMediumEngine_6", quantity: 1 }, { templateId: "OrnithopterMediumHull_6", quantity: 1 }, { templateId: "OrnithopterMediumHullFront_6", quantity: 1 }, { templateId: "OrnithopterMediumHullBack_6", quantity: 1 }, ...copies("OrnithopterMediumLocomotion_6", 6), { templateId: "OrnithopterMediumGenerator_6", quantity: 1 }, { templateId: "OrnithopterMediumBoost_6", quantity: 1 }, { templateId: "OrnithopterMediumInventory_5", quantity: 1 }] },
       { kind: 'item', templateId: "OrnithopterMediumChassis_6", quantity: 1, label: "Chassis Mk6" },
       { kind: 'item', templateId: "OrnithopterMediumEngine_6", quantity: 1, label: "Engine Mk6" },
       { kind: 'item', templateId: "OrnithopterMediumHull_6", quantity: 1, label: "Cabin Mk6" },
       { kind: 'item', templateId: "OrnithopterMediumHullFront_6", quantity: 1, label: "Cockpit Mk6" },
       { kind: 'item', templateId: "OrnithopterMediumHullBack_6", quantity: 1, label: "Tail Mk6" },
-      { kind: 'item', templateId: "OrnithopterMediumLocomotion_6", quantity: 1, label: "Wing Mk6" },
+      { kind: 'item', templateId: "OrnithopterMediumLocomotion_6", quantity: 1, label: "Wing Mk6 (1 of 6)" },
       { kind: 'item', templateId: "OrnithopterMediumGenerator_6", quantity: 1, label: "Generator Mk6" },
       { kind: 'item', templateId: "OrnithopterMediumBoost_6", quantity: 1, label: "Thruster Mk6" },
       { kind: 'item', templateId: "OrnithopterMediumInventory_5", quantity: 1, label: "Storage Mk5" },
@@ -200,18 +205,18 @@ export const GRANT_GROUPS: GrantGroup[] = [
     banner: "Vehicles (Mk6)",
     bannerIcon: "🚜",
     title: "Carrier Ornithopter (Mk6)",
-    description: "New transport-class ornithopter shipped with build 1979201.",
+    description: "Transport-class ornithopter. Assembly needs 8 wings, 2 side hulls, and 2 tail hulls.",
     columns: "grid-cols-2 md:grid-cols-3",
     entries: [
-      { kind: 'batch', label: "Full Carrier Mk6 Kit", items: [{ templateId: "OrnithopterTransportChassis_6", quantity: 1 }, { templateId: "OrnithopterTransportEngine_6", quantity: 1 }, { templateId: "OrnithopterTransportLocomotion_6", quantity: 1 }, { templateId: "OrnithopterTransportBoost_6", quantity: 1 }, { templateId: "OrnithopterTransportGenerator_6", quantity: 1 }, { templateId: "OrnithopterTransportHull_6", quantity: 1 }, { templateId: "OrnithopterTransportHullFront_6", quantity: 1 }, { templateId: "OrnithopterTransportHullBack_6", quantity: 1 }] },
+      { kind: 'batch', label: "Full Carrier Mk6 Kit", items: [{ templateId: "OrnithopterTransportChassis_6", quantity: 1 }, { templateId: "OrnithopterTransportEngine_6", quantity: 1 }, ...copies("OrnithopterTransportLocomotion_6", 8), { templateId: "OrnithopterTransportBoost_6", quantity: 1 }, { templateId: "OrnithopterTransportGenerator_6", quantity: 1 }, { templateId: "OrnithopterTransportHull_6", quantity: 1 }, ...copies("OrnithopterTransportHullFront_6", 2), ...copies("OrnithopterTransportHullBack_6", 2)] },
       { kind: 'item', templateId: "OrnithopterTransportChassis_6", quantity: 1, label: "Carrier Chassis Mk6" },
       { kind: 'item', templateId: "OrnithopterTransportEngine_6", quantity: 1, label: "Carrier Engine Mk6" },
-      { kind: 'item', templateId: "OrnithopterTransportLocomotion_6", quantity: 1, label: "Carrier Wing Mk6" },
+      { kind: 'item', templateId: "OrnithopterTransportLocomotion_6", quantity: 1, label: "Carrier Wing Mk6 (1 of 8)" },
       { kind: 'item', templateId: "OrnithopterTransportBoost_6", quantity: 1, label: "Carrier Thruster Mk6" },
       { kind: 'item', templateId: "OrnithopterTransportGenerator_6", quantity: 1, label: "Carrier Generator Mk6" },
       { kind: 'item', templateId: "OrnithopterTransportHull_6", quantity: 1, label: "Carrier Main Hull Mk6" },
-      { kind: 'item', templateId: "OrnithopterTransportHullFront_6", quantity: 1, label: "Carrier Side Hull Mk6" },
-      { kind: 'item', templateId: "OrnithopterTransportHullBack_6", quantity: 1, label: "Carrier Tail Hull Mk6" },
+      { kind: 'item', templateId: "OrnithopterTransportHullFront_6", quantity: 1, label: "Carrier Side Hull Mk6 (1 of 2)" },
+      { kind: 'item', templateId: "OrnithopterTransportHullBack_6", quantity: 1, label: "Carrier Tail Hull Mk6 (1 of 2)" },
     ],
   },
   {
@@ -226,8 +231,8 @@ export const GRANT_GROUPS: GrantGroup[] = [
       { kind: 'batch', label: "Full Sandbike Mk5", items: [{ templateId: "SandbikeChassis_5", quantity: 1 }, { templateId: "SandbikeEngine_5", quantity: 1 }, { templateId: "SandbikeHull_5", quantity: 1 }, { templateId: "SandbikeLocomotion_5", quantity: 1 }, { templateId: "SandbikeGenerator_5", quantity: 1 }, { templateId: "SandbikeBoost_5", quantity: 1 }] },
       { kind: 'batch', label: "Full Buggy Mk3", items: [{ templateId: "BuggyChassis_3", quantity: 1 }, { templateId: "BuggyEngine_3", quantity: 1 }, { templateId: "BuggyHullFront_3", quantity: 1 }, { templateId: "BuggyHullBack_3", quantity: 1 }, { templateId: "BuggyLocomotion_3", quantity: 1 }, { templateId: "BuggyBoost_3", quantity: 1 }, { templateId: "BuggyGenerator_3", quantity: 1 }, { templateId: "BuggyInventory_3", quantity: 1 }] },
       { kind: 'batch', label: "Full Buggy Mk5", items: [{ templateId: "BuggyChassis_5", quantity: 1 }, { templateId: "BuggyEngine_5", quantity: 1 }, { templateId: "BuggyHullFront_5", quantity: 1 }, { templateId: "BuggyHullBack_5", quantity: 1 }, { templateId: "BuggyLocomotion_5", quantity: 1 }, { templateId: "BuggyBoost_5", quantity: 1 }, { templateId: "BuggyGenerator_5", quantity: 1 }, { templateId: "BuggyInventory_5", quantity: 1 }] },
-      { kind: 'batch', label: "Full Scout Ornithopter Mk5", items: [{ templateId: "OrnithopterLightChassis_5", quantity: 1 }, { templateId: "OrnithopterLightEngine_5", quantity: 1 }, { templateId: "OrnithopterLightLocomotion_5", quantity: 1 }, { templateId: "OrnithopterLightBoost_5", quantity: 1 }, { templateId: "OrnithopterLightGenerator_5", quantity: 1 }, { templateId: "OrnithopterLightHullFront_5", quantity: 1 }, { templateId: "OrnithopterLightHullBack_5", quantity: 1 }, { templateId: "OrnithopterLightLauncher_5", quantity: 1 }] },
-      { kind: 'batch', label: "Full Assault Ornithopter Mk5", items: [{ templateId: "OrnithopterMediumChassis_5", quantity: 1 }, { templateId: "OrnithopterMediumEngine_5", quantity: 1 }, { templateId: "OrnithopterMediumLocomotion_5", quantity: 1 }, { templateId: "OrnithopterMediumBoost_5", quantity: 1 }, { templateId: "OrnithopterMediumGenerator_5", quantity: 1 }, { templateId: "OrnithopterMediumHull_5", quantity: 1 }, { templateId: "OrnithopterMediumHullFront_5", quantity: 1 }, { templateId: "OrnithopterMediumHullBack_5", quantity: 1 }, { templateId: "OrnithopterMediumLauncher_5", quantity: 1 }] },
+      { kind: 'batch', label: "Full Scout Ornithopter Mk5", items: [{ templateId: "OrnithopterLightChassis_5", quantity: 1 }, { templateId: "OrnithopterLightEngine_5", quantity: 1 }, ...copies("OrnithopterLightLocomotion_5", 4), { templateId: "OrnithopterLightBoost_5", quantity: 1 }, { templateId: "OrnithopterLightGenerator_5", quantity: 1 }, { templateId: "OrnithopterLightHullFront_5", quantity: 1 }, { templateId: "OrnithopterLightHullBack_5", quantity: 1 }, { templateId: "OrnithopterLightLauncher_5", quantity: 1 }] },
+      { kind: 'batch', label: "Full Assault Ornithopter Mk5", items: [{ templateId: "OrnithopterMediumChassis_5", quantity: 1 }, { templateId: "OrnithopterMediumEngine_5", quantity: 1 }, ...copies("OrnithopterMediumLocomotion_5", 6), { templateId: "OrnithopterMediumBoost_5", quantity: 1 }, { templateId: "OrnithopterMediumGenerator_5", quantity: 1 }, { templateId: "OrnithopterMediumHull_5", quantity: 1 }, { templateId: "OrnithopterMediumHullFront_5", quantity: 1 }, { templateId: "OrnithopterMediumHullBack_5", quantity: 1 }, { templateId: "OrnithopterMediumLauncher_5", quantity: 1 }] },
     ],
   },
   {
