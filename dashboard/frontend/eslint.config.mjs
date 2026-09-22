@@ -10,7 +10,7 @@ export default defineConfig([
   ...nextVitals,
   // eslint-plugin-react 7.37.5 still calls context.getFilename() when
   // settings.react.version is "detect"; that API was removed in ESLint 10.
-  { settings: { react: { version: "19.2.8" } } },
+  { settings: { react: { version: "19.3.0" } } },
   // Next's default parser is compiled @babel/eslint-parser, whose scope
   // manager lacks addGlobals (required by ESLint 10). TS/TSX already use
   // typescript-eslint; apply that parser to JS config files too.
