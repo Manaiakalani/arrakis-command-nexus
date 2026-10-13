@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-10-13
+
 ### Added
 
 - System page **Taking a break** warns players, saves the world locally, asks the host to copy it offsite, then powers the machine off. The host stays on if either backup fails. Install the helper with `sudo DUNE_OFFSITE_BACKUP=/usr/local/sbin/dune-offsite-backup.sh ./scripts/install-taking-a-break.sh`. Turning the machine on later starts the same world through `dune-stack.service`
