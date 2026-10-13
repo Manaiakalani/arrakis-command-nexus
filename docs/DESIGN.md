@@ -134,7 +134,7 @@ Variant colors follow the action palette (red for destructive, green for positiv
 - Server health indicator dot in the logo area (not a second labeled Healthy panel; the header chip is the readable status)
 
 ### Header chrome
-World name is left; operator (`Max · operator`), sign-out, and theme sit top-right like a normal admin app. Connection (region + Live) and cluster (Players + health) share `.header-chip` (`h-11`) on the row under the title. Icon-only controls use `.header-chip-icon` (`h-11 w-11 p-0`) so the glyph is centered.
+World name is left; operator (signed-in name and role), sign-out, and theme sit top-right like a normal admin app. Connection (region + Live) and cluster (Players + health) share `.header-chip` (`h-11`) on the row under the title. Icon-only controls use `.header-chip-icon` (`h-11 w-11 p-0`) so the glyph is centered.
 
 ### Scrollbars
 Thin overlay bars (`8px`, transparent track). Thumb is invisible until the overflowing surface is hovered or focused so Windows does not paint a 16px classic bar over the glass chrome. Do not set `scrollbar-gutter: stable` — it reserves a dead strip even when the thumb is hidden.

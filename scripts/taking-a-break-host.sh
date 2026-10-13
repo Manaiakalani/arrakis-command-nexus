@@ -8,6 +8,9 @@
 # The request file is moved off the watched path immediately so a reboot cannot
 # run this again. Docker volumes are not deleted. dune-stack.service stops the
 # stack, including Postgres, as the host powers off.
+#
+# DUNE_OFFSITE_BACKUP must name an executable copy script. The installer writes
+# that path into the systemd unit. There is no default path in this file.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,9 +18,9 @@ ROOT="${DUNE_BREAK_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 DATA="${DUNE_BREAK_DATA:-$ROOT/dashboard-data}"
 REQ="$DATA/taking-a-break.request"
 RESULT="$DATA/taking-a-break.result"
-OFFSITE="${DUNE_OFFSITE_BACKUP:-/home/dunebrah/bin/daspicebox-backup.sh}"
+OFFSITE="${DUNE_OFFSITE_BACKUP:-}"
 MAX_AGE="${DUNE_BREAK_MAX_AGE_SECONDS:-900}"
-STAGE="${DUNE_BREAK_RUN:-/run/daspicebox}"
+STAGE="${DUNE_BREAK_RUN:-/run/dune-taking-a-break}"
 VALIDATOR="$SCRIPT_DIR/taking_a_break_validate.py"
 
 write_result() {
@@ -52,20 +55,20 @@ fi
 
 if ! python3 "$VALIDATOR" "$REQ" "$MAX_AGE"; then
   rm -f "$REQ"
-  write_result error "Ignored a stale or invalid break request. The NUC stayed on."
+  write_result error "Ignored a stale or invalid break request. The host stayed on."
   exit 1
 fi
 
 mkdir -p "$STAGE"
 mv "$REQ" "$STAGE/taking-a-break.request"
-write_result ack "Host helper started. Copying the world to cudachu."
-
-if [[ ! -x "$OFFSITE" ]]; then
-  fail "Offsite backup script is missing. The NUC stayed on."
+if [[ -z "$OFFSITE" || ! -x "$OFFSITE" ]]; then
+  fail "Offsite backup script is missing. The host stayed on."
 fi
 
+write_result ack "Host helper started. Copying the world off this machine."
+
 if ! "$OFFSITE"; then
-  fail "Offsite backup failed. The NUC stayed on."
+  fail "Offsite backup failed. The host stayed on."
 fi
 
 write_result powering_off "Offsite copy finished. Powering off."

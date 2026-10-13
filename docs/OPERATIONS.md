@@ -259,6 +259,21 @@ Scheduled backups are controlled by `.env`:
 
 You can also view or update the schedule from the dashboard Backups page.
 
+#### Taking a break
+
+The System page control **Back up and power off** is the multi-day absence path.
+It warns players, writes a local backup while Postgres is still up, then asks
+the host helper to copy that save offsite and power off. The machine stays on
+if either copy fails. Install it with your own script path:
+
+```bash
+sudo DUNE_OFFSITE_BACKUP=/usr/local/sbin/dune-offsite-backup.sh ./scripts/install-taking-a-break.sh
+```
+
+That path is stored in the systemd unit on the host. It is not part of this
+repository. Turning the machine on later starts the same world when
+`dune-stack.service` is enabled.
+
 #### Restore
 
 Restore from the dashboard Backups page or run the restore helper manually:

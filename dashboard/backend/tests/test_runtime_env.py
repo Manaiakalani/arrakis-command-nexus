@@ -12,9 +12,9 @@ class RuntimeEnvTests(unittest.TestCase):
     def test_world_name_reads_env_file_not_import_time(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env"
-            path.write_text('WORLD_NAME="One Sandworm One Tacoma"\n', encoding="utf-8")
+            path.write_text('WORLD_NAME="Arrakis Test"\n', encoding="utf-8")
             with patch.object(env_file, "ENV_PATH", str(path)), patch.dict(os.environ, {"WORLD_NAME": "", "DUNE_WORLD_NAME": ""}, clear=False):
-                self.assertEqual(live_world_name(), "One Sandworm One Tacoma")
+                self.assertEqual(live_world_name(), "Arrakis Test")
                 path.write_text('WORLD_NAME="Renamed Sietch"\n', encoding="utf-8")
                 self.assertEqual(live_world_name(), "Renamed Sietch")
 

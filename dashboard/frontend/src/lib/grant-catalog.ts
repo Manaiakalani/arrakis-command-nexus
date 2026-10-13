@@ -642,7 +642,7 @@ export const GRANT_GROUPS: GrantGroup[] = [
     banner: "Seen on this world",
     bannerIcon: "📡",
     title: "New from this world",
-    description: "Highest-signal spawnables first seen in live dune.items on daspicebox. Additional live IDs now sit in their real armor, weapon, tool, and schematic groups.",
+    description: "Highest-signal spawnables first seen in live dune.items on a running server. Additional live IDs now sit in their real armor, weapon, tool, and schematic groups.",
     columns: "grid-cols-2 md:grid-cols-3",
     entries: [
       { kind: 'item', templateId: "CHOAMSword_3", quantity: 1, label: "Regis CHOAM Sword" },

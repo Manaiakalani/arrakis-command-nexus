@@ -78,6 +78,32 @@ class HostScriptTests(unittest.TestCase):
             env=env,
         )
 
+    def test_missing_offsite_script_does_not_power_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            write_request(data, 5)
+            marker = data / "powered-off"
+            env = os.environ.copy()
+            env.pop("DUNE_OFFSITE_BACKUP", None)
+            env.update({
+                "DUNE_BREAK_DATA": str(data),
+                "DUNE_BREAK_RUN": str(data / "run"),
+                "DUNE_BREAK_SHUTDOWN_CMD": f"touch {marker}",
+                "DUNE_BREAK_MAX_AGE_SECONDS": "900",
+            })
+            completed = subprocess.run(
+                ["bash", str(HOST)],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertNotEqual(completed.returncode, 0, completed.stderr)
+            self.assertFalse(marker.exists())
+            result = json.loads((data / "taking-a-break.result").read_text(encoding="utf-8"))
+            self.assertEqual(result["status"], "error")
+            self.assertIn("The host stayed on", result["message"])
+
     def test_offsite_failure_does_not_power_off(self):
         with tempfile.TemporaryDirectory() as tmp:
             data = Path(tmp)

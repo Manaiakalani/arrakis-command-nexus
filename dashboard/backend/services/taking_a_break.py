@@ -211,7 +211,7 @@ async def run_taking_a_break(
             if outcome == "failed":
                 BREAK_STATE["phase"] = "error"
                 BREAK_STATE["error"] = (
-                    f"Could not stop {name}. The NUC stayed on. "
+                    f"Could not stop {name}. The host stayed on. "
                     "Some game servers may already be stopped."
                 )
                 await step(BREAK_STATE["error"])
@@ -229,7 +229,7 @@ async def run_taking_a_break(
             logger.exception("Local break backup failed")
             BREAK_STATE["phase"] = "error"
             BREAK_STATE["error"] = (
-                "Local backup failed. The NUC stayed on. "
+                "Local backup failed. The host stayed on. "
                 "Some game servers may already be stopped. Start the server again from this page."
             )
             await step(BREAK_STATE["error"])
@@ -256,13 +256,13 @@ async def run_taking_a_break(
                 return
             elif status == "error":
                 BREAK_STATE["phase"] = "error"
-                BREAK_STATE["error"] = message or "Offsite backup failed. The NUC stayed on."
+                BREAK_STATE["error"] = message or "Offsite backup failed. The host stayed on."
                 await step(BREAK_STATE["error"])
                 return
             if not saw_ack and time.monotonic() > deadline_ack:
                 clear_exchange(folder)
                 BREAK_STATE["phase"] = "error"
-                BREAK_STATE["error"] = "The host helper did not start. The NUC stayed on."
+                BREAK_STATE["error"] = "The host helper did not start. The host stayed on."
                 await step(BREAK_STATE["error"])
                 return
             await asyncio.sleep(1)
@@ -273,7 +273,7 @@ async def run_taking_a_break(
     except Exception:  # noqa: BLE001
         logger.exception("Taking a break failed")
         BREAK_STATE["phase"] = "error"
-        BREAK_STATE["error"] = "Taking a break failed. The NUC stayed on. Check server logs."
+        BREAK_STATE["error"] = "Taking a break failed. The host stayed on. Check server logs."
         BREAK_STATE["details"].append({
             "ts": datetime.now(timezone.utc).isoformat(),
             "msg": BREAK_STATE["error"],

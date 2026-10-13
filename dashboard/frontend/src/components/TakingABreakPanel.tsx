@@ -85,7 +85,7 @@ export function TakingABreakPanel() {
     setError(null);
     try {
       await apiClient.startTakingABreak(warningMinutes);
-      toast('Taking a break started. This page stays up until the NUC powers off.', 'success');
+      toast('Taking a break started. This page stays up until the host powers off.', 'success');
       setPolling(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -107,9 +107,9 @@ export function TakingABreakPanel() {
             Taking a break
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-th-text-m">
-            Warns anyone online, saves the world on this machine, copies that save to cudachu, then powers the NUC off.
+            Warns anyone online, saves the world on this machine, copies that save offsite, then powers the host off.
             Fuel and storms stay frozen while it is off. Turning the power button on later starts the same world.
-            This does not update the game or delete bases. If either save fails, the NUC stays on.
+            This does not update the game or delete bases. If either save fails, the host stays on.
           </p>
         </div>
         <span
@@ -160,13 +160,13 @@ export function TakingABreakPanel() {
       {unavailable && (
         <p className="mt-3 rounded-xl border border-th-border bg-th-surface-s/60 px-3 py-2 text-sm text-th-text-s">
           This machine cannot power itself off from the dashboard yet. On the host, run{' '}
-          <code className="rounded bg-th-surface/60 px-1">sudo ./scripts/install-taking-a-break.sh</code>.
+          <code className="break-all rounded bg-th-surface/60 px-1">sudo DUNE_OFFSITE_BACKUP=/usr/local/sbin/dune-offsite-backup.sh ./scripts/install-taking-a-break.sh</code>.
         </p>
       )}
 
       {poweredOff && (
         <p className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-100">
-          The save was copied. The NUC is powering off, and this page will disconnect. Turn the power button on when you want to play. The world starts itself.
+          The save was copied. The host is powering off, and this page will disconnect. Turn the power button on when you want to play. The world starts itself.
         </p>
       )}
 
@@ -196,8 +196,8 @@ export function TakingABreakPanel() {
         title={warningMinutes === 0 ? 'Power off now?' : `Warn for ${warningMinutes} minute${warningMinutes === 1 ? '' : 's'}, then power off?`}
         message={
           warningMinutes === 0
-            ? 'Players are disconnected now. The world is saved here and copied to cudachu. If either save fails, the NUC stays on. Otherwise daspicebox powers off. Turn it back on when you want to play.'
-            : `Players get a ${warningMinutes} minute warning. The world is saved here and copied to cudachu. If either save fails, the NUC stays on. Otherwise daspicebox powers off. Turn it back on when you want to play.`
+            ? 'Players are disconnected now. The world is saved here and copied offsite. If either save fails, the host stays on. Otherwise this machine powers off. Turn it back on when you want to play.'
+            : `Players get a ${warningMinutes} minute warning. The world is saved here and copied offsite. If either save fails, the host stays on. Otherwise this machine powers off. Turn it back on when you want to play.`
         }
         confirmLabel="Back up and power off"
         variant="danger"

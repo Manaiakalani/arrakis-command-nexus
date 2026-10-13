@@ -103,6 +103,25 @@ Two settings are worth knowing about:
 sqlite3 data/dashboard.db "DELETE FROM admin_users;"
 ```
 
+## Taking a break
+
+Use this when the world should sit still for days or weeks. On the System page, **Back up and power off** warns anyone online, stops the game, writes a local backup while Postgres is still up, then asks the host to copy that save offsite and power off. The machine stays on if either copy fails. Docker volumes are not deleted, `SURVIVAL_RESET_SEED` is not changed, and the game is not updated.
+
+Install the helper once, as root, with the path to your own offsite script:
+
+```bash
+sudo DUNE_OFFSITE_BACKUP=/usr/local/sbin/dune-offsite-backup.sh ./scripts/install-taking-a-break.sh
+```
+
+`DUNE_OFFSITE_BACKUP` must be an executable absolute path. The script should copy the world while Postgres is still running and exit 0 only when that copy succeeded. The installer writes the path into the systemd unit on that host. It is not stored in this repository.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DUNE_BREAK_UNIT` | `dune-taking-a-break` | systemd unit name |
+| `DUNE_BREAK_RUN` | `/run/dune-taking-a-break` | tmpfs directory for the in-flight request |
+
+Turning the machine on later starts the same world when `dune-stack.service` is enabled (`sudo ./dune install-service`). Moving the hardware still uses `./dune shutdown-host --confirm`, which stops the stack and leaves the host running for you to power off.
+
 ## Deployment Profiles
 
 | Profile | Best for | Typical maps | Recommended RAM |
@@ -138,6 +157,14 @@ cd arrakis-command-nexus
 # 3. Start the battlegroup
 ./dune start
 ```
+
+On Windows, download the Linux package from `cmd` instead of the `steamcmd` line above:
+
+```bat
+scripts\download-dedicated-server.bat
+```
+
+That batch file passes `+@sSteamCmdForcePlatformType linux`. Without it, Windows SteamCMD fetches Funcom's Hyper-V edition (a `.vhdx` and a launcher) instead of the Docker tarballs. Copy the folder to Linux or WSL2, then run `./dune` there. Day-to-day server commands do not run from PowerShell.
 
 Typical dashboard endpoints after setup:
 

@@ -8,7 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- System page **Taking a break** warns players, saves the world locally, asks the host to copy it offsite, then powers the machine off. The host stays on if either backup fails. Install the helper with `sudo ./scripts/install-taking-a-break.sh`. Turning the machine on later starts the same world through `dune-stack.service`
+- System page **Taking a break** warns players, saves the world locally, asks the host to copy it offsite, then powers the machine off. The host stays on if either backup fails. Install the helper with `sudo DUNE_OFFSITE_BACKUP=/usr/local/sbin/dune-offsite-backup.sh ./scripts/install-taking-a-break.sh`. Turning the machine on later starts the same world through `dune-stack.service`
+- `scripts/download-dedicated-server.bat` downloads AppID 4754530 with `+@sSteamCmdForcePlatformType linux`, so Windows SteamCMD does not fetch the Hyper-V edition
+
+### Changed
+
+- Taking a break no longer embeds a hostname, a home directory, or an offsite machine name. `DUNE_OFFSITE_BACKUP` is required at install time and is written only into the host systemd unit
 
 ### Fixed
 
@@ -28,9 +33,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Item grants clone live `stats` (including `FCustomizationStats`) from a sibling/family row so never-seen catalog parts like Sandbike treads actually instantiate; backpack slot picks lock the inventory and expand `max_item_count` instead of writing invisible overflow
 - Full vehicle kits grant enough locomotion parts to assemble: sandbike 3 treads, buggy 4 treads, sandcrawler 2 treads; Scout 4 wings, Assault 6, Carrier 8 plus 2 side hulls and 2 tail hulls
 - Public status and overview `mapsActive` count Arrakeen, Harko Village, Deep Desert, and story maps, not only Survival + Overmap
-- Character roster reads `currency_id = 'Solaris'` (1.5 enum) instead of integer `1`, so Funcom names like Manaiakalani show again instead of fallback `Character 1`
+- Character roster reads `currency_id = 'Solaris'` (1.5 enum) instead of integer `1`, so custom character names show again instead of fallback `Character 1`
 - Characters page uses more space between roster, editor, and grant groups; grant category chips wrap
-- Operator chip (`Max · operator`), sign-out, and theme sit top-right of the title bar; region / Live / Players / health stay on the status row
+- Operator chip (signed-in name and role), sign-out, and theme sit top-right of the title bar; region / Live / Players / health stay on the status row
 - Header chips group as connection / identity / cluster with wider gaps between groups; theme and sign-out use a square `.header-chip-icon` so the glyph is centered
 - Map POI pins, player-table sort headers, and character grant category chips are 44px hit targets
 - Sidebar no longer repeats cluster health as a labeled panel; the header pill stays, and a status dot sits on the logo
@@ -73,7 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `docs/DESIGN.md` light tokens match the parchment CSS instead of leftover slate-50 values
 - REST `/status` and SSE ChangeDetector share `services.health_status.service_to_frontend`; connection-tracker join/leave math lives in `player_tracker.diff_online_players`
 - Remaining dashboard pages use SWR (`useApi` is gone). Updates, host shutdown, vehicle teleport, and admin password-set use `ConfirmDialog` instead of `window.confirm` / `window.prompt`
-- Character grant buttons live in `grant-catalog.ts`. Live `dune.items` on daspicebox added spawnables: CHOAMSword_3, HarkAr7, AtreLMG5, RocketLauncher_2, SmugDmr4/5, HoltzmanShieldActiveDrain3, Radiation_Suit_T5, Durable Blood Sack Mk4, CHOAM Light Mk5 gloves/boots, 50 Spice Melange on Quick Grants
+- Character grant buttons live in `grant-catalog.ts`. Live `dune.items` on a running server added spawnables: CHOAMSword_3, HarkAr7, AtreLMG5, RocketLauncher_2, SmugDmr4/5, HoltzmanShieldActiveDrain3, Radiation_Suit_T5, Durable Blood Sack Mk4, CHOAM Light Mk5 gloves/boots, 50 Spice Melange on Quick Grants
 - Grant catalog now covers the remaining live named IDs: CHOAM Heavy Mk1/3/4 sets, CHOAM Light Mk6 casing, Efficient Stillsuit Mk5, HarkAr6, AtreLMG4, RocketLauncher_3, unique sidearms/shotguns, mid-tier vehicle parts, missing tools/emotes/schematics (including three live schematic IDs newly named in `KNOWN_TEMPLATES`)
 - Dashboard pages under the shell use `h2` so the server name stays the only `h1`. Public status shows the real Funcom build tag instead of a fake 100% availability
 - Connection tracker loop lives in `player_tracker.track_player_connections` with the join/leave math

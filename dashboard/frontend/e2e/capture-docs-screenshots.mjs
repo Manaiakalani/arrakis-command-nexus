@@ -50,7 +50,7 @@ const services = [
 
 const overview = {
   status: {
-    serverName: 'One Sandworm One Tacoma',
+    serverName: 'Arrakis Test',
     region: 'Self-hosted cluster',
     status: 'healthy',
     uptimeSeconds: 62000,
@@ -190,7 +190,7 @@ async function main() {
 
     await page.goto(`${WEB_ORIGIN}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="sidebar"]');
-    await page.getByRole('heading', { name: 'One Sandworm One Tacoma' }).waitFor({ timeout: 30_000 });
+    await page.getByRole('heading', { name: 'Arrakis Test' }).waitFor({ timeout: 30_000 });
     await hideDevUi();
     await page.screenshot({ path: path.join(shotsDir, 'home-overview.png') });
 

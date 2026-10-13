@@ -89,6 +89,11 @@ the dashboard's "Apply Update") relies on this and always logs in anonymously:
 steamcmd +login anonymous +app_update 4754530 validate +quit
 ```
 
+On Windows, run `scripts\download-dedicated-server.bat` from `cmd` instead. It
+passes `+@sSteamCmdForcePlatformType linux` so SteamCMD does not download the
+Hyper-V edition. Copy the resulting folder to the Linux or WSL2 host, then
+continue there. Do not run the dedicated server from PowerShell.
+
 Keep note of the folder that contains the downloaded tarballs or extracted server files. The setup wizard will ask for it.
 
 ## 3. Clone this repository

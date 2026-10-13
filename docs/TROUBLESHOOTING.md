@@ -770,15 +770,16 @@ under normal conditions. Simply retry after a few minutes.
 
 **Recommended workflow (Windows operator, Linux host):**
 
-If you're downloading from a Windows machine and pushing the result to a separate Linux
-host, a local (not repo-tracked) PowerShell helper script that wraps SteamCMD and rsyncs
-the result over is a convenient pattern. Two important details
-that aren't obvious if you write your own:
+If you're downloading from a Windows machine, run
+[`scripts/download-dedicated-server.bat`](../scripts/download-dedicated-server.bat).
+It wraps SteamCMD and writes the Linux package into a folder you choose
+(default: `dedicated-server` under the current directory). Copy that folder
+to the Linux host yourself. Two important details:
 
 1. **Force Linux platform.** Without `+@sSteamCmdForcePlatformType linux`,
    SteamCMD running on Windows downloads the **Hyper-V edition** of the
    self-hosted server (`.vhdx` virtual disk, `.bat` launcher, no Docker
-   tarballs). The script does this automatically.
+   tarballs). The batch file does this automatically.
 
 2. **Re-tag images on load.** Recent Funcom builds ship images namespaced as
    `registry.funcom.com/funcom/self-hosting/<name>:<tag>`, but our compose

@@ -17,8 +17,8 @@
 # `.sanitize-patterns.local` (gitignored, one extended-regex per line,
 # `#` comments allowed):
 #
-#   spicebox
-#   duneadmin
+#   my-dune-host
+#   operator
 #   203\.0\.113\.42
 #
 set -euo pipefail
