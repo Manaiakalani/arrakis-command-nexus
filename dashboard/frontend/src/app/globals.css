@@ -114,6 +114,16 @@ html {
   .dune-button-muted:active {
     transform: none;
   }
+
+  [data-testid="sidebar"],
+  [data-shell-main] {
+    transition: none !important;
+  }
+}
+
+html[data-sidebar-instant] [data-testid="sidebar"],
+html[data-sidebar-instant] [data-shell-main] {
+  transition: none !important;
 }
 
 body {

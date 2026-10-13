@@ -126,7 +126,7 @@ Variant colors follow the action palette (red for destructive, green for positiv
 ## 5. Layout
 
 ### Sidebar Navigation
-- Collapsible rail (`w-[4.5rem]` collapsed, `w-80` expanded)
+- Collapsible rail (`w-[4.5rem]` collapsed, `17rem` expanded)
 - Collapse persists in `localStorage` (`arrakis-sidebar-collapsed`); `[` toggles it
 - Minimize control at the bottom of the rail in addition to the header chevron
 - Icons from `lucide-react`
@@ -249,7 +249,7 @@ Respect `prefers-reduced-motion` by disabling decorative animation (float, shimm
 
 ## 9. Responsive Behavior
 
-- Sidebar collapses to icon rail below `lg` breakpoint
+- Below `lg` the rail is a drawer at most `17rem` wide, always with labels, even if the desktop rail is minimized. Players and health stay in view; the region chip scrolls if the row is wider than the screen. The drawer leaves a visible strip of the page so the backdrop can close it.
 - Summary cards: `grid-cols-2 sm:grid-cols-4`
 - Tables scroll horizontally on mobile (`overflow-x-auto`)
 - Touch target minimum: 44px

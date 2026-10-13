@@ -52,9 +52,9 @@ export function SessionMenu() {
 
   return (
     <div className="flex items-center gap-2" data-testid="session-menu">
-      <div className="header-chip" title={`${user.username} (${user.role})`}>
-        <UserRound className="h-3.5 w-3.5 text-th-text-m" aria-hidden="true" />
-        <span className="font-medium text-th-text">{user.username}</span>
+      <div className="header-chip max-w-[9.5rem] sm:max-w-none" title={`${user.username} (${user.role})`}>
+        <UserRound className="h-3.5 w-3.5 shrink-0 text-th-text-m" aria-hidden="true" />
+        <span className="max-w-[5.5rem] truncate font-medium text-th-text sm:max-w-[8rem]">{user.username}</span>
         <span className="hidden text-th-text-m sm:inline" aria-hidden="true">
           ·
         </span>

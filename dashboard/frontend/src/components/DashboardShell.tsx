@@ -88,6 +88,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
       event.preventDefault();
+      document.documentElement.dataset.sidebarInstant = '1';
+      window.setTimeout(() => {
+        delete document.documentElement.dataset.sidebarInstant;
+      }, 80);
       toggleSidebar();
     };
     window.addEventListener('keydown', onKey);
@@ -123,8 +127,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeMobile();
     };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handler);
+    };
   }, [mobileOpen, closeMobile]);
 
   const clusterHealth = asDisplayHealth(overview?.status.status);
@@ -155,15 +164,17 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           version={version}
           closeRef={sidebarCloseRef}
         />
-        <div ref={mainRef} className={cn('flex min-h-screen min-w-0 max-w-full flex-1 flex-col overflow-x-clip transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
-          <header className="sticky top-0 z-30 max-w-full border-b border-th-border-m/80 bg-th-bg/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3">
+        <div ref={mainRef} data-shell-main="" className={cn('flex min-h-screen min-w-0 max-w-full flex-1 flex-col overflow-x-clip transition-[margin] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-[17rem]')}>
+          <header className="sticky top-0 z-30 max-w-full border-b border-th-border-m/80 bg-th-bg/85 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2.5 backdrop-blur-xl sm:px-6 sm:pb-3 lg:px-8">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <button
                 ref={menuButtonRef}
                 type="button"
-                className="dune-button-muted shrink-0 lg:hidden"
+                className="dune-button-muted h-11 w-11 shrink-0 px-0 lg:hidden"
                 onClick={openMobile}
                 aria-label="Open navigation"
+                aria-expanded={mobileOpen}
+                aria-controls="dashboard-navigation"
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -175,8 +186,24 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <ThemeToggle />
               </div>
             </div>
-            <div className="mt-3 flex max-w-full flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="flex items-center gap-1.5">
+            <div className="mt-2 flex max-w-full items-center gap-3 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:mt-3 sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+              <div className="flex shrink-0 items-center gap-1.5" data-testid="header-cluster">
+                <div className="header-chip">
+                  <span className="text-th-text-m">Players</span>
+                  <span className="font-semibold tabular-nums text-th-text">{overview?.status.playersOnline ?? '—'}</span>
+                </div>
+                <div
+                  data-testid="header-health"
+                  className={cn('header-chip font-semibold', healthPillClass[clusterHealth])}
+                >
+                  <span
+                    className={cn('h-2 w-2 rounded-full', healthDotClass[clusterHealth])}
+                    aria-hidden="true"
+                  />
+                  <span>{healthLabel[clusterHealth]}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
                 <div data-testid="region-chip" className="header-chip max-sm:max-w-[9.5rem]">
                   <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
                   <span className="min-w-0 truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
@@ -200,25 +227,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   <span>{liveLabel}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5" data-testid="header-cluster">
-                <div className="header-chip">
-                  <span className="text-th-text-m">Players</span>
-                  <span className="font-semibold tabular-nums text-th-text">{overview?.status.playersOnline ?? '—'}</span>
-                </div>
-                <div
-                  data-testid="header-health"
-                  className={cn('header-chip font-semibold', healthPillClass[clusterHealth])}
-                >
-                  <span
-                    className={cn('h-2 w-2 rounded-full', healthDotClass[clusterHealth])}
-                    aria-hidden="true"
-                  />
-                  <span>{healthLabel[clusterHealth]}</span>
-                </div>
-              </div>
             </div>
           </header>
-          <main id="main-content" tabIndex={-1} className="min-w-0 max-w-full flex-1 scroll-mt-24 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <main id="main-content" tabIndex={-1} className="min-w-0 max-w-full flex-1 scroll-mt-24 px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 lg:px-8">{children}</main>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 
 - Taking a break no longer embeds a hostname, a home directory, or an offsite machine name. `DUNE_OFFSITE_BACKUP` is required at install time and is written only into the host systemd unit
+- The navigation rail is 17rem expanded instead of 20rem, so the page keeps more width while the wordmark still fits. On a phone it stays a labeled drawer that does not cover the screen, and Players plus health stay on the first header row
 
 ### Fixed
 

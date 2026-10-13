@@ -15,10 +15,11 @@ test.describe('Sidebar navigation', () => {
     const sidebar = page.getByTestId('sidebar');
     const toggle = page.getByTestId('sidebar-toggle');
 
-    // Sidebar starts expanded at 320px (w-80)
+    // Sidebar starts expanded at 272px (17rem)
     const initialBox = await sidebar.boundingBox();
     expect(initialBox).toBeTruthy();
-    expect(initialBox!.width).toBeGreaterThanOrEqual(300);
+    expect(initialBox!.width).toBeGreaterThanOrEqual(260);
+    expect(initialBox!.width).toBeLessThan(290);
 
     // Click collapse
     await toggle.click();
@@ -40,7 +41,8 @@ test.describe('Sidebar navigation', () => {
 
     const expandedBox = await sidebar.boundingBox();
     expect(expandedBox).toBeTruthy();
-    expect(expandedBox!.width).toBeGreaterThanOrEqual(300);
+    expect(expandedBox!.width).toBeGreaterThanOrEqual(260);
+    expect(expandedBox!.width).toBeLessThan(290);
   });
 
   test('minimize control collapses the rail and persists across reload', async ({ page }) => {
@@ -104,6 +106,17 @@ test.describe('Sidebar mobile behavior', () => {
     }
   });
 
+  test('phone drawer keeps labels when the desktop rail is minimized', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('arrakis-sidebar-collapsed', '1'));
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.getByLabel('Open navigation').click();
+    const sidebar = page.getByTestId('sidebar');
+    await expect(sidebar.getByRole('link', { name: 'Overview' })).toBeVisible();
+    const box = await sidebar.boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(200);
+  });
+
   test('hamburger menu opens sidebar on mobile', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
@@ -117,6 +130,8 @@ test.describe('Sidebar mobile behavior', () => {
     const box = await sidebar.boundingBox();
     expect(box).toBeTruthy();
     expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.width).toBeLessThan(page.viewportSize()!.width - 24);
+    await expect(sidebar.getByRole('link', { name: 'Maps' })).toBeVisible();
 
     // Close button should be visible
     const closeBtn = page.getByTestId('sidebar-close');
