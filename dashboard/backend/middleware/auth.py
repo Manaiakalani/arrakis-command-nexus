@@ -62,7 +62,7 @@ _OPERATOR_PATTERNS = tuple(
         r"/backups(/|$)",
         r"/updates(/|$)",
         r"/watchdog(/|$)",
-        r"/system/(power|restart|shutdown|prepare-shutdown|resources)(/|$)",
+        r"/system/(power|restart|shutdown|prepare-shutdown|taking-a-break|resources)(/|$)",
         r"/restart/(schedule|now)(/|$)",
         r"/restart-schedule(/|$)",
         r"/settings/admins(/|$)",

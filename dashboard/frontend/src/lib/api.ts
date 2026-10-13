@@ -680,6 +680,24 @@ export class ApiClient {
     }>('/system/shutdown-status');
   }
 
+  getTakingABreak() {
+    return this.request<{
+      helper_installed: boolean;
+      phase: string;
+      started_at?: string;
+      warning_minutes?: number;
+      details?: Array<{ ts: string; msg: string }>;
+      error?: string | null;
+    }>('/system/taking-a-break');
+  }
+
+  startTakingABreak(warningMinutes: number) {
+    return this.request<{ status: string; warning_minutes: number; message: string }>('/system/taking-a-break', {
+      method: 'POST',
+      body: JSON.stringify({ warning_minutes: warningMinutes }),
+    });
+  }
+
   // Update checking
   getUpdateStatus() {
     return this.request<{

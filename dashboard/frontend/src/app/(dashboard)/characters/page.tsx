@@ -654,14 +654,14 @@ export default function CharactersPage() {
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-base font-semibold text-th-text">{character.name}</p>
-                      <p className="mt-1 text-xs text-th-text-m">
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-semibold text-th-text">{character.name}</p>
+                      <p className="mt-1 break-all text-xs text-th-text-m">
                         {character.metadata?.platform ? `${String(character.metadata.platform)} · ` : ''}
                         {character.id}
                       </p>
                     </div>
-                    <span className={cn('rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em]', character.source === 'mock' ? 'border-sky-500/20 bg-sky-500/10 text-sky-200' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200')}>
+                    <span className={cn('shrink-0 rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em]', character.source === 'mock' ? 'border-sky-500/20 bg-sky-500/10 text-sky-200' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200')}>
                       {character.source}
                     </span>
                   </div>
@@ -683,7 +683,7 @@ export default function CharactersPage() {
                 <p className="section-title">Character editor</p>
                 <h2 className="mt-1 inline-flex items-center gap-2 text-2xl font-semibold text-th-text"><UserCog className="h-6 w-6 text-amber-600 dark:text-amber-300" /> {selectedCharacter?.name ?? 'No character selected'}</h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-th-text-m">
-                  {selectedCharacter?.id ? <span className="rounded-full border border-th-border px-3 py-1 uppercase tracking-[0.18em]">{selectedCharacter.id}</span> : null}
+                  {selectedCharacter?.id ? <span className="max-w-full break-all rounded-full border border-th-border px-3 py-1 uppercase tracking-[0.18em]">{selectedCharacter.id}</span> : null}
                   {selectedCharacter?.table ? <span className="rounded-full border border-th-border px-3 py-1">{selectedCharacter.table}</span> : null}
                   {selectedCharacter?.lastUpdated ? <span className="rounded-full border border-th-border px-3 py-1">Updated {new Date(selectedCharacter.lastUpdated).toLocaleString()}</span> : null}
                 </div>
@@ -759,7 +759,7 @@ export default function CharactersPage() {
                     {activeFields.map((field) => (
                       <label key={field.key} className="block rounded-2xl border border-th-border-m/80 bg-th-surface-s/60 p-4">
                         <span className="block text-sm font-medium text-th-text">{field.label}</span>
-                        <span className="mt-1 block text-xs uppercase tracking-[0.18em] text-th-text-m">{field.key}</span>
+                        <span className="mt-1 block break-all text-xs uppercase tracking-[0.18em] text-th-text-m">{field.key}</span>
                         <input
                           className="dune-input mt-3"
                           type={field.type === 'number' ? 'number' : 'text'}

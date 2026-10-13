@@ -155,8 +155,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           version={version}
           closeRef={sidebarCloseRef}
         />
-        <div ref={mainRef} className={cn('flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
-          <header className="sticky top-0 z-30 border-b border-th-border-m/80 bg-th-bg/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+        <div ref={mainRef} className={cn('flex min-h-screen min-w-0 max-w-full flex-1 flex-col overflow-x-clip transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-80')}>
+          <header className="sticky top-0 z-30 max-w-full border-b border-th-border-m/80 bg-th-bg/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 ref={menuButtonRef}
@@ -168,18 +168,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <Menu className="h-5 w-5" />
               </button>
               <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-th-text sm:text-2xl">
-                {overview?.status.serverName ?? 'Loading…'}
+                {overview?.status.serverName?.trim() || (overview ? 'Status unavailable' : 'Loading…')}
               </h1>
               <div className="flex shrink-0 items-center gap-2">
                 <SessionMenu />
                 <ThemeToggle />
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="mt-3 flex max-w-full flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex items-center gap-1.5">
                 <div data-testid="region-chip" className="header-chip max-sm:max-w-[9.5rem]">
                   <Signal className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
-                  <span className="truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
+                  <span className="min-w-0 truncate">{overview?.status.region ?? 'Self-hosted cluster'}</span>
                 </div>
                 <div
                   data-testid="sse-status"
@@ -218,7 +218,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </header>
-          <main id="main-content" tabIndex={-1} className="flex-1 scroll-mt-24 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <main id="main-content" tabIndex={-1} className="min-w-0 max-w-full flex-1 scroll-mt-24 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
         </div>
       </div>
     </div>

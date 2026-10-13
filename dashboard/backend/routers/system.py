@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from middleware.auth import verify_admin_token
 from services.env_file import ENV_PATH, write_env_var
+from services.taking_a_break import BREAK_STATE, helper_installed, run_taking_a_break
 
 router = APIRouter(tags=["system"])
 logger = logging.getLogger(__name__)
@@ -720,3 +721,60 @@ _SHUTDOWN_STATE: dict[str, Any] = {"phase": "idle"}
 async def get_shutdown_status() -> dict[str, Any]:
     """Return the current shutdown phase + recent log entries."""
     return dict(_SHUTDOWN_STATE)
+
+
+def _shutdown_in_progress() -> bool:
+    phase = str(_SHUTDOWN_STATE.get("phase") or "idle")
+    return phase not in {"idle", "error", "ready_for_host_shutdown"}
+
+
+class TakingABreakRequest(BaseModel):
+    warning_minutes: int = 5
+
+
+@router.get("/system/taking-a-break")
+async def get_taking_a_break() -> dict[str, Any]:
+    """Whether this host can power itself off, and the current break phase."""
+    return {
+        "helper_installed": helper_installed(),
+        "phase": BREAK_STATE.get("phase", "idle"),
+        "started_at": BREAK_STATE.get("started_at"),
+        "warning_minutes": BREAK_STATE.get("warning_minutes"),
+        "details": list(BREAK_STATE.get("details") or []),
+        "error": BREAK_STATE.get("error"),
+    }
+
+
+@router.post("/system/taking-a-break")
+async def start_taking_a_break(payload: TakingABreakRequest, request: Request) -> dict[str, Any]:
+    """Warn players, back up, copy the world offsite, then power the host off.
+
+    The host stays on if the local backup or the offsite copy fails.
+    Postgres is left running until the host halt stops the stack.
+    """
+    if payload.warning_minutes < 0 or payload.warning_minutes > 60:
+        raise HTTPException(status_code=400, detail="warning_minutes must be between 0 and 60")
+    if not helper_installed():
+        raise HTTPException(
+            status_code=503,
+            detail="Taking a break is not installed on this host. Run sudo ./scripts/install-taking-a-break.sh",
+        )
+    phase = str(BREAK_STATE.get("phase") or "idle")
+    if phase not in {"idle", "error"} or _shutdown_in_progress():
+        raise HTTPException(status_code=409, detail="A shutdown is already in progress.")
+
+    _asyncio.create_task(
+        run_taking_a_break(
+            warning_minutes=payload.warning_minutes,
+            docker_service=request.app.state.docker_service,
+            backup_service=request.app.state.backup_service,
+            announce_service=request.app.state.announce_service,
+            discord_service=getattr(request.app.state, "discord_service", None),
+        ),
+        name="taking-a-break",
+    )
+    return {
+        "status": "started",
+        "warning_minutes": payload.warning_minutes,
+        "message": "Taking a break is running. Poll GET /system/taking-a-break.",
+    }

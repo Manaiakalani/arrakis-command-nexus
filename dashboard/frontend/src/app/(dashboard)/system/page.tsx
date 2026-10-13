@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton } from '@/components/Skeleton';
 import { ShutdownPanel } from '@/components/ShutdownPanel';
+import { TakingABreakPanel } from '@/components/TakingABreakPanel';
 import { useToast } from '@/components/ToastProvider';
 import { useApiSWR } from '@/hooks/useApiSWR';
 import { apiClient } from '@/lib/api';
@@ -463,8 +464,8 @@ export default function SystemPage() {
             <p className="section-title">Access control</p>
             <h2 className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-th-text"><Wrench aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-300" /> Maintenance mode</h2>
             <p className="mt-2 text-sm text-th-text-m">
-              Send a warning announcement to all players, then gracefully prepare the server for maintenance.
-              Uses the shutdown preparation pipeline with configurable warning time.
+              Send a warning announcement to all players, then stop the game and leave the machine on.
+              For several days away, use Taking a break.
             </p>
           </div>
           <span className={cn('shrink-0 rounded-full border px-3 py-1 text-xs font-semibold uppercase', maintenanceMode ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
@@ -544,6 +545,8 @@ export default function SystemPage() {
           </div>
         </div>
       </section>
+
+      <TakingABreakPanel />
 
       <section className="glass-panel p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

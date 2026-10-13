@@ -48,7 +48,7 @@ export function BackupList({ backups, onCreate, onRestore, onDelete }: BackupLis
           </button>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="min-w-0 overflow-x-auto">
         <table className="min-w-full divide-y divide-th-border-m text-left text-sm">
           <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text-m">
             <tr>

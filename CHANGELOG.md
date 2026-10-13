@@ -6,8 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- System page **Taking a break** warns players, saves the world locally, asks the host to copy it offsite, then powers the machine off. The host stays on if either backup fails. Install the helper with `sudo ./scripts/install-taking-a-break.sh`. Turning the machine on later starts the same world through `dune-stack.service`
+
 ### Fixed
 
+- Overview status no longer stays on Loading when a section of `/dashboard/overview` fails, and the main column keeps wide tables inside the viewport instead of scrolling the page sideways
 - Dashboard header chrome (region, Live, operator, Players, health) shares one `.header-chip` row and height instead of mixed pills and a tall Players glass panel
 - Scrollbars are thin overlay thumbs that stay transparent until hover; `scrollbar-gutter: stable` is gone so Windows no longer reserves a dead strip over the shell
 - Sidebar minimize persists across reload (`localStorage`), has a labeled Minimize control, and toggles with `[`. The collapse chevron stays inside the rail instead of overlapping the world name

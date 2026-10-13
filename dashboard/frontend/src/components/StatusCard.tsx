@@ -26,12 +26,12 @@ export const StatusCard = memo(function StatusCard({ icon: Icon, title, value, s
   const TrendIcon = trend?.direction === 'up' ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <div className={cn('glass-panel relative overflow-hidden p-5 transition-[border-color,box-shadow] duration-200', variantClasses[variant])}>
+    <div className={cn('glass-panel relative min-w-0 overflow-hidden p-5 transition-[border-color,box-shadow] duration-200', variantClasses[variant])}>
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-th-text-m">{title}</p>
-          <p className="mt-3 text-3xl font-semibold tabular-nums leading-none">{value}</p>
+          <p className="mt-3 break-words text-3xl font-semibold tabular-nums leading-tight">{value}</p>
           {subtitle ? <p className="mt-2 text-sm text-th-text-m">{subtitle}</p> : null}
         </div>
         <div className="rounded-2xl border border-th-border/30 dark:border-white/5 bg-th-bg/40 p-3 text-th-accent shadow-dune">

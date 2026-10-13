@@ -428,7 +428,7 @@ export default function AnnouncementsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="min-w-0 overflow-x-auto">
           <table className="min-w-full divide-y divide-th-border-m/80 text-left text-sm">
             <thead className="bg-th-bg/40 text-th-text-m">
               <tr>
@@ -525,7 +525,7 @@ export default function AnnouncementsPage() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="min-w-0 overflow-x-auto">
           <table className="min-w-full divide-y divide-th-border-m/80 text-left text-sm">
             <thead className="bg-th-bg/40 text-th-text-m">
               <tr>

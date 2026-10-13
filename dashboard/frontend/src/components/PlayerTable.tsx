@@ -72,7 +72,7 @@ export function PlayerTable({ players, onBan, onKick, selectedSteamIds, onToggle
           />
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="min-w-0 overflow-x-auto">
         <table className="min-w-full divide-y divide-th-border-m text-left text-sm">
           <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text-m">
             <tr>
@@ -98,8 +98,7 @@ export function PlayerTable({ players, onBan, onKick, selectedSteamIds, onToggle
             </tr>
           </thead>
           <tbody className="divide-y divide-th-border-m/80">
-            {filtered.length > 0 ? (
-              filtered.map((player) => (
+            {filtered.map((player) => (
                 <tr key={player.steamId} className="transition-colors hover:bg-th-surface-s/50">
                   {onToggleSelect && (
                     <td className="w-10 px-3 py-4">
@@ -132,17 +131,13 @@ export function PlayerTable({ players, onBan, onKick, selectedSteamIds, onToggle
                     </div>
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={onToggleSelect ? 6 : 5} className="px-5 py-12 text-center text-th-text-m">
-                  No players match the current search. The sands are quiet right now.
-                </td>
-              </tr>
-            )}
+              ))}
           </tbody>
         </table>
       </div>
+      {filtered.length === 0 ? (
+        <p className="px-5 py-12 text-center text-th-text-m">No players match the current search. The sands are quiet right now.</p>
+      ) : null}
     </div>
   );
 }

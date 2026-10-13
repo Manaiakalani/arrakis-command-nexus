@@ -114,9 +114,9 @@ class DockerService:
         self._invalidate_container_caches(name)
         return {"status": "ok", "action": "restart", "container": container.name}
 
-    async def stop_container(self, name: str) -> dict[str, str]:
+    async def stop_container(self, name: str, timeout: int = 10) -> dict[str, str]:
         container = await self._get_container(name)
-        await asyncio.to_thread(container.stop)
+        await asyncio.to_thread(lambda: container.stop(timeout=timeout))
         self._invalidate_container_caches(name)
         return {"status": "ok", "action": "stop", "container": container.name}
 

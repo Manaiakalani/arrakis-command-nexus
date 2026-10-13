@@ -332,7 +332,7 @@ export default function PlayersPage() {
               </a>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="min-w-0 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-th-surface-s/50 text-xs uppercase tracking-[0.2em] text-th-text-m">
                 <tr>
@@ -363,14 +363,12 @@ export default function PlayersPage() {
                     <td className="px-4 py-3 text-th-text-s">{entry.mapName ?? '-'}</td>
                   </tr>
                 ))}
-                {(connections.data ?? []).length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-10 text-center text-th-text-m">No connection events recorded yet. Events are tracked automatically when players join or leave.</td>
-                  </tr>
-                ) : null}
               </tbody>
             </table>
           </div>
+          {(connections.data ?? []).length === 0 ? (
+            <p className="px-5 py-10 text-center text-th-text-m">No connection events recorded yet. Events are tracked automatically when players join or leave.</p>
+          ) : null}
         </div>
       ) : null}
 

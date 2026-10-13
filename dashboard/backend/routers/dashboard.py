@@ -60,17 +60,20 @@ async def get_overview(request: Request) -> dict:
             return_exceptions=True,
         )
 
-        def _safe(val, fallback):
-            return fallback if isinstance(val, BaseException) else val
+        def _safe(val, fallback, label: str):
+            if isinstance(val, BaseException):
+                logger.warning("Overview section %s failed: %s", label, val)
+                return fallback
+            return val
 
         return {
-            "status": _safe(results[0], {}),
-            "readiness": _safe(results[1], {}),
-            "maps": _safe(results[2], []),
-            "metrics": _safe(results[3], {}),
-            "systemHistory": _safe(results[4], {"range": "1h", "points": []}),
-            "uptime": _safe(results[5], {"range": "24h", "availabilityPercent": 0, "totalUpSeconds": 0, "totalDownSeconds": 0, "events": []}),
-            "backups": _safe(results[6], []),
+            "status": _safe(results[0], {}, "status"),
+            "readiness": _safe(results[1], {}, "readiness"),
+            "maps": _safe(results[2], [], "maps"),
+            "metrics": _safe(results[3], {}, "metrics"),
+            "systemHistory": _safe(results[4], {"range": "1h", "points": []}, "systemHistory"),
+            "uptime": _safe(results[5], {"range": "24h", "availabilityPercent": 0, "totalUpSeconds": 0, "totalDownSeconds": 0, "events": []}, "uptime"),
+            "backups": _safe(results[6], [], "backups"),
         }
 
     return await _cache.get_or_fetch("dashboard:overview", _fetch_all)

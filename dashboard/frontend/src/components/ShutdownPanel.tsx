@@ -78,9 +78,10 @@ export function ShutdownPanel() {
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-th-text">Graceful Host Shutdown</h3>
           <p className="text-sm text-th-text/70">
-            Phase 1 (this button): in-game warnings → final backup → stop game + infra containers. Phase 2 (operator
-            on the host): run <code className="px-1 rounded bg-th-surface/60">./dune shutdown-host --confirm</code> to
-            stop the dashboard and power the machine off. Use this when you need to physically move the device.
+            Phase 1 (this button): in-game warnings, a final backup, then stop game and infra containers. Phase 2 stays
+            on the host: run <code className="px-1 rounded bg-th-surface/60">./dune shutdown-host --confirm</code> to
+            stop the dashboard and power the machine off. Use this when you need to move the device. For several days
+            away, use Taking a break instead.
           </p>
         </div>
       </div>

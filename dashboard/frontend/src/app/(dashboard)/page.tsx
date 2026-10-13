@@ -56,6 +56,7 @@ export default function OverviewPage() {
   const backups = useMemo(() => ({ data: overviewData?.backups ?? [] }), [overviewData?.backups]);
 
   const serviceSummary = useMemo(() => status.data?.services ?? [], [status.data?.services]);
+  const clusterStatus = status.data?.serverName ? status.data : null;
 
   const [busyService, setBusyService] = useState<string | null>(null);
   const [pending, setPending] = useState<{
@@ -142,12 +143,12 @@ export default function OverviewPage() {
       </div>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatusCard icon={Server} title="Server status" value={status.data ? healthLabel[asDisplayHealth(status.data.status)] : 'Loading…'} subtitle={status.data?.serverName ?? 'Contacting cluster'} variant="default" />
-        <StatusCard icon={Users} title="Players online" value={status.data?.playersOnline ?? 0} subtitle="Across active maps" variant="success">
+        <StatusCard icon={Server} title="Server status" value={clusterStatus ? healthLabel[asDisplayHealth(clusterStatus.status)] : status.loading ? 'Loading…' : 'Unavailable'} subtitle={clusterStatus?.serverName ?? (status.loading ? 'Contacting cluster' : 'Status request failed')} variant="default" />
+        <StatusCard icon={Users} title="Players online" value={clusterStatus ? clusterStatus.playersOnline ?? 0 : '—'} subtitle="Across active maps" variant="success">
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-th-text-m">
-              <span>Network pulse</span>
-              <span>{(metrics.data?.networkInMbps ?? 0).toFixed(2)} / {(metrics.data?.networkOutMbps ?? 0).toFixed(2)} Mbps</span>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs text-th-text-m">
+              <span className="uppercase tracking-[0.14em]">Network pulse</span>
+              <span className="tabular-nums">{(metrics.data?.networkInMbps ?? 0).toFixed(2)} / {(metrics.data?.networkOutMbps ?? 0).toFixed(2)} Mbps</span>
             </div>
             <NetworkSparkline history={resourceHistory.data?.points ?? []} height={52} />
           </div>
@@ -158,15 +159,15 @@ export default function OverviewPage() {
             <ResourceGauge label="RAM" value={metrics.data?.memoryPercent ?? 0} size={88} />
             <ResourceGauge label="Disk" value={metrics.data?.diskPercent ?? 0} size={88} />
           </div>
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-th-border/30 dark:border-white/5 bg-th-bg/30 px-3 py-2 text-xs text-th-text-m">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-th-border/30 dark:border-white/5 bg-th-bg/30 px-3 py-2 text-xs text-th-text-m">
             <span>{(metrics.data?.memoryUsedGb ?? 0).toFixed(1)} / {(metrics.data?.memoryTotalGb ?? 0).toFixed(0)} GB RAM</span>
             <span>{(metrics.data?.diskUsedGb ?? 0).toFixed(0)} / {(metrics.data?.diskTotalGb ?? 0).toFixed(0)} GB disk</span>
           </div>
         </StatusCard>
-        <StatusCard icon={Clock3} title="Stack uptime" value={formatUptime(status.data?.uptimeSeconds)} subtitle="Since earliest game-server start">
+        <StatusCard icon={Clock3} title="Stack uptime" value={clusterStatus ? formatUptime(clusterStatus.uptimeSeconds) : '—'} subtitle="Since earliest game-server start">
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs uppercase tracking-[0.22em] text-amber-600/80 dark:text-amber-200/80">24h availability</span>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <span className="min-w-0 text-xs uppercase tracking-[0.14em] text-amber-600/80 dark:text-amber-200/80">24h availability</span>
               <span className="text-lg font-semibold tabular-nums text-amber-800 dark:text-amber-100">{(uptime.data?.availabilityPercent ?? 0).toFixed(1)}%</span>
             </div>
             <p className="mt-2 text-th-text-s">{uptime.data?.events.filter((event) => event.status !== 'up').length ?? 0} recent impacted windows</p>
