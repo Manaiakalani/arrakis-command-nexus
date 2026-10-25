@@ -4,7 +4,7 @@ python-dotenv==1.2.4
 docker==7.2.0
 psutil==7.2.2
 pydantic==2.14.1
-sqlalchemy[asyncio]==2.1.4
+sqlalchemy[asyncio]==2.1.6
 greenlet>=3.5.6
 aiosqlite==0.22.1
 asyncpg==0.32.0
