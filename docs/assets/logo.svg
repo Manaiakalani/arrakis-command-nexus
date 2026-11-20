@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Arrakis Command Nexus">
+  <title>Arrakis Command Nexus</title>
+  <defs>
+    <linearGradient id="acn-gold" x1="16" y1="8" x2="112" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fde68a"/>
+      <stop offset="0.5" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="62" fill="#020617"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="url(#acn-gold)" stroke-width="3.25"/>
+  <path d="M64 28 L95 46 V82 L64 100 L33 82 V46 Z" fill="none" stroke="url(#acn-gold)" stroke-width="2.5" stroke-linejoin="round"/>
+  <g stroke="url(#acn-gold)" stroke-width="1.7">
+    <line x1="64" y1="64" x2="64" y2="28"/>
+    <line x1="64" y1="64" x2="95" y2="46"/>
+    <line x1="64" y1="64" x2="95" y2="82"/>
+    <line x1="64" y1="64" x2="64" y2="100"/>
+    <line x1="64" y1="64" x2="33" y2="82"/>
+    <line x1="64" y1="64" x2="33" y2="46"/>
+  </g>
+  <g fill="#fbbf24">
+    <circle cx="64" cy="28" r="3.3"/>
+    <circle cx="95" cy="46" r="3.3"/>
+    <circle cx="95" cy="82" r="3.3"/>
+    <circle cx="64" cy="100" r="3.3"/>
+    <circle cx="33" cy="82" r="3.3"/>
+    <circle cx="33" cy="46" r="3.3"/>
+  </g>
+  <circle cx="64" cy="64" r="12" fill="#020617" stroke="url(#acn-gold)" stroke-width="2.2"/>
+  <circle cx="64" cy="64" r="5.8" fill="#fde68a"/>
+</svg>

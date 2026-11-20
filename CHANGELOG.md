@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- README header uses a centered title, project logo, and overview screenshot as the hero, plus a GitHub social preview
+
 ## [1.8.2] - 2026-10-13
 
 ### Added

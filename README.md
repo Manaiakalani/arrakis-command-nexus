@@ -1,23 +1,26 @@
-# Dune Awakening Dedicated Server with Docker Compose and Arrakis Command Nexus
-
-[![Version](https://img.shields.io/badge/version-1.8.2-blue)](https://github.com/Manaiakalani/arrakis-command-nexus/releases)
-[![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![Docker Compose](https://img.shields.io/badge/docker%20compose-v2-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![CI](https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20WSL2-lightgrey)](./docs/QUICKSTART.md)
-
-Self-host a **Dune Awakening dedicated server** with **Docker Compose**, automatic infrastructure bootstrap, and the **Arrakis Command Nexus** companion dashboard for day-to-day operations.
+<div align="center">
+  <img src="docs/assets/logo.svg" alt="Arrakis Command Nexus logo" width="96" />
+  <h1>Arrakis Command Nexus</h1>
+  <p><strong>Self-host a Dune Awakening dedicated server with Docker Compose and a companion operations dashboard.</strong></p>
+  <p>
+    <a href="https://github.com/Manaiakalani/arrakis-command-nexus/releases"><img src="https://img.shields.io/badge/version-1.8.2-blue" alt="Version 1.8.2" /></a>
+    <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/docker-ready-2496ED?logo=docker&amp;logoColor=white" alt="Docker ready" /></a>
+    <a href="https://docs.docker.com/compose/"><img src="https://img.shields.io/badge/docker%20compose-v2-2496ED?logo=docker&amp;logoColor=white" alt="Docker Compose v2" /></a>
+    <a href="https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml"><img src="https://github.com/Manaiakalani/arrakis-command-nexus/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license" /></a>
+    <a href="./docs/QUICKSTART.md"><img src="https://img.shields.io/badge/platform-linux%20%7C%20WSL2-lightgrey" alt="Linux and WSL2" /></a>
+  </p>
+  <p>
+    <a href="#key-features">Features</a> · <a href="#quick-start">Getting started</a> · <a href="#documentation">Documentation</a>
+  </p>
+  <img src="docs/assets/hero.png" alt="Arrakis Command Nexus screenshot" width="800" />
+</div>
 
 This project packages PostgreSQL, RabbitMQ, battlegroup services, helper scripts, and a browser-based control plane so you can launch a private or community server without manually wiring every dependency.
 
 In the in-game server browser, self-hosted worlds appear under the **Experimental** tab.
 
 ## Dashboard Preview
-
-<p align="center">
-  <img src="docs/screenshots/home-overview.png" alt="Home Overview" width="100%">
-</p>
 
 <p align="center">
   <img src="docs/screenshots/map-orchestration.png" alt="Map Orchestration" width="49%">
