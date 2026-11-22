@@ -106,6 +106,29 @@ def _frontend_dir() -> Path | None:
     return candidate if candidate.exists() else None
 
 
+def _safe_path_under(root: Path, user_path: str) -> Path | None:
+    """Return user_path resolved under root, or None if it would escape.
+
+    User-controlled path segments are normalized before the containment check
+    so ``..`` and absolute inputs cannot skip the frontend root.
+    """
+    if "\x00" in user_path:
+        return None
+    base_path = os.path.realpath(str(root))
+    if not user_path:
+        return Path(os.path.join(base_path, "index.html"))
+    # Normalize first so a later prefix check cannot be fooled by ``..``.
+    fullpath = os.path.normpath(os.path.join(base_path, user_path))
+    if not fullpath.startswith(base_path):
+        return None
+    if fullpath != base_path and not fullpath.startswith(base_path + os.sep):
+        return None
+    resolved = os.path.realpath(fullpath)
+    if os.path.commonpath([base_path, resolved]) != base_path:
+        return None
+    return Path(resolved)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail fast if placeholder secrets are still set
@@ -364,11 +387,9 @@ if frontend_dir is not None:
     async def frontend_fallback(full_path: str) -> FileResponse:
         if full_path.startswith("api"):
             raise HTTPException(status_code=404, detail="Not found")
-        requested = (frontend_dir / full_path).resolve() if full_path else frontend_dir / "index.html"
-        try:
-            requested.relative_to(frontend_dir.resolve())
-        except ValueError as exc:
-            raise HTTPException(status_code=404, detail="Not found") from exc
+        requested = _safe_path_under(frontend_dir, full_path)
+        if requested is None:
+            raise HTTPException(status_code=404, detail="Not found")
         if requested.exists() and requested.is_file():
             return FileResponse(requested)
         index_file = frontend_dir / "index.html"

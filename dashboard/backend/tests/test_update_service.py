@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from services.update_service import UpdateService
+from services.update_service import UpdateService, _funcom_registry_short_tag
 
 
 class FakeProcess:
@@ -88,6 +88,37 @@ class UpdateServiceTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(self.service._image_uses_tag(image, "2064155-0-shipping"))
         self.assertFalse(self.service._image_uses_tag(image, "2064155"))
+
+    def test_funcom_registry_short_tag_strips_exact_host(self):
+        full = "registry.funcom.com/funcom/self-hosting/seabass-server:2064155-0-shipping"
+        self.assertEqual(
+            _funcom_registry_short_tag(full),
+            "funcom/self-hosting/seabass-server:2064155-0-shipping",
+        )
+        self.assertEqual(
+            _funcom_registry_short_tag("https://registry.funcom.com/funcom/self-hosting/foo:tag"),
+            "funcom/self-hosting/foo:tag",
+        )
+
+    def test_funcom_registry_short_tag_rejects_embedded_host(self):
+        self.assertIsNone(
+            _funcom_registry_short_tag(
+                "evil.example/registry.funcom.com/funcom/self-hosting/foo:tag"
+            )
+        )
+        self.assertIsNone(
+            _funcom_registry_short_tag(
+                "https://evil.example/registry.funcom.com/funcom/self-hosting/foo:tag"
+            )
+        )
+        self.assertIsNone(
+            _funcom_registry_short_tag(
+                "registry.funcom.com.evil.example/funcom/self-hosting/foo:tag"
+            )
+        )
+        self.assertIsNone(
+            _funcom_registry_short_tag("ftp://registry.funcom.com/funcom/self-hosting/foo:tag")
+        )
 
     def _compose_tree(self) -> tuple[Path, Path]:
         tmp = Path(tempfile.mkdtemp())
