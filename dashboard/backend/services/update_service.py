@@ -9,8 +9,33 @@ import subprocess
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
+
+_FUNCOM_REGISTRY_HOST = "registry.funcom.com"
+_FUNCOM_REGISTRY_SCHEMES = frozenset({"http", "https"})
+
+
+def _funcom_registry_short_tag(full_tag: str) -> str | None:
+    """Return the compose short name if full_tag is from registry.funcom.com.
+
+    Docker image refs are parsed as URLs so the registry hostname is compared
+    exactly. A substring match would also accept a host that merely contains
+    ``registry.funcom.com/`` somewhere in the ref.
+    """
+    raw = (full_tag or "").strip()
+    if not raw:
+        return None
+    parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+    if parsed.scheme not in _FUNCOM_REGISTRY_SCHEMES:
+        return None
+    if parsed.hostname != _FUNCOM_REGISTRY_HOST:
+        return None
+    path = parsed.path.lstrip("/")
+    if not path:
+        return None
+    return path
 
 
 def _is_newer_build(latest: Optional[str], baseline: Optional[str]) -> bool:
@@ -643,8 +668,8 @@ class UpdateService:
             # Steam packages use "registry.funcom.com/funcom/self-hosting/..." but
             # compose references "funcom/self-hosting/..."
             for full_tag in list(loaded_tags):
-                if full_tag.startswith("registry.funcom.com/"):
-                    short_tag = full_tag.replace("registry.funcom.com/", "", 1)
+                short_tag = _funcom_registry_short_tag(full_tag)
+                if short_tag and short_tag != full_tag:
                     retag_proc = await asyncio.create_subprocess_exec(
                         "docker", "tag", full_tag, short_tag,
                         stdout=asyncio.subprocess.PIPE,

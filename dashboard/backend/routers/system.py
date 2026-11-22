@@ -30,6 +30,8 @@ _RANGE_TO_DURATION = {
     "7d": timedelta(days=7),
     "30d": timedelta(days=30),
 }
+_MAX_RANGE_VALUE_LEN = 16
+_CUSTOM_RANGE_RE = re.compile(r"([0-9]{1,9})([mhd])")
 _DEGRADED_CPU_THRESHOLD = 95
 _DEGRADED_MEMORY_THRESHOLD = 90
 _DEGRADED_DISK_THRESHOLD = 90
@@ -54,10 +56,12 @@ def _get_uptime_seconds() -> float:
 
 def _parse_range_to_duration(range_value: str) -> timedelta:
     normalized = (range_value or "24h").strip().lower()
+    if len(normalized) > _MAX_RANGE_VALUE_LEN:
+        return _RANGE_TO_DURATION["24h"]
     if normalized in _RANGE_TO_DURATION:
         return _RANGE_TO_DURATION[normalized]
 
-    match = re.fullmatch(r"(\d+)([mhd])", normalized)
+    match = _CUSTOM_RANGE_RE.fullmatch(normalized)
     if not match:
         return _RANGE_TO_DURATION["24h"]
 
